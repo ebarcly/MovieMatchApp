@@ -1,44 +1,46 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { View, Image, Text, StyleSheet } from 'react-native';
 import { GestureHandlerRootView, Swipeable } from 'react-native-gesture-handler';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { MoviesContext } from '../context/MoviesContext'; // Import the context
 
-const SwipeableCard = ({ movie, handleSwipe, imageBaseUrl }) => {
+const SwipeableCard = ({ movie }) => {
+  const { state, dispatch } = useContext(MoviesContext); // Use the context
   const { posterPath, title, genres = [] } = movie;
+  const imageBaseUrl = state.configData?.images?.secure_base_url || '';
   const imageUri = posterPath ? { uri: `${imageBaseUrl}${posterPath}` } : require('../assets/default_image.jpeg');
 
-  const renderLeftActions = (progress, dragX) => {
-    // You can use progress and dragX to animate the left actions if needed
-    return (
-      <View style={styles.leftAction}>
-        <Icon name="thumb-down" size={25} color="#fff" />
-        <Text style={styles.actionText}>Not Interested</Text>
-      </View>
-    );
+  const handleSwipe = (direction) => {
+    // Dispatch an action based on the swipe direction
+    dispatch({ type: direction === 'left' ? 'DISLIKE_MOVIE' : 'LIKE_MOVIE', payload: movie });
   };
 
-  const renderRightActions = (progress, dragX) => {
-    // You can use progress and dragX to animate the right actions if needed
-    return (
-      <View style={styles.rightAction}>
-        <Icon name="thumb-up" size={25} color="#fff" />
-        <Text style={styles.actionText}>Want to Watch</Text>
-      </View>
-    );
-  };
+  const renderLeftActions = () => (
+    <View style={styles.leftAction}>
+      <Icon name="thumb-down" size={25} color="#fff" />
+      <Text style={styles.actionText}>Not Interested</Text>
+    </View>
+  );
+
+  const renderRightActions = () => (
+    <View style={styles.rightAction}>
+      <Icon name="thumb-up" size={25} color="#fff" />
+      <Text style={styles.actionText}>Want to Watch</Text>
+    </View>
+  );
 
   return (
     <GestureHandlerRootView style={styles.container}>
       <Swipeable
         renderLeftActions={renderLeftActions}
         renderRightActions={renderRightActions}
-        onSwipeableOpen={(direction) => handleSwipe(direction, movie)}
+        onSwipeableOpen={(direction) => handleSwipe(direction)}
       >
         <View style={styles.cardContainer}>
-          <Image 
-            source={imageUri} 
-            style={styles.poster} 
-            defaultSource={require('../assets/default_image.jpeg')} // Fallback image for loading or errors
+          <Image
+            source={imageUri}
+            style={styles.poster}
+            defaultSource={require('../assets/default_image.jpeg')}
           />
           <View style={styles.textContainer}>
             {title ? (

@@ -1,12 +1,11 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import Typography from './Typography';
 import SearchIcon from './SearchIcon';
 
 const NavigationBar = ({ username }) => {
   return (
     <View style={styles.container}>
-      <Typography text={`Hey ${username}!`} />
+      <Text text={`Hey ${username}!`} />
       <SearchIcon />
       {/* Add other icons or elements here as needed */}
     </View>

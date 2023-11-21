@@ -1,11 +1,12 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Text } from 'react-native';
 import SearchIcon from './SearchIcon';
+
 
 const NavigationBar = ({ username }) => {
   return (
     <View style={styles.container}>
-      <Text text={`Hey ${username}!`} />
+      <Text>{`Hey ${username}!`}</Text>
       <SearchIcon />
       {/* Add other icons or elements here as needed */}
     </View>
@@ -20,7 +21,12 @@ const styles = StyleSheet.create({
     padding: 16,
     backgroundColor: '#19192b', // Adjust the color to match the theme
   },
-  // Add other styles here as needed
+  title: {
+    fontSize: 20,
+    fontFamily: 'WorkSans-Medium',
+    color: '#fff',
+  },
+
 });
 
 export default NavigationBar;

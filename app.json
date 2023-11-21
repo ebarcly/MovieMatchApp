@@ -6,6 +6,9 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "extra": {
+      "TMDB_API_KEY": "7205b20552feedbb43213ee5943ffeac"
+    },
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",

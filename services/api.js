@@ -1,6 +1,8 @@
 import axios from 'axios';
+import Constants from 'expo-constants';
 
-const API_KEY = process.env.TMDB_API_KEY;
+// Retrieve the TMDB API Key from app.json using Expo's Constants API
+const API_KEY = Constants.expoConfig.extra.TMDB_API_KEY;
 const BASE_URL = 'https://api.themoviedb.org/3';
 
 const tmdbApi = axios.create({

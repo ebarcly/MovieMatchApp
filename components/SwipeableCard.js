@@ -59,47 +59,48 @@ const SwipeableCard = ({ movie }) => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1, // Ensures the root view takes up full space for gestures
-  },
   cardContainer: {
-    borderRadius: 20,
+    borderRadius: 24,
     backgroundColor: '#1e2031',
     overflow: 'hidden',
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  poster: {
+    marginBottom: 48,
     width: '100%',
-    height: 300,
-    resizeMode: 'cover',
+    alignItems: 'center',
+    justifyContent: 'center',
+    // Add other styles such as shadow, etc.
   },
-  textContainer: {
-    padding: 16,
+  
+  poster: {
+    width: 348,
+    height: 496,
+    borderRadius: 12,
+    shadowColor: '#000', // Shadow for iOS
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
   },
   title: {
     color: '#fff',
     fontWeight: 'bold',
-    fontSize: 18,
-    marginBottom: 8,
+    fontSize: 24,
+    zIndex: 1,
+    textAlign: 'center',
+    // Add other text style properties
   },
   genres: {
     color: '#fff',
     fontSize: 14,
+    // Add other text style properties
   },
   leftAction: {
-    // Styles for left swipe action
+    // Add styles for left swipe action
   },
   rightAction: {
-    // Styles for right swipe action
+    // Add styles for right swipe action
   },
   actionText: {
     color: '#fff',
-    // Additional styles for action text
+    // Add other text style properties
   },
 });
 

@@ -6,9 +6,14 @@ import { MoviesContext } from '../context/MoviesContext'; // Import the context
 
 const SwipeableCard = ({ movie }) => {
   const { state, dispatch } = useContext(MoviesContext); // Use the context
-  const { posterPath, title, genres = [] } = movie;
-  const imageBaseUrl = state.configData?.images?.secure_base_url || '';
-  const imageUri = posterPath ? { uri: `${imageBaseUrl}${posterPath}` } : require('../assets/default_image.jpeg');
+  const { poster_path, title, genres = [] } = movie;
+
+  // Use secure_base_url from configData and choose appropriate size for poster
+  const imageBaseUrl = state.configData.images.secure_base_url;
+  const imageSize = 'w500'; // Choose the appropriate image size from the available options
+
+  // Construct the full URI for the movie poster image
+  const imageUri = poster_path ? `${imageBaseUrl}${imageSize}${poster_path}` : require('../assets/default_image.jpeg');
 
   const handleSwipe = (direction) => {
     // Dispatch an action based on the swipe direction
@@ -38,9 +43,10 @@ const SwipeableCard = ({ movie }) => {
       >
         <View style={styles.cardContainer}>
           <Image
-            source={imageUri}
+            source={{ uri: imageUri }}
             style={styles.poster}
             defaultSource={require('../assets/default_image.jpeg')}
+            resizeMode='cover'
           />
           <View style={styles.textContainer}>
             {title ? (
@@ -69,15 +75,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     // Add other styles such as shadow, etc.
   },
-  
+
   poster: {
     width: 348,
     height: 496,
     borderRadius: 12,
-    shadowColor: '#000', // Shadow for iOS
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
   },
   title: {
     color: '#fff',

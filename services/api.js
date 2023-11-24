@@ -62,9 +62,21 @@ export const fetchMoviesByGenre = async (genreId) => {
     }
 };
 
+// Fetch configuration data from TMDB
+export const fetchConfiguration = async () => {
+    try {
+        const response = await tmdbApi.get('/configuration');
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching configuration:', error);
+        throw error;
+    }
+};
+
 export default {
     fetchPopularMovies,
     searchMovies,
     fetchGenres,
     fetchMoviesByGenre,
+    fetchConfiguration,
 };

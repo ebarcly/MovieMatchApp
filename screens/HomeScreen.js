@@ -7,7 +7,7 @@ import { fetchPopularMovies } from '../services/api'; // Importing the API call
 
 const HomeScreen = () => {
   const username = 'User';
-  const [movies, setMovies] = useState(null); // Initialize to null to check if movies have been loaded
+  const [movies, setMovies] = useState([]); // Initialize to null to check if movies have been loaded
   const [loading, setLoading] = useState(true); // State to manage loading status
   const [error, setError] = useState(''); // State to hold any error messages
 
@@ -39,7 +39,7 @@ const HomeScreen = () => {
     return <Text style={styles.errorText}>{error}</Text>; // Render error message if there is an error
   }
 
-  if (!movies) {
+  if (movies.length === 0) {
     return <Text style={styles.errorText}>Movies are currently unavailable.</Text>; // Render a message if movies is null
   }
 

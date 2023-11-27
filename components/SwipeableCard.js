@@ -6,7 +6,7 @@ import { MoviesContext } from '../context/MoviesContext'; // Import the context
 
 const SwipeableCard = ({ movie }) => {
   const { state, dispatch } = useContext(MoviesContext); // Use the context
-  const { poster_path, title, genres = [] } = movie;
+  const { poster_path, genre_ids = [] } = movie;
 
   // Use secure_base_url from configData and choose appropriate size for poster
   const imageBaseUrl = state.configData.images.secure_base_url;
@@ -34,6 +34,24 @@ const SwipeableCard = ({ movie }) => {
     </View>
   );
 
+  const renderGenres = () => {
+    if (genre_ids.length > 0 && state.genres.length > 0) {
+      // Map genre IDs to genre names
+      const genreNames = genre_ids.map(genreId => {
+        const genre = state.genres.find(g => g.id === genreId);
+        return genre ? genre.name : 'Unknown';
+      });
+      return genreNames.slice(0, 3).map((name, index) => (
+        <Text key={index} style={styles.genre}>
+          {name}
+          {index !== genreNames.length - 1 && <Text style={styles.separator}> • </Text>}
+        </Text>
+      ));
+    } else {
+      return <Text style={styles.genre}>Genres unavailable</Text>;
+    }
+  };
+
   return (
     <GestureHandlerRootView style={styles.container}>
       <Swipeable
@@ -48,15 +66,11 @@ const SwipeableCard = ({ movie }) => {
             defaultSource={require('../assets/default_image.jpeg')}
             resizeMode='cover'
           />
-          <View style={styles.textContainer}>
-            {title ? (
-              <>
-                <Text style={styles.title}>{title}</Text>
-                <Text style={styles.genres}>{genres.join(' • ')}</Text>
-              </>
-            ) : (
-              <Text style={styles.title}>Movie information unavailable</Text>
-            )}
+          <View style={styles.gradientContainer}>
+            <View style={styles.gradient} />
+          </View>
+          <View style={styles.genreContainer}>
+            {renderGenres()}
           </View>
         </View>
       </Swipeable>
@@ -66,32 +80,61 @@ const SwipeableCard = ({ movie }) => {
 
 const styles = StyleSheet.create({
   cardContainer: {
-    borderRadius: 24,
+    borderRadius: 16,
     backgroundColor: '#1e2031',
     overflow: 'hidden',
     marginBottom: 48,
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
+    position: 'relative',
     // Add other styles such as shadow, etc.
   },
-
+  gradientContainer: {
+    position: 'absolute',
+    top: 440,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 0,
+  },
+  gradient: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)', // Adjust the opacity and color as desired
+  },
   poster: {
     width: 348,
     height: 496,
     borderRadius: 12,
+    backfaceVisibility: 'hidden',
   },
-  title: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 24,
+  genreContainer: {
+    position: 'absolute',
+    flexDirection: 'row', // Lay out genres in a row
+    flexWrap: 'wrap', // Wrap to the next line if necessary
     zIndex: 1,
+    top: 448,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  genre: {
+    color: '#fff',
+    fontSize: 16,
+    fontFamily: 'WorkSans-Medium',
+    lineHeight: 18,
+    paddingVertical: 4,
+    borderRadius: 15,
+    overflow: 'hidden',
+    marginHorizontal: 4,
     textAlign: 'center',
     // Add other text style properties
   },
-  genres: {
+  separator: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: 16,
     // Add other text style properties
   },
   leftAction: {

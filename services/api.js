@@ -14,11 +14,29 @@ const tmdbApi = axios.create({
 
 export const fetchPopularMovies = async (page = 1) => {
     try {
-        const response = await tmdbApi.get('/movie/popular', {
-            params: { page },
-        });
+        const response = await tmdbApi.get('/movie/now_playing', { params: { page } });
+        let movies = response.data.results;
+
+        // Fetch genres if they are not included in the movie data
+        if (movies.length > 0 && !movies[0].genre_ids) {
+            // Always fetch genres to map ids to names
+            const genresResponse = await fetchGenres();
+            const genres = genresResponse.data.genres;
+            // Create a map for faster lookup
+            const genresMap = genres.reduce((acc, genre) => {
+                acc[genre.id] = genre.name;
+                return acc;
+            }, {});
+
+            // Map genre IDs to genre names
+            movies = movies.map((movie) => {
+                const genreNames = movie.genre_ids.map(genreId => genresMap[genreId] || 'Unknown Genre');
+                return { ...movie, genre_names: genreNames };
+            });
+        }
+
         return {
-            results: response.data.results,
+            results: movies,
             totalResults: response.data.total_results,
             totalPages: response.data.total_pages,
         };
@@ -27,6 +45,42 @@ export const fetchPopularMovies = async (page = 1) => {
         throw error;
     }
 };
+
+// Fetch TV shows
+export const fetchPopularTVShows = async (page = 1) => {
+    try {
+        const response = await tmdbApi.get('/tv/on_the_air', { params: { page } });
+        let tvShows = response.data.results;
+
+        // Fetch genres if they are not included in the movie data
+        if (tvShows.length > 0 && !tvShows[0].genre_ids) {
+            // Always fetch genres to map ids to names
+            const genresResponse = await fetchGenres();
+            const genres = genresResponse.data.genres;
+            // Create a map for faster lookup
+            const genresMap = genres.reduce((acc, genre) => {
+                acc[genre.id] = genre.name;
+                return acc;
+            }, {});
+
+            // Map genre IDs to genre names
+            tvShows = tvShows.map((tvShow) => {
+                const genreNames = tvShow.genre_ids.map(genreId => genresMap[genreId] || 'Unknown Genre');
+                return { ...tvShow, genre_names: genreNames };
+            });
+        }
+
+        return {
+            results: tvShows,
+            totalResults: response.data.total_results,
+            totalPages: response.data.total_pages,
+        };
+    } catch (error) {
+        console.error('Error fetching popular TV shows:', error);
+        throw error;
+    }
+};
+
 
 export const searchMovies = async (query) => {
     try {
@@ -73,10 +127,4 @@ export const fetchConfiguration = async () => {
     }
 };
 
-export default {
-    fetchPopularMovies,
-    searchMovies,
-    fetchGenres,
-    fetchMoviesByGenre,
-    fetchConfiguration,
-};
+

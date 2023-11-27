@@ -1,55 +1,68 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, ScrollView, StyleSheet, ActivityIndicator, Text } from 'react-native';
 import SwipeableCard from '../components/SwipeableCard';
 import NavigationBar from '../components/NavigationBar';
 import CategoryTabs from '../components/CategoryTabs';
-import { fetchPopularMovies } from '../services/api'; // Importing the API call
+import { fetchPopularMovies, fetchPopularTVShows } from '../services/api'; // Ensure you have the fetchPopularTVShows API call implemented
 
 const HomeScreen = () => {
   const username = 'User';
-  const [movies, setMovies] = useState([]); // Initialize to null to check if movies have been loaded
+  const [content, setContent] = useState([]); // This will store either movies or TV shows based on selection
   const [loading, setLoading] = useState(true); // State to manage loading status
   const [error, setError] = useState(''); // State to hold any error messages
+  const [selectedCategory, setSelectedCategory] = useState('Movies'); // Start with 'Movies' as default
+  const [isRefreshing, setIsRefreshing] = useState(false); // State to manage pull-to-refresh
+
+  // Fetch content based on the selected category
+  const fetchContent = useCallback(async () => {
+    if (!isRefreshing) setIsRefreshing(true); // If refresh is triggered, set isRefreshing to true
+    try {
+      let data;
+      if (selectedCategory === 'Movies') {
+        data = await fetchPopularMovies();
+      } else if (selectedCategory === 'TV Shows') {
+        data = await fetchPopularTVShows(); 
+      } else {
+        // Handle other categories as needed
+        data = { results: [] };
+      }
+      setContent(data.results);
+      setIsRefreshing(false); // If refresh is successful, set isRefreshing to false
+    } catch (e) {
+      setError(`Failed to fetch ${selectedCategory.toLowerCase()}`);
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedCategory]);
 
   useEffect(() => {
-    const loadMovies = async () => {
-      try {
-        const data = await fetchPopularMovies();
-        if (data.results) {
-          setMovies(data.results); // Make sure to set the state with the array of movies
-        } else {
-          setError('No movies data found'); // Set an error message if no movies
-        }
-      } catch (error) {
-        console.error('Failed to fetch movies:', error);
-        setError('Failed to fetch movies'); // Set an error message on failure
-      } finally {
-        setLoading(false); // Hide loading indicator regardless of success/failure
-      }
-    };
-
-    loadMovies();
-  }, []);
+    fetchContent();
+  }, [fetchContent]);
 
   if (loading) {
-    return <ActivityIndicator size="large" color="#00ff00" />;
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#00ff00" />
+      </View>
+    );
   }
 
   if (error) {
-    return <Text style={styles.errorText}>{error}</Text>; // Render error message if there is an error
+    return <Text style={styles.errorText}>{error}</Text>;
   }
 
-  if (movies.length === 0) {
-    return <Text style={styles.errorText}>Movies are currently unavailable.</Text>; // Render a message if movies is null
+  if (content.length === 0) {
+    return <Text style={styles.errorText}>Content is currently unavailable.</Text>;
   }
 
   return (
     <ScrollView style={styles.container}>
       <NavigationBar username={username} />
-      <CategoryTabs />
+      <CategoryTabs onCategorySelect={(category) => setSelectedCategory(category)} />
       <View style={styles.cardContainer}>
-        {movies.map((movie) => (
-          <SwipeableCard key={movie.id.toString()} movie={movie} />
+        {content.map((item) => (
+          <SwipeableCard key={item.id.toString()} movie={item} />
         ))}
       </View>
     </ScrollView>
@@ -72,6 +85,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 20,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 100,
+  },
 });
 
 export default HomeScreen;
+

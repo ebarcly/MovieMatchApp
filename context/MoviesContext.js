@@ -1,12 +1,13 @@
 import React, { createContext, useReducer, useEffect } from 'react';
-import { fetchConfiguration } from '../services/api'; // Import the API call for configuration
+import { fetchConfiguration, fetchGenres } from '../services/api'; // Import the API calls for configuration and genres
 
 const initialState = {
     movies: [],
     favorites: [],
     likedMovies: [],  // Store liked movies
     dislikedMovies: [],  // Store disliked movies
-    configData: {}
+    configData: {},
+    genres: []  // Store genres
 };
 
 export const MoviesContext = createContext(initialState);
@@ -23,6 +24,8 @@ const moviesReducer = (state, action) => {
             return { ...state, dislikedMovies: [...state.dislikedMovies, action.payload] };
         case 'SET_CONFIG':
             return { ...state, configData: action.payload };
+        case 'SET_GENRES':
+            return { ...state, genres: action.payload };
         default:
             return state;
     }
@@ -32,18 +35,21 @@ export const MoviesProvider = ({ children }) => {
     const [state, dispatch] = useReducer(moviesReducer, initialState);
 
     useEffect(() => {
-        // Fetch configuration on initial load
-        const loadConfig = async () => {
+        // Fetch configuration and genres on initial load
+        const loadData = async () => {
             try {
                 const configData = await fetchConfiguration();
-                console.log('Config Data:', configData); // Debug line to verify config data
                 dispatch({ type: 'SET_CONFIG', payload: configData });
+
+                const genresArray = await fetchGenres();
+                dispatch({ type: 'SET_GENRES', payload: genresArray });
             } catch (error) {
-                console.error('Error fetching config data:', error);
+                console.error('Error fetching data:', error);
+                // You may want to handle the error, e.g., by setting an error state
             }
         };
 
-        loadConfig();
+        loadData();
     }, []);
 
     return (

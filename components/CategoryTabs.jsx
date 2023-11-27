@@ -2,10 +2,16 @@ import React, { useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import CategoryButton from './CategoryButton';
 
-const categories = ['TV Shows', 'Movies', 'Categories'];
+const categories = ['Movies', 'TV Shows', 'Categories'];
 
-const CategoryTabs = () => {
+const CategoryTabs = ({ onCategorySelect }) => {
   const [activeTab, setActiveTab] = useState(categories[0]);
+
+  const handleCategorySelect = (category) => {
+    setActiveTab(category);
+    onCategorySelect(category);
+  }
+
 
   return (
     <View style={styles.container}>
@@ -14,7 +20,7 @@ const CategoryTabs = () => {
           key={category}
           label={category}
           isActive={activeTab === category}
-          onPress={() => setActiveTab(category)}
+          onPress={() => handleCategorySelect(category)}
         />
       ))}
     </View>

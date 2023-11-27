@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import CategoryButton from './CategoryButton';
 
-const categories = ['Movies', 'TV Shows', 'Categories'];
+const categories = ['Movies', 'TV Shows']; // add Categories later
 
 const CategoryTabs = ({ onCategorySelect }) => {
   const [activeTab, setActiveTab] = useState(categories[0]);
@@ -11,7 +11,6 @@ const CategoryTabs = ({ onCategorySelect }) => {
     setActiveTab(category);
     onCategorySelect(category);
   }
-
 
   return (
     <View style={styles.container}>
@@ -30,7 +29,10 @@ const CategoryTabs = ({ onCategorySelect }) => {
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    padding: 10,
+    padding: 16,
+    backgroundColor: '#19192b',
+    justifyContent: 'left',
+    alignItems: 'left',
   },
 });
 

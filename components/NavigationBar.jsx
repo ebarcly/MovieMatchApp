@@ -2,13 +2,11 @@ import React from 'react';
 import { View, StyleSheet, Text } from 'react-native';
 import SearchIcon from './SearchIcon';
 
-
 const NavigationBar = ({ username }) => {
   return (
     <View style={styles.container}>
-      <Text>{`Hey ${username}!`}</Text>
+      <Text style={styles.title}>{`Hey ${username}!`}</Text>
       <SearchIcon />
-      {/* Add other icons or elements here as needed */}
     </View>
   );
 };
@@ -19,15 +17,23 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: 40,
-    padding: 16,
-    backgroundColor: '#19192b', // Adjust the color to match the theme
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    backgroundColor: '#19192b',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   title: {
     fontSize: 20,
     fontFamily: 'WorkSans-Medium',
     color: '#fff',
   },
-
 });
 
 export default NavigationBar;

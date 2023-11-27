@@ -11,6 +11,7 @@ const HomeScreen = () => {
   const [loading, setLoading] = useState(true); // State to manage loading status
   const [error, setError] = useState(''); // State to hold any error messages
   const [selectedCategory, setSelectedCategory] = useState('Movies'); // Start with 'Movies' as default
+  const [currentCardIndex, setCurrentCardIndex] = useState(0); // State to keep track of the current card index
   const [isRefreshing, setIsRefreshing] = useState(false); // State to manage pull-to-refresh
 
   // Fetch content based on the selected category
@@ -21,12 +22,13 @@ const HomeScreen = () => {
       if (selectedCategory === 'Movies') {
         data = await fetchPopularMovies();
       } else if (selectedCategory === 'TV Shows') {
-        data = await fetchPopularTVShows(); 
+        data = await fetchPopularTVShows();
       } else {
         // Handle other categories as needed
         data = { results: [] };
       }
       setContent(data.results);
+      setCurrentCardIndex(0); // Reset the current card index to 0
       setIsRefreshing(false); // If refresh is successful, set isRefreshing to false
     } catch (e) {
       setError(`Failed to fetch ${selectedCategory.toLowerCase()}`);
@@ -39,6 +41,10 @@ const HomeScreen = () => {
   useEffect(() => {
     fetchContent();
   }, [fetchContent]);
+
+  const handleSwipeComplete = useCallback(() => {
+    setCurrentCardIndex(prevIndex => Math.min(prevIndex + 1, content.length - 1));
+  }, [content.length]);
 
   if (loading) {
     return (
@@ -61,8 +67,8 @@ const HomeScreen = () => {
       <NavigationBar username={username} />
       <CategoryTabs onCategorySelect={(category) => setSelectedCategory(category)} />
       <View style={styles.cardContainer}>
-        {content.map((item) => (
-          <SwipeableCard key={item.id.toString()} movie={item} />
+        {content.slice(currentCardIndex, currentCardIndex + 1).map((item) => (
+          <SwipeableCard key={item.id.toString()} movie={item} onSwipeComplete={handleSwipeComplete} />
         ))}
       </View>
     </ScrollView>

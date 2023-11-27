@@ -10,12 +10,12 @@ const styles = StyleSheet.create({
     marginHorizontal: 4,
     borderWidth: 1,
     borderColor: '#6063b4',
-    borderRadius: 26,
+    borderRadius: 24,
     backgroundColor: '#19192b',
   },
   text: {
     color: '#d1d2d5',
-    fontSize: 14,
+    fontSize: 15,
     fontFamily: 'WorkSans-Medium',
   },
   activeButton: {

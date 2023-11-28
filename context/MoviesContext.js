@@ -12,6 +12,7 @@ const initialState = {
 
 export const MoviesContext = createContext(initialState);
 
+// Create a reducer function to update the state based on the action dispatched
 const moviesReducer = (state, action) => {
     switch (action.type) {
         case 'SET_MOVIES':
@@ -31,7 +32,8 @@ const moviesReducer = (state, action) => {
     }
 };
 
-export const MoviesProvider = ({ children }) => {
+// Create the MoviesProvider component to wrap the entire app
+export const MoviesProvider = ({ children }) => {  
     const [state, dispatch] = useReducer(moviesReducer, initialState);
 
     useEffect(() => {

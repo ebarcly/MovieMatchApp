@@ -12,6 +12,7 @@ const tmdbApi = axios.create({
     },
 });
 
+// Fetch popular movies from TMDB
 export const fetchPopularMovies = async (page = 1) => {
     try {
         const response = await tmdbApi.get('/movie/now_playing', { params: { page } });
@@ -46,8 +47,8 @@ export const fetchPopularMovies = async (page = 1) => {
     }
 };
 
-// Fetch TV shows
-export const fetchPopularTVShows = async (page = 1) => {
+// Fetch TV shows from TMDB
+export const fetchPopularTVShows = async (page = 2) => {
     try {
         const response = await tmdbApi.get('/tv/on_the_air', { params: { page } });
         let tvShows = response.data.results;

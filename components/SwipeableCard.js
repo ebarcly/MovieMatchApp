@@ -1,5 +1,5 @@
 import React, { useContext, useState } from 'react';
-import { View, Image, Text, StyleSheet, Animated } from 'react-native';
+import { View, Image, Text, StyleSheet, Animated, TouchableOpacity } from 'react-native';
 import { GestureHandlerRootView, Swipeable } from 'react-native-gesture-handler';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { MoviesContext } from '../context/MoviesContext'; // Import the context
@@ -16,12 +16,13 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
   // Construct the full URI for the movie poster image
   const imageUri = poster_path ? `${imageBaseUrl}${imageSize}${poster_path}` : require('../assets/default_image.jpeg');
 
-  const [swiped] = useState(false);
+  const [swiped, setSwiped] = useState(false); // Update the swiped state
 
   const handleSwipe = (direction) => {
     dispatch({ type: direction === 'left' ? 'DISLIKE_MOVIE' : 'LIKE_MOVIE', payload: movie });
     setTimeout(() => {
       swipeableRef.current?.close();
+      setSwiped(true); // Update the swiped state to true
       onSwipeComplete(); // Notify parent to load the next card
     }, 500); // Add a delay for user to see the action feedback
   };
@@ -36,13 +37,13 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
     const translateX = dragX.interpolate({
       inputRange: [-100, 0],
       outputRange: [0, 100],
-      extrapolate: 'clamp',
+      extrapolate: 'clamp',  
     });
 
     return (
       <View style={styles.leftAction}>
         <Animated.View style={[styles.actionContent, { transform: [{ scale }, { translateX }] }]}>
-          <Icon name="thumb-down" size={25} color="#fff" />
+          <Icon name="thumb-down" size={25} color="#fff" style={styles.icon} />
           <Text style={styles.actionText}>Not Interested</Text>
         </Animated.View>
       </View>
@@ -65,7 +66,7 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
     return (
       <View style={styles.rightAction}>
         <Animated.View style={[styles.actionContent, { transform: [{ scale }, { translateX }] }]}>
-          <Icon name="thumb-up" size={25} color="#fff" />
+          <Icon name="thumb-up" size={25} color="#fff" style={styles.icon} />
           <Text style={styles.actionText}>Want to Watch</Text>
         </Animated.View>
       </View>
@@ -99,8 +100,8 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
           renderRightActions={renderRightActions}
           onSwipeableOpen={handleSwipe}
           friction={2}
-          leftThreshold={80}
-          rightThreshold={80}
+          leftThreshold={60} 
+          rightThreshold={60} 
           overshootLeft={false} // Disable overshoot effect on left swipe
           overshootRight={false} // Disable overshoot effect on right swipe
           useNativeAnimations={true} // Use native animations for smoother transition
@@ -109,7 +110,7 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
             <Image
               source={{ uri: imageUri }}
               style={styles.poster}
-              defaultSource={require('../assets/default_image.jpeg')}
+              defaultSource={require('../assets/default_image.png')}
               resizeMode='cover'
             />
             <View style={styles.genreContainer}>
@@ -118,6 +119,16 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
           </View>
         </Swipeable>
       )}
+      <View style={styles.buttonContainer}>
+        <TouchableOpacity style={styles.button} onPress={() => handleSwipe('left')}>
+          <Icon name="skip-next" size={25} color="#fff" style={styles.icon} />
+          <Text style={styles.buttonText}>Skip</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.button} onPress={() => handleSwipe('right')}>
+          <Icon name="check" size={25} color="#fff" style={styles.icon} />
+          <Text style={styles.buttonText}>Watched</Text>
+        </TouchableOpacity>
+      </View>
     </GestureHandlerRootView>
   );
 };
@@ -152,10 +163,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row', // Lay out genres in a row
     flexWrap: 'wrap', // Wrap to the next line if necessary
     zIndex: 2,
-    top: 358,
+    top: 364,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.48)',
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
     borderRadius: 24,
     paddingHorizontal: 8,
     paddingVertical: 8,
@@ -163,7 +174,7 @@ const styles = StyleSheet.create({
   genre: {
     color: '#fff',
     fontSize: 16,
-    fontFamily: 'WorkSans-Medium',
+    fontFamily: 'WorkSans-Bold',
     lineHeight: 18,
     paddingVertical: 4,
     overflow: 'hidden',
@@ -201,6 +212,48 @@ const styles = StyleSheet.create({
     zIndex: 10,
     marginLeft: 8,
   },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 16,
+    zIndex: 100,
+  },
+  button: {
+    backgroundColor: '#19196b',
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 148,
+    borderRadius: 24,
+    flexDirection: 'row',
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontFamily: 'WorkSans-Regular',
+    marginLeft: 8,
+  },
+  icon: {
+    marginRight: 8,
+  },
 });
 
 export default SwipeableCard;
+const handleSwipe = (direction) => {
+  dispatch({ type: direction === 'left' ? 'DISLIKE_MOVIE' : 'LIKE_MOVIE', payload: movie });
+  setTimeout(() => {
+    swipeableRef?.current?.close();
+    setSwiped(true); // Update the swiped state to true
+    onSwipeComplete(); // Notify parent to load the next card
+  }, 500); // Add a delay for user to see the action feedback
+
+  // Animate the card
+  Animated.timing(swipeableRef?.current, {
+    toValue: direction === 'left' ? -500 : 500,
+    duration: 300,
+    useNativeDriver: true,
+  }).start();
+};

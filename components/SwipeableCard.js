@@ -1,5 +1,5 @@
 import React, { useContext, useState } from 'react';
-import { View, Image, Text, StyleSheet, Animated, TouchableOpacity } from 'react-native';
+import { View, Image, Text, StyleSheet, Animated, TouchableOpacity, TouchableWithoutFeedback } from 'react-native';
 import { GestureHandlerRootView, Swipeable } from 'react-native-gesture-handler';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { MoviesContext } from '../context/MoviesContext'; // Import the context
@@ -107,9 +107,9 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
           rightThreshold={60}
           overshootLeft={false} // Disable overshoot effect on left swipe
           overshootRight={false} // Disable overshoot effect on right swipe
-          useNativeAnimations={true} // Use native animations for smoother transition
+          useNativeAnimations={true} // Use native animations for smoother transitions
         >
-          <TouchableOpacity onPress={() => navigation.navigate('Detail', { id: movie.id, type: 'movie' })}>
+          <TouchableWithoutFeedback onPress={() => navigation.navigate('Detail', { id: movie.id, type: movie.type})}>
             <View style={styles.cardContainer}>
               <Image
                 source={{ uri: imageUri }}
@@ -121,7 +121,7 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
                 {renderGenres()}
               </View>
             </View>
-          </TouchableOpacity>
+          </TouchableWithoutFeedback>
         </Swipeable>
       )}
       <View style={styles.buttonContainer}>
@@ -138,6 +138,7 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
   );
 };
 
+// Styles...
 const styles = StyleSheet.create({
   container: {
     flex: 1,

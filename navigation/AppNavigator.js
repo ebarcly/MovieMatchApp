@@ -14,7 +14,7 @@ function HomeStackScreen() {
   return (
     <HomeStack.Navigator>
       <HomeStack.Screen name="HomeStack" component={HomeScreen} options={{ headerShown: false }}/>
-      <HomeStack.Screen name="Detail" component={DetailScreen} options={{ headerShown: false }} />
+      <HomeStack.Screen name="Detail" component={DetailScreen}/>
     </HomeStack.Navigator>
   );
 }
@@ -24,8 +24,8 @@ const AppNavigator = () => {
     <Tab.Navigator>
       <Tab.Screen name="Home" component={HomeStackScreen} options={{ headerShown: false }} />
       {/* The DetailScreen is no longer directly in the Tab.Navigator */}
-      <Tab.Screen name="Profile" component={MyCaveScreen} options={{ headerShown: false }} />
-      <Tab.Screen name="Matches" component={MatchesScreen} options={{ headerShown: false }} />
+      <Tab.Screen name="Profile" component={MyCaveScreen} />
+      <Tab.Screen name="Matches" component={MatchesScreen} />
     </Tab.Navigator>
   );
 };

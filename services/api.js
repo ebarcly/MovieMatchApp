@@ -32,7 +32,7 @@ export const fetchPopularMovies = async (page = 1) => {
             // Map genre IDs to genre names
             movies = movies.map((movie) => {
                 const genreNames = movie.genre_ids.map(genreId => genresMap[genreId] || 'Unknown Genre');
-                return { ...movie, genre_names: genreNames };
+                return { ...movie, genre_names: genreNames, type: 'movie', release_date: movie.release_date };
             });
         }
 
@@ -67,7 +67,7 @@ export const fetchPopularTVShows = async (page = 2) => {
             // Map genre IDs to genre names
             tvShows = tvShows.map((tvShow) => {
                 const genreNames = tvShow.genre_ids.map(genreId => genresMap[genreId] || 'Unknown Genre');
-                return { ...tvShow, genre_names: genreNames };
+                return { ...tvShow, genre_names: genreNames, type: 'tv', release_date: tvShow.first_air_date };
             });
         }
 
@@ -128,20 +128,29 @@ export const fetchConfiguration = async () => {
     }
 };
 
-// Fetch details for movie/tv show from TMDB by ID including trailers, overview, classification and duration
-export const fetchDetailsById = async (id, type = 'movie') => {
+// Fetch details for a movie or TV show by ID from TMDB
+export const fetchDetailsById = async (id, type) => {
     try {
         const response = await tmdbApi.get(`/${type}/${id}`, {
-            params: { append_to_response: 'videos, release_dates' },
+            params: { append_to_response: 'videos, images, release_dates' },
         });
         return response.data;
     } catch (error) {
-        console.error(`Error fetching ${type} details:`, error);
+        console.error(`Error fetching details for ${type} ${id}:`, error);
+        throw error;
+    }
+};  
+
+// Fetch Certifications for movie or TV show from TMDB
+export const fetchCertifications = async (type) => {
+    try {
+        const response = await tmdbApi.get(`/certification/${type}/list`);
+        return response.data.certifications;
+    } catch (error) {
+        console.error(`Error fetching certifications for ${type}:`, error);
         throw error;
     }
 };
-
-
 
 
 // Fetch movie watch providers from TMDB

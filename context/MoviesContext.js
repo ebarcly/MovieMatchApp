@@ -3,6 +3,7 @@ import { fetchConfiguration, fetchGenres } from '../services/api'; // Import the
 
 const initialState = {
     movies: [],
+    tvShows: [],
     favorites: [],
     likedMovies: [],  // Store liked movies
     dislikedMovies: [],  // Store disliked movies
@@ -45,6 +46,7 @@ export const MoviesProvider = ({ children }) => {
 
                 const genresArray = await fetchGenres();
                 dispatch({ type: 'SET_GENRES', payload: genresArray });
+
             } catch (error) {
                 console.error('Error fetching data:', error);
                 // You may want to handle the error, e.g., by setting an error state

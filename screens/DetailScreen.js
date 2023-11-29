@@ -9,6 +9,7 @@ const DetailScreen = ({ route }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
+    // Fetch details based on the selected category and ID (movie or TV show) on initial load
     useEffect(() => {
         const fetchDetails = async () => {
             try {

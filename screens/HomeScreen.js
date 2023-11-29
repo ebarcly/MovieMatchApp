@@ -6,7 +6,7 @@ import CategoryTabs from '../components/CategoryTabs';
 import { fetchPopularMovies, fetchPopularTVShows } from '../services/api'; // Ensure you have the fetchPopularTVShows API call implemented
 
 const HomeScreen = () => {
-  const username = 'User';
+  const username = 'Enrique';
   const [content, setContent] = useState([]); // This will store either movies or TV shows based on selection
   const [loading, setLoading] = useState(true); // State to manage loading status
   const [error, setError] = useState(''); // State to hold any error messages
@@ -21,8 +21,10 @@ const HomeScreen = () => {
       let data;
       if (selectedCategory === 'Movies') {
         data = await fetchPopularMovies();
+        data.results = data.results.map(item => ({ ...item, type: 'movie' })); // Set type property to 'movie'
       } else if (selectedCategory === 'TV Shows') {
         data = await fetchPopularTVShows();
+        data.results = data.results.map(item => ({ ...item, type: 'tv' })); // Set type property to 'tvshow'
       } else {
         // Handle other categories as needed
         data = { results: [] };
@@ -100,4 +102,3 @@ const styles = StyleSheet.create({
 });
 
 export default HomeScreen;
-

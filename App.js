@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { NavigationContainer } from '@react-navigation/native';
 import * as Font from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { MoviesProvider } from './context/MoviesContext';
-import HomeScreen from './screens/HomeScreen';
+import AppNavigator from './navigation/AppNavigator';
 
 SplashScreen.preventAutoHideAsync(); // Prevent native splash screen from auto-hiding
 
@@ -40,9 +41,11 @@ const App = () => {
   }
 
   return (
+    <NavigationContainer>
     <MoviesProvider>
-      <HomeScreen />
+      <AppNavigator />
     </MoviesProvider>
+    </NavigationContainer>
   );
 };
 

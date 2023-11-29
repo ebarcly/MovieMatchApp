@@ -3,6 +3,7 @@ import { View, Image, Text, StyleSheet, Animated, TouchableOpacity } from 'react
 import { GestureHandlerRootView, Swipeable } from 'react-native-gesture-handler';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { MoviesContext } from '../context/MoviesContext'; // Import the context
+import { useNavigation } from '@react-navigation/native'; // Import the useNavigation hook
 
 const SwipeableCard = ({ movie, onSwipeComplete }) => {
   const { state, dispatch } = useContext(MoviesContext); // Use the context
@@ -30,14 +31,14 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
   const renderLeftActions = (_, dragX) => {
     const scale = dragX.interpolate({
       inputRange: [-100, 0],
-      outputRange: [1, 0],
+      outputRange: [1, 0.5],
       extrapolate: 'clamp',
     });
 
     const translateX = dragX.interpolate({
       inputRange: [-100, 0],
-      outputRange: [0, 100],
-      extrapolate: 'clamp',  
+      outputRange: [1, 0.5],
+      extrapolate: 'clamp',
     });
 
     return (
@@ -53,13 +54,13 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
   const renderRightActions = (_, dragX) => {
     const scale = dragX.interpolate({
       inputRange: [0, 100],
-      outputRange: [0, 1],
+      outputRange: [0.5, 1],
       extrapolate: 'clamp',
     });
 
     const translateX = dragX.interpolate({
       inputRange: [0, 100],
-      outputRange: [0, -100],
+      outputRange: [0.5, -100],
       extrapolate: 'clamp',
     });
 
@@ -91,6 +92,8 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
     }
   };
 
+  const navigation = useNavigation(); // Get the navigation object from the hook
+
   return (
     <GestureHandlerRootView style={styles.container}>
       {!swiped && (
@@ -100,23 +103,25 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
           renderRightActions={renderRightActions}
           onSwipeableOpen={handleSwipe}
           friction={2}
-          leftThreshold={60} 
-          rightThreshold={60} 
+          leftThreshold={60}
+          rightThreshold={60}
           overshootLeft={false} // Disable overshoot effect on left swipe
           overshootRight={false} // Disable overshoot effect on right swipe
           useNativeAnimations={true} // Use native animations for smoother transition
         >
-          <View style={styles.cardContainer}>
-            <Image
-              source={{ uri: imageUri }}
-              style={styles.poster}
-              defaultSource={require('../assets/default_image.png')}
-              resizeMode='cover'
-            />
-            <View style={styles.genreContainer}>
-              {renderGenres()}
+          <TouchableOpacity onPress={() => navigation.navigate('Detail', { id: movie.id, type: 'movie' })}>
+            <View style={styles.cardContainer}>
+              <Image
+                source={{ uri: imageUri }}
+                style={styles.poster}
+                defaultSource={require('../assets/default_image.jpeg')}
+                resizeMode='cover'
+              />
+              <View style={styles.genreContainer}>
+                {renderGenres()}
+              </View>
             </View>
-          </View>
+          </TouchableOpacity>
         </Swipeable>
       )}
       <View style={styles.buttonContainer}>
@@ -140,9 +145,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   cardContainer: {
-    borderRadius: 16,
+    borderRadius: 24,
     backgroundColor: '#f5f5f5',
     overflow: 'hidden',
+    backfaceVisibility: 'hidden',
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
@@ -155,18 +161,17 @@ const styles = StyleSheet.create({
   poster: {
     width: 348,
     height: 496,
-    borderRadius: 12,
     backfaceVisibility: 'hidden',
   },
   genreContainer: {
     position: 'absolute',
     flexDirection: 'row', // Lay out genres in a row
     flexWrap: 'wrap', // Wrap to the next line if necessary
-    zIndex: 2,
+    zIndex: 10,
     top: 364,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    backgroundColor: 'rgba(48,48,64,0.6)',
     borderRadius: 24,
     paddingHorizontal: 8,
     paddingVertical: 8,
@@ -174,7 +179,7 @@ const styles = StyleSheet.create({
   genre: {
     color: '#fff',
     fontSize: 16,
-    fontFamily: 'WorkSans-Bold',
+    fontFamily: 'WorkSans-Regular',
     lineHeight: 18,
     paddingVertical: 4,
     overflow: 'hidden',
@@ -190,26 +195,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 16,
-    zIndex: 0,
+    backgroundColor: '#ff6666',
   },
   rightAction: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 16,
-    zIndex: 0,
+    backgroundColor: '#006600',
   },
   actionContent: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 20,
-    zIndex: 1,
   },
   actionText: {
-    color: '#fff',
-    fontSize: 16,
+    color: '#ffffff',
+    fontSize: 20,
     fontFamily: 'WorkSans-Medium',
-    zIndex: 10,
     marginLeft: 8,
   },
   buttonContainer: {
@@ -232,8 +235,8 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: '#fff',
-    fontSize: 16,
-    fontFamily: 'WorkSans-Regular',
+    fontSize: 17,
+    fontFamily: 'WorkSans-Light',
     marginLeft: 8,
   },
   icon: {
@@ -242,18 +245,3 @@ const styles = StyleSheet.create({
 });
 
 export default SwipeableCard;
-const handleSwipe = (direction) => {
-  dispatch({ type: direction === 'left' ? 'DISLIKE_MOVIE' : 'LIKE_MOVIE', payload: movie });
-  setTimeout(() => {
-    swipeableRef?.current?.close();
-    setSwiped(true); // Update the swiped state to true
-    onSwipeComplete(); // Notify parent to load the next card
-  }, 500); // Add a delay for user to see the action feedback
-
-  // Animate the card
-  Animated.timing(swipeableRef?.current, {
-    toValue: direction === 'left' ? -500 : 500,
-    duration: 300,
-    useNativeDriver: true,
-  }).start();
-};

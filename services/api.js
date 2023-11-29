@@ -50,7 +50,7 @@ export const fetchPopularMovies = async (page = 1) => {
 // Fetch TV shows from TMDB
 export const fetchPopularTVShows = async (page = 2) => {
     try {
-        const response = await tmdbApi.get('/tv/on_the_air', { params: { page } });
+        const response = await tmdbApi.get('/tv/airing_today', { params: { page } });
         let tvShows = response.data.results;
 
         // Fetch genres if they are not included in the movie data
@@ -124,6 +124,44 @@ export const fetchConfiguration = async () => {
         return response.data;
     } catch (error) {
         console.error('Error fetching configuration:', error);
+        throw error;
+    }
+};
+
+// Fetch details for movie/tv show from TMDB by ID including trailers, overview, classification and duration
+export const fetchDetailsById = async (id, type = 'movie') => {
+    try {
+        const response = await tmdbApi.get(`/${type}/${id}`, {
+            params: { append_to_response: 'videos, release_dates' },
+        });
+        return response.data;
+    } catch (error) {
+        console.error(`Error fetching ${type} details:`, error);
+        throw error;
+    }
+};
+
+
+
+
+// Fetch movie watch providers from TMDB
+export const fetchMovieWatchProviders = async (movieId) => {
+    try {
+        const response = await tmdbApi.get(`/movie/${movieId}/watch/providers`);
+        return response.data.results;
+    } catch (error) {
+        console.error(`Error fetching watch providers for movie ${movieId}:`, error);
+        throw error;
+    }
+};
+
+// Fetch show watch providers from TMDB
+export const fetchShowWatchProviders = async (showId) => {
+    try {
+        const response = await tmdbApi.get(`/tv/${showId}/watch/providers`);
+        return response.data.results;
+    } catch (error) {
+        console.error(`Error fetching watch providers for show ${showId}:`, error);
         throw error;
     }
 };

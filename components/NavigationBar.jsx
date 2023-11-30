@@ -16,23 +16,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 24,
+    marginTop: 48,
     paddingVertical: 12,
     paddingHorizontal: 24,
-    backgroundColor: '#19192b',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    backgroundColor: '#f0f0f0',
+    borderBottomWidth: 1,
+    borderBottomColor: '#ccc',
   },
   title: {
     fontSize: 20,
     fontFamily: 'WorkSans-Medium',
-    color: '#fff',
+    color: '#000',
   },
 });
 

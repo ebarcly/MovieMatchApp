@@ -36,6 +36,7 @@ MovieMatchApp
 ├─ package-lock.json
 ├─ package.json
 ├─ screens
+│  ├─ DetailScreen.js
 │  ├─ HomeScreen.js
 │  ├─ MatchesScreen.js
 │  └─ MyCaveScreen.js

@@ -30,7 +30,7 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     padding: 16,
-    backgroundColor: '#19192b',
+    backgroundColor: '#f0f0f0',
     justifyContent: 'left',
     alignItems: 'left',
   },

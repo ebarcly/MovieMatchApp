@@ -24,8 +24,8 @@ const AppNavigator = () => {
     <Tab.Navigator>
       <Tab.Screen name="Home" component={HomeStackScreen} options={{ headerShown: false }} />
       {/* The DetailScreen is no longer directly in the Tab.Navigator */}
-      <Tab.Screen name="Profile" component={MyCaveScreen} />
       <Tab.Screen name="Matches" component={MatchesScreen} />
+      <Tab.Screen name="My Cave" component={MyCaveScreen} />
     </Tab.Navigator>
   );
 };

@@ -68,7 +68,7 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
       <View style={styles.rightAction}>
         <Animated.View style={[styles.actionContent, { transform: [{ scale }, { translateX }] }]}>
           <Icon name="thumb-up" size={25} color="#fff" style={styles.icon} />
-          <Text style={styles.actionText}>Want to Watch</Text>
+          <Text style={styles.actionText}>Interested</Text>
         </Animated.View>
       </View>
     );
@@ -195,14 +195,14 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 16,
+    borderRadius: 24,
     backgroundColor: '#ff6666',
   },
   rightAction: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 16,
+    borderRadius: 24,
     backgroundColor: '#006600',
   },
   actionContent: {

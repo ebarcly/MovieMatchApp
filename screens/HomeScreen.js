@@ -80,7 +80,7 @@ const HomeScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#19192b',
+    backgroundColor: '#f0f0f0',
   },
   cardContainer: {
     alignItems: 'center',

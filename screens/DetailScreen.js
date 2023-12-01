@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, ScrollView, Image, ActivityIndicator, TouchableOpacity, FlatList } from 'react-native';
 import { fetchDetailsById } from '../services/api';
-import Icon from 'react-native-vector-icons/MaterialIcons'; // Make sure to install this package
+import Icon from 'react-native-vector-icons/MaterialIcons';
 
 const DetailScreen = ({ route }) => {
     const { id, type } = route.params;
@@ -52,22 +52,45 @@ const DetailScreen = ({ route }) => {
                     {/* Movie Information */}
                     <View style={styles.movieInfoContainer}>
                         <Text style={styles.movieTitle}>{detailData.title || detailData.name}</Text>
+                        {detailData.providers && (
+                            <>
+                                {['flatrate', 'rent', 'buy'].map((category) => (
+                                    detailData.providers[category] && detailData.providers[category].length > 0 && (
+                                        <View key={category} style={styles.providersContainer}>
+                                            <Text style={styles.providerCategoryTitle}>{category.toUpperCase()}</Text>
+                                            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                                                {detailData.providers[category].map((provider) => (
+                                                    <View style={styles.providerText} key={provider.provider_id}>
+                                                        {provider.logo_path && (
+                                                            <Image
+                                                                source={{ uri: `https://image.tmdb.org/t/p/w500${provider.logo_path}` }}
+                                                                style={styles.providerLogo}
+                                                            />
+                                                        )}
+                                                        <Text style={styles.providerName}>{provider.provider_name}</Text>
+                                                    </View>
+                                                ))}
+                                            </ScrollView>
+                                        </View>
+                                    )
+                                ))}
+                            </>
+                        )}
                         <Text style={styles.movieOverview}>{detailData.overview}</Text>
                         <View style={styles.metaInfo}>
-                            <Text style={styles.metaText}>{detailData.vote_average} Rating</Text>
-                            <Text style={styles.metaText}>{detailData.genres.map(genre => genre.name).join(' • ')}</Text>
-                            <Text style={styles.metaText}>{detailData.runtime || detailData.episode_run_time} min</Text>
+                            <View style={styles.metaItem}>
+                                <Icon name="star" size={20} color="#FFD700" />
+                                <Text style={styles.metaText}>{detailData.vote_average}</Text>
+                            </View>
+                            <View style={styles.metaItem}>
+                                <Icon name="theater-comedy" size={20} color="#FFF" />
+                                <Text style={styles.metaText}>{detailData.genres.map(genre => genre.name).join(' • ')}</Text>
+                            </View>
+                            <View style={styles.metaItem}>
+                                <Icon name="schedule" size={20} color="#FFF" />
+                                <Text style={styles.metaText}>{detailData.runtime || detailData.episode_run_time} min</Text>
+                            </View>
                         </View>
-                    </View>
-
-                    {/* Action Buttons */}
-                    <View style={styles.actionButtonsContainer}>
-                        <TouchableOpacity style={styles.likeButton}>
-                            <Icon name="thumb-up" size={25} color="#00ff00" />
-                        </TouchableOpacity>
-                        <TouchableOpacity style={styles.dislikeButton}>
-                            <Icon name="thumb-down" size={25} color="#ff0000" />
-                        </TouchableOpacity>
                     </View>
 
                     {/* Cast Carousel */}
@@ -114,72 +137,107 @@ const styles = StyleSheet.create({
         resizeMode: 'cover',
     },
     playButton: {
-        // styles for the play button
+        position: 'absolute',
+        top: '50%',
+        left: '50%',
+        transform: [{ translateX: -30 }, { translateY: -30 }],
+        justifyContent: 'center',
+        alignItems: 'center',
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
     },
     movieInfoContainer: {
         padding: 10,
-        // other styles
+        marginBottom: 10,
     },
     movieTitle: {
         fontSize: 24,
-        fontWeight: 'bold',
+        fontFamily: 'WorkSans-Bold',
         color: '#FFF',
-        // other styles
+        marginBottom: 10,
+    },
+    providersContainer: {
+        flexDirection: 'row',
+        marginBottom: 12,
+        backgroundColor: '#19192b',
+        padding: 5,
+        borderRadius: 5,
+    },
+    providerCategoryTitle: {
+        fontSize: 10,
+        color: '#FFF',
+        fontFamily: 'WorkSans-Bold',
+        marginTop: 10,
+        marginRight: 10,
+    },
+    providerText: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginRight: 10,
+    },
+    providerLogo: {
+        width: 30,
+        height: 30,
+        marginRight: 5,
+    },
+    providerName: {
+        fontSize: 16,
+        color: '#FFF',
+        fontFamily: 'WorkSans-Regular',
     },
     movieOverview: {
         fontSize: 16,
         color: '#FFF',
-        // other styles
+        marginBottom: 12,
+        fontFamily: 'WorkSans-Regular',
     },
     metaInfo: {
-        flexDirection: 'row',
+        flexDirection: 'column',
         justifyContent: 'space-between',
-        // other styles
+        marginBottom: 12,
+    },
+    metaItem: {
+        flexDirection: 'row',
+        alignItems: 'baseline',
     },
     metaText: {
         fontSize: 14,
         color: '#FFF',
-        // other styles
-    },
-    actionButtonsContainer: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        marginVertical: 10,
-        // other styles
-    },
-    likeButton: {
-        // styles for like button
-    },
-    dislikeButton: {
-        // styles for dislike button
+        fontFamily: 'WorkSans-Regular',
+        marginLeft: 6,
     },
     castMemberContainer: {
-        width: 100,
-        marginHorizontal: 5,
-        // other styles
+        width: 120,
+        alignItems: 'center',
+        marginRight: 10,
     },
     castImage: {
         width: '100%',
-        height: 150,
-        borderRadius: 75,
-        // other styles
+        height: 120,
+        borderRadius: 24,
+        marginTop: 12,
+        marginBottom: 6,
+        resizeMode: 'contain',
     },
     castName: {
         fontSize: 14,
         color: '#FFF',
         textAlign: 'center',
-        // other styles
+        fontFamily: 'WorkSans-Bold',
     },
     castCharacter: {
         fontSize: 12,
         color: '#FFF',
         textAlign: 'center',
-        // other styles
+        fontFamily: 'WorkSans-Regular',
     },
     errorText: {
         fontSize: 18,
         color: 'red',
         textAlign: 'center',
+        marginTop: 20,
     },
     // Add other styles as necessary
 });

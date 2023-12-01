@@ -1,5 +1,5 @@
 import React, { createContext, useReducer, useEffect } from 'react';
-import { fetchConfiguration, fetchGenres } from '../services/api'; // Import the API calls for configuration and genres
+import { fetchConfiguration, fetchGenres, fetchDetailsById } from '../services/api'; // Import the API calls for configuration and genres
 
 const initialState = {
     movies: [],

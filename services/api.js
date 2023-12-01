@@ -48,9 +48,9 @@ export const fetchPopularMovies = async (page = 1) => {
 };
 
 // Fetch TV shows from TMDB
-export const fetchPopularTVShows = async (page = 2) => {
+export const fetchPopularTVShows = async (page = 1) => {
     try {
-        const response = await tmdbApi.get('/tv/airing_today', { params: { page } });
+        const response = await tmdbApi.get('/tv/popular', { params: { page } });
         let tvShows = response.data.results;
 
         // Fetch genres if they are not included in the movie data
@@ -128,31 +128,6 @@ export const fetchConfiguration = async () => {
     }
 };
 
-// Fetch details for a movie or TV show by ID from TMDB
-export const fetchDetailsById = async (id, type) => {
-    try {
-        const response = await tmdbApi.get(`/${type}/${id}`, {
-            params: { append_to_response: 'videos, images, release_dates' },
-        });
-        return response.data;
-    } catch (error) {
-        console.error(`Error fetching details for ${type} ${id}:`, error);
-        throw error;
-    }
-};  
-
-// Fetch Certifications for movie or TV show from TMDB
-export const fetchCertifications = async (type) => {
-    try {
-        const response = await tmdbApi.get(`/certification/${type}/list`);
-        return response.data.certifications;
-    } catch (error) {
-        console.error(`Error fetching certifications for ${type}:`, error);
-        throw error;
-    }
-};
-
-
 // Fetch movie watch providers from TMDB
 export const fetchMovieWatchProviders = async (movieId) => {
     try {
@@ -171,6 +146,44 @@ export const fetchShowWatchProviders = async (showId) => {
         return response.data.results;
     } catch (error) {
         console.error(`Error fetching watch providers for show ${showId}:`, error);
+        throw error;
+    }
+};
+
+
+// Fetch details for a movie or TV show by ID from TMDB, including additional information like credits and watch providers
+export const fetchDetailsById = async (id, type) => {
+    try {
+        const detailsResponse = await tmdbApi.get(`/${type}/${id}`, {
+            params: { append_to_response: 'videos,credits' },
+        });
+        const providersResponse = await tmdbApi.get(`/${type}/${id}/watch/providers`);
+
+        const providersData = providersResponse.data.results.US || {}; // Assuming we want the US providers
+
+        return {
+            ...detailsResponse.data,
+            providers: {
+                flatrate: providersData.flatrate || [],
+                rent: providersData.rent || [],
+                buy: providersData.buy || [],
+            },
+            cast: detailsResponse.data.credits.cast.slice(0, 10), // Only take the top 10 cast members
+        };
+    } catch (error) {
+        console.error(`Error fetching details for ${type} ${id}:`, error);
+        throw error;
+    }
+};
+
+
+// Fetch Certifications for movie or TV show from TMDB
+export const fetchCertifications = async (type) => {
+    try {
+        const response = await tmdbApi.get(`/certification/${type}/list`);
+        return response.data.certifications;
+    } catch (error) {
+        console.error(`Error fetching certifications for ${type}:`, error);
         throw error;
     }
 };

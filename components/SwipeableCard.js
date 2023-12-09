@@ -25,7 +25,7 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
       swipeableRef.current?.close();
       setSwiped(true); // Update the swiped state to true
       onSwipeComplete(); // Notify parent to load the next card
-    }, 500); // Add a delay for user to see the action feedback
+    }, 250); // Add a delay for user to see the action feedback
   };
 
   const renderLeftActions = (_, dragX) => {
@@ -44,7 +44,7 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
     return (
       <View style={styles.leftAction}>
         <Animated.View style={[styles.actionContent, { transform: [{ scale }, { translateX }] }]}>
-          <Icon name="thumb-down" size={25} color="#fff" style={styles.icon} />
+          <Icon name="thumb-down" size={48} color="#fff" style={styles.icon} />
           <Text style={styles.actionText}>Not Interested</Text>
         </Animated.View>
       </View>
@@ -67,7 +67,7 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
     return (
       <View style={styles.rightAction}>
         <Animated.View style={[styles.actionContent, { transform: [{ scale }, { translateX }] }]}>
-          <Icon name="thumb-up" size={25} color="#fff" style={styles.icon} />
+          <Icon name="thumb-up" size={48} color="#fff" style={styles.icon} />
           <Text style={styles.actionText}>Interested</Text>
         </Animated.View>
       </View>
@@ -212,7 +212,7 @@ const styles = StyleSheet.create({
   },
   actionText: {
     color: '#ffffff',
-    fontSize: 20,
+    fontSize: 40,
     fontFamily: 'WorkSans-Medium',
     marginLeft: 8,
   },

@@ -51,7 +51,12 @@ const DetailScreen = ({ route }) => {
 
                     {/* Movie Information */}
                     <View style={styles.movieInfoContainer}>
-                        <Text style={styles.movieTitle}>{detailData.title || detailData.name}</Text>
+                        <Text style={styles.movieTitle}>
+                            {detailData.title || detailData.name} ({type === 'tv' ? detailData.first_air_date && detailData.first_air_date.substring(0, 4) : detailData.release_date && detailData.release_date.substring(0, 4)})
+                            {detailData.certifications && (
+                                <Text style={styles.certifications}>{detailData.certifications}</Text>
+                            )}
+                        </Text>
                         {detailData.providers && (
                             <>
                                 {['flatrate', 'rent', 'buy'].map((category) => (
@@ -59,7 +64,7 @@ const DetailScreen = ({ route }) => {
                                         <View key={category} style={styles.providersContainer}>
                                             <Text style={styles.providerCategoryTitle}>{category.toUpperCase()}</Text>
                                             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                                                {detailData.providers[category].map((provider) => (
+                                                {detailData.providers[category].slice(0, 2).map((provider) => (
                                                     <View style={styles.providerText} key={provider.provider_id}>
                                                         {provider.logo_path && (
                                                             <Image

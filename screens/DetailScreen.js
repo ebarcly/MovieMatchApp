@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, ScrollView, Image, ActivityIndicator, TouchableOpacity, FlatList } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, Image, ActivityIndicator, TouchableOpacity, FlatList, Linking } from 'react-native';
 import { fetchDetailsById } from '../services/api';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { WebView } from 'react-native-webview';
 
 const DetailScreen = ({ route }) => {
     const { id, type } = route.params;
@@ -25,6 +26,14 @@ const DetailScreen = ({ route }) => {
         fetchDetails();
     }, [id, type]);
 
+    const handlePlayTrailer = () => {
+        if (detailData && detailData.videos && detailData.videos.results.length > 0) {
+            const trailerKey = detailData.videos.results[0].key;
+            const youtubeURL = `https://www.youtube.com/watch?v=${trailerKey}`;
+            Linking.openURL(youtubeURL);
+        }
+    };
+
     if (loading) {
         return <ActivityIndicator size="large" />;
     }
@@ -37,17 +46,15 @@ const DetailScreen = ({ route }) => {
         <ScrollView style={styles.container}>
             {detailData && (
                 <>
-                    {/* Mock video player */}
-                    <View style={styles.videoPlayer}>
-                        <Image
-                            source={{ uri: `https://image.tmdb.org/t/p/w500${detailData.backdrop_path}` }}
-                            style={styles.backdropImage}
-                        />
-                        {/* Overlay Play Button */}
-                        <TouchableOpacity style={styles.playButton}>
-                            <Icon name="play-circle-outline" size={60} color="#FFF" />
-                        </TouchableOpacity>
-                    </View>
+                    {/* Video Player */}
+                    <TouchableOpacity onPress={handlePlayTrailer}>
+                        <View style={styles.videoPlayer}>
+                            <WebView
+                                source={{ uri: `https://www.youtube.com/embed/${detailData.videos.results[0].key}` }}
+                                style={styles.video}
+                            />
+                        </View>
+                    </TouchableOpacity>
 
                     {/* Movie Information */}
                     <View style={styles.movieInfoContainer}>
@@ -130,28 +137,11 @@ const styles = StyleSheet.create({
     },
     videoPlayer: {
         width: '100%',
-        height: 200,
-        justifyContent: 'center',
-        alignItems: 'center',
+        aspectRatio: 16 / 9,
         backgroundColor: '#000',
     },
-    backdropImage: {
-        ...StyleSheet.absoluteFillObject,
-        width: '100%',
-        height: '100%',
-        resizeMode: 'cover',
-    },
-    playButton: {
-        position: 'absolute',
-        top: '50%',
-        left: '50%',
-        transform: [{ translateX: -30 }, { translateY: -30 }],
-        justifyContent: 'center',
-        alignItems: 'center',
-        width: 60,
-        height: 60,
-        borderRadius: 30,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    video: {
+        flex: 1,
     },
     movieInfoContainer: {
         padding: 10,

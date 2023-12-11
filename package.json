@@ -24,7 +24,7 @@
     "react-native-screens": "~3.22.0",
     "react-native-vector-icons": "^10.0.2",
     "react-native-video": "^5.2.1",
-    "react-native-webview": "^13.6.3",
+    "react-native-webview": "13.2.2",
     "react-native-youtube": "^2.0.2"
   },
   "devDependencies": {

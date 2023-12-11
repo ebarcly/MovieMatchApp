@@ -37,14 +37,14 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
 
     const translateX = dragX.interpolate({
       inputRange: [-100, 0],
-      outputRange: [1, 0.5],
+      outputRange: [-100, 0],
       extrapolate: 'clamp',
     });
 
     return (
       <View style={styles.leftAction}>
-        <Animated.View style={[styles.actionContent, { transform: [{ scale }, { translateX }] }]}>
-          <Icon name="thumb-down" size={48} color="#fff" style={styles.icon} />
+        <Animated.View style={[styles.actionContent, { transform: [{ translateX }] }]}>
+          <Icon name="thumb-down" size={24} color="#fff" style={styles.icon} />
           <Text style={styles.actionText}>Not Interested</Text>
         </Animated.View>
       </View>
@@ -60,14 +60,14 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
 
     const translateX = dragX.interpolate({
       inputRange: [0, 100],
-      outputRange: [0.5, -100],
+      outputRange: [0, 100],
       extrapolate: 'clamp',
     });
 
     return (
       <View style={styles.rightAction}>
-        <Animated.View style={[styles.actionContent, { transform: [{ scale }, { translateX }] }]}>
-          <Icon name="thumb-up" size={48} color="#fff" style={styles.icon} />
+        <Animated.View style={[styles.actionContent, { transform: [{ translateX }] }]}>
+          <Icon name="thumb-up" size={24} color="#fff" style={styles.icon} />
           <Text style={styles.actionText}>Interested</Text>
         </Animated.View>
       </View>
@@ -144,12 +144,13 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 16,
   },
   cardContainer: {
     borderRadius: 24,
     backgroundColor: '#f5f5f5',
     overflow: 'hidden',
-    backfaceVisibility: 'hidden',
+    backfaceVisibility: 'hidden',  
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
@@ -160,8 +161,11 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   poster: {
-    width: 348,
-    height: 496,
+    flex: 1,
+    width: '100%',
+    height: '100%',
+    aspectRatio: 2 / 3,
+    overflow: 'hidden',
     backfaceVisibility: 'hidden',
   },
   genreContainer: {
@@ -212,7 +216,7 @@ const styles = StyleSheet.create({
   },
   actionText: {
     color: '#ffffff',
-    fontSize: 40,
+    fontSize: 24,
     fontFamily: 'WorkSans-Medium',
     marginLeft: 8,
   },

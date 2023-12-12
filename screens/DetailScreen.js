@@ -9,12 +9,20 @@ const DetailScreen = ({ route }) => {
     const [detailData, setDetailData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [trailerUrl, setTrailerUrl] = useState(null);
+
 
     useEffect(() => {
         const fetchDetails = async () => {
             try {
                 const data = await fetchDetailsById(id, type);
                 setDetailData(data);
+
+                // Find the trailer video if available
+                const trailer = data.videos.results.find(video => video.type === 'Trailer' && video.site === 'YouTube');
+                if (trailer) {
+                    setTrailerUrl(`https://www.youtube.com/embed/${trailer.key}`);
+                }
             } catch (e) {
                 setError('Unable to fetch details.');
                 console.error(e);
@@ -25,23 +33,6 @@ const DetailScreen = ({ route }) => {
 
         fetchDetails();
     }, [id, type]);
-
-const handlePlayTrailer = () => {
-    if (detailData && detailData.videos && detailData.videos.results.length > 0) {
-        // Filter for a video that has type 'Trailer'
-        const trailer = detailData.videos.results.find(video => video.type === 'Trailer');
-
-        if (trailer) {
-            const trailerKey = trailer.key;
-            const youtubeURL = `https://www.youtube.com/watch?v=${trailerKey}`;
-            Linking.openURL(youtubeURL);
-        } else {
-            // Handle the scenario where no trailer is available
-            alert('Trailer not available');
-        }
-    }
-};
-
 
     if (loading) {
         return <ActivityIndicator size="large" />;
@@ -55,15 +46,13 @@ const handlePlayTrailer = () => {
         <ScrollView style={styles.container}>
             {detailData && (
                 <>
-                    {/* Video Player */}
-                    <TouchableOpacity onPress={handlePlayTrailer}>
+                    {trailerUrl ? (
                         <View style={styles.videoPlayer}>
-                            <WebView
-                                source={{ uri: `https://www.youtube.com/embed/${detailData.videos.results[0].key}` }}
-                                style={styles.video}
-                            />
+                            <WebView source={{ uri: trailerUrl }} style={styles.video} />
                         </View>
-                    </TouchableOpacity>
+                    ) : (
+                        <Text style={styles.noTrailerText}>Trailer not available</Text>
+                    )}
 
                     {/* Movie Information */}
                     <View style={styles.movieInfoContainer}>
@@ -146,11 +135,17 @@ const styles = StyleSheet.create({
     },
     videoPlayer: {
         width: '100%',
-        aspectRatio: 16 / 9,
+        height: 200,
         backgroundColor: '#000',
     },
     video: {
-        flex: 1,
+        width: '100%',
+        height: '100%',
+    },
+    noTrailerText: {
+        textAlign: 'center',
+        color: '#FFF',
+        padding: 20,
     },
     movieInfoContainer: {
         padding: 10,

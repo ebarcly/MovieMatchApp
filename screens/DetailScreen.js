@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, ScrollView, Image, ActivityIndicator, TouchableOpacity, FlatList, Linking } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, Image, ActivityIndicator, FlatList } from 'react-native';
 import { fetchDetailsById } from '../services/api';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { WebView } from 'react-native-webview';

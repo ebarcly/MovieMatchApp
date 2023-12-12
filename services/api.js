@@ -15,7 +15,7 @@ const tmdbApi = axios.create({
 // Fetch popular movies from TMDB
 export const fetchPopularMovies = async (page = 1) => {
     try {
-        const response = await tmdbApi.get('/movie/now_playing', { params: { page } });
+        const response = await tmdbApi.get('/movie/popular', { params: { page } });
         let movies = response.data.results;
 
         // Fetch genres if they are not included in the movie data

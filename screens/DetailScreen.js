@@ -26,13 +26,22 @@ const DetailScreen = ({ route }) => {
         fetchDetails();
     }, [id, type]);
 
-    const handlePlayTrailer = () => {
-        if (detailData && detailData.videos && detailData.videos.results.length > 0) {
-            const trailerKey = detailData.videos.results[0].key;
+const handlePlayTrailer = () => {
+    if (detailData && detailData.videos && detailData.videos.results.length > 0) {
+        // Filter for a video that has type 'Trailer'
+        const trailer = detailData.videos.results.find(video => video.type === 'Trailer');
+
+        if (trailer) {
+            const trailerKey = trailer.key;
             const youtubeURL = `https://www.youtube.com/watch?v=${trailerKey}`;
             Linking.openURL(youtubeURL);
+        } else {
+            // Handle the scenario where no trailer is available
+            alert('Trailer not available');
         }
-    };
+    }
+};
+
 
     if (loading) {
         return <ActivityIndicator size="large" />;

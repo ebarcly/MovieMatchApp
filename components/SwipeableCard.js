@@ -31,19 +31,20 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
   const renderLeftActions = (_, dragX) => {
     const scale = dragX.interpolate({
       inputRange: [-100, 0],
-      outputRange: [1, 0.5],
+      outputRange: [1, 0.8],
       extrapolate: 'clamp',
     });
 
-    const translateX = dragX.interpolate({
+
+    const rotate = dragX.interpolate({
       inputRange: [-100, 0],
-      outputRange: [-100, 0],
+      outputRange: ['0deg', '-15deg'],
       extrapolate: 'clamp',
     });
 
     return (
       <View style={styles.leftAction}>
-        <Animated.View style={[styles.actionContent, { transform: [{ translateX }] }]}>
+        <Animated.View style={[styles.actionContent, { transform: [{ scale }, { rotate }] }]}>
           <Icon name="thumb-down" size={24} color="#fff" style={styles.icon} />
           <Text style={styles.actionText}>Not Interested</Text>
         </Animated.View>
@@ -54,25 +55,27 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
   const renderRightActions = (_, dragX) => {
     const scale = dragX.interpolate({
       inputRange: [0, 100],
-      outputRange: [0.5, 1],
+      outputRange: [0.8, 1],
       extrapolate: 'clamp',
     });
 
-    const translateX = dragX.interpolate({
+
+    const rotate = dragX.interpolate({
       inputRange: [0, 100],
-      outputRange: [0, 100],
+      outputRange: ['15deg', '0deg'],
       extrapolate: 'clamp',
     });
 
     return (
       <View style={styles.rightAction}>
-        <Animated.View style={[styles.actionContent, { transform: [{ translateX }] }]}>
+        <Animated.View style={[styles.actionContent, { transform: [{ scale }, { rotate }] }]}>
           <Icon name="thumb-up" size={24} color="#fff" style={styles.icon} />
           <Text style={styles.actionText}>Interested</Text>
         </Animated.View>
       </View>
     );
   };
+
 
   const renderGenres = () => {
     if (genre_ids.length > 0 && state.genres.length > 0) {
@@ -109,7 +112,7 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
           overshootRight={false} // Disable overshoot effect on right swipe
           useNativeAnimations={true} // Use native animations for smoother transitions
         >
-          <TouchableWithoutFeedback onPress={() => navigation.navigate('Detail', { id: movie.id, type: movie.type})}>
+          <TouchableWithoutFeedback onPress={() => navigation.navigate('Detail', { id: movie.id, type: movie.type })}>
             <View style={styles.cardContainer}>
               <Image
                 source={{ uri: imageUri }}
@@ -150,7 +153,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     backgroundColor: '#f5f5f5',
     overflow: 'hidden',
-    backfaceVisibility: 'hidden',  
+    backfaceVisibility: 'hidden',
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',

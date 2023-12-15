@@ -11,7 +11,6 @@ const DetailScreen = ({ route }) => {
     const [error, setError] = useState('');
     const [trailerUrl, setTrailerUrl] = useState(null);
 
-
     useEffect(() => {
         const fetchDetails = async () => {
             try {
@@ -58,10 +57,10 @@ const DetailScreen = ({ route }) => {
                     <View style={styles.movieInfoContainer}>
                         <Text style={styles.movieTitle}>
                             {detailData.title || detailData.name} ({type === 'tv' ? detailData.first_air_date && detailData.first_air_date.substring(0, 4) : detailData.release_date && detailData.release_date.substring(0, 4)})
-                            {detailData.certifications && (
-                                <Text style={styles.certifications}>{detailData.certifications}</Text>
-                            )}
                         </Text>
+                        {detailData.certification && (
+                            <Text style={styles.certificationBox}>{detailData.certification}</Text>
+                        )}
                         {detailData.providers && (
                             <>
                                 {['flatrate', 'rent', 'buy'].map((category) => (
@@ -86,6 +85,9 @@ const DetailScreen = ({ route }) => {
                                 ))}
                             </>
                         )}
+
+                        <Text style={styles.movieTagline}>{detailData.tagline}</Text>
+                        <Text style={styles.movieH1}>Overview</Text>
                         <Text style={styles.movieOverview}>{detailData.overview}</Text>
                         <View style={styles.metaInfo}>
                             <View style={styles.metaItem}>
@@ -186,8 +188,22 @@ const styles = StyleSheet.create({
         color: '#FFF',
         fontFamily: 'WorkSans-Regular',
     },
+    movieTagline: {
+        fontSize: 17,
+        fontFamily: 'WorkSans-Thin',
+        color: '#FFF',
+        marginTop: 10,
+        marginBottom: 16,
+    },
+    movieH1: {
+        fontSize: 18,
+        fontFamily: 'WorkSans-Bold',
+        color: '#FFF',
+        marginBottom: 10,
+    },
     movieOverview: {
         fontSize: 16,
+        lineHeight: 24,
         color: '#FFF',
         marginBottom: 12,
         fontFamily: 'WorkSans-Regular',
@@ -197,6 +213,18 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         marginBottom: 12,
     },
+    certificationBox: {
+        fontSize: 12,
+        color: '#FFF',
+        backgroundColor: 'transparent',
+        borderWidth: 1,
+        borderColor: '#FFF',
+        padding: 4,
+        borderRadius: 5,
+        alignSelf: 'flex-start',
+        marginBottom: 12,
+        fontFamily: 'WorkSans-Bold',
+    },
     metaItem: {
         flexDirection: 'row',
         alignItems: 'baseline',
@@ -204,7 +232,7 @@ const styles = StyleSheet.create({
     metaText: {
         fontSize: 14,
         color: '#FFF',
-        fontFamily: 'WorkSans-Regular',
+        fontFamily: 'WorkSans-Light',
         marginLeft: 6,
     },
     castMemberContainer: {

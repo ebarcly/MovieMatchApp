@@ -150,6 +150,27 @@ export const fetchShowWatchProviders = async (showId) => {
     }
 };
 
+// Function to fetch certification for a movie or TV show
+const fetchCertificationsById = async (id, type) => {
+    try {
+        const endpoint = type === 'tv' ? `/tv/${id}/content_ratings` : `/movie/${id}/release_dates`;
+        const response = await tmdbApi.get(endpoint);
+        let certification;
+        
+        if (type === 'tv') {
+            const usRating = response.data.results.find(r => r.iso_3166_1 === 'US');
+            certification = usRating ? usRating.rating : 'NR';
+        } else {
+            const usRelease = response.data.results.find(release => release.iso_3166_1 === 'US');
+            certification = usRelease?.release_dates?.[0]?.certification || 'NR';
+        }
+        
+        return certification;
+    } catch (error) {
+        console.error(`Error fetching certifications for ${type} ${id}:`, error);
+        throw error;
+    }
+};
 
 // Fetch details for a movie or TV show by ID from TMDB, including additional information like credits and watch providers
 export const fetchDetailsById = async (id, type) => {
@@ -159,7 +180,10 @@ export const fetchDetailsById = async (id, type) => {
         });
         const providersResponse = await tmdbApi.get(`/${type}/${id}/watch/providers`);
 
-        const providersData = providersResponse.data.results.US || {}; // Assuming we want the US providers
+        const providersData = providersResponse.data.results.US || {}; // Assuming US providers
+
+        // Fetch certification
+        const certification = await fetchCertificationsById(id, type);
 
         return {
             ...detailsResponse.data,
@@ -169,6 +193,7 @@ export const fetchDetailsById = async (id, type) => {
                 buy: providersData.buy || [],
             },
             cast: detailsResponse.data.credits.cast.slice(0, 10), // Only take the top 10 cast members
+            certification, // Include the fetched certification
         };
     } catch (error) {
         console.error(`Error fetching details for ${type} ${id}:`, error);
@@ -176,16 +201,5 @@ export const fetchDetailsById = async (id, type) => {
     }
 };
 
-
-// Fetch Certifications for movie or TV show from TMDB
-export const fetchCertifications = async (type) => {
-    try {
-        const response = await tmdbApi.get(`/certification/${type}/list`);
-        return response.data.certifications;
-    } catch (error) {
-        console.error(`Error fetching certifications for ${type}:`, error);
-        throw error;
-    }
-};
 
 

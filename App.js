@@ -13,6 +13,9 @@ const loadFonts = async () => {
     'WorkSans-Regular': require('./assets/fonts/WorkSans-Regular.ttf'),
     'WorkSans-Bold': require('./assets/fonts/WorkSans-Bold.ttf'),
     'WorkSans-Light': require('./assets/fonts/WorkSans-Light.ttf'),
+    'WorkSans-SemiBold': require('./assets/fonts/WorkSans-Italic.ttf'),
+    'WorkSans-Italic': require('./assets/fonts/WorkSans-Thin.ttf'),
+    'WorkSans-Thin': require('./assets/fonts/WorkSans-ExtraLight.ttf'),
     // Load other fonts here if necessary
   });
 };

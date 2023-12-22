@@ -1,12 +1,12 @@
 
 ```
 MovieMatchApp
+├─ .git
 ├─ .gitignore
 ├─ .vscode
 │  └─ .react
 ├─ App.js
 ├─ README.md
-├─ app.json
 ├─ assets
 │  ├─ adaptive-icon.png
 │  ├─ default_image.jpeg
@@ -31,6 +31,7 @@ MovieMatchApp
 │  └─ SwipeableCard.js
 ├─ context
 │  └─ MoviesContext.js
+├─ firebaseConfig.js
 ├─ navigation
 │  └─ AppNavigator.js
 ├─ package-lock.json

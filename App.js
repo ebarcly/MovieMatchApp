@@ -4,6 +4,7 @@ import * as Font from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { MoviesProvider } from './context/MoviesContext';
 import AppNavigator from './navigation/AppNavigator';
+import { initializeApp } from './firebaseConfig';
 
 SplashScreen.preventAutoHideAsync(); // Prevent native splash screen from auto-hiding
 

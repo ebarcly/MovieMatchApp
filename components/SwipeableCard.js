@@ -3,7 +3,7 @@ import { View, Image, Text, StyleSheet, Animated, TouchableOpacity, TouchableWit
 import { GestureHandlerRootView, Swipeable } from 'react-native-gesture-handler';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { MoviesContext } from '../context/MoviesContext'; // Import the context
-import { useNavigation } from '@react-navigation/native'; // Import the useNavigation hook
+import { useNavigation } from '@react-navigation/native'; // Import the useNavigation hook';
 
 const SwipeableCard = ({ movie, onSwipeComplete }) => {
   const { state, dispatch } = useContext(MoviesContext); // Use the context
@@ -20,7 +20,7 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
   const [swiped, setSwiped] = useState(false); // Update the swiped state
 
   const handleSwipe = (direction) => {
-    dispatch({ type: direction === 'left' ? 'DISLIKE_MOVIE' : 'LIKE_MOVIE', payload: movie });
+    dispatch({ type: direction === 'left' ? 'LIKE_MOVIE' : 'DISLIKE_MOVIE', payload: movie });
     setTimeout(() => {
       swipeableRef.current?.close();
       setSwiped(true); // Update the swiped state to true
@@ -28,54 +28,32 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
     }, 250); // Add a delay for user to see the action feedback
   };
 
-  const renderLeftActions = (_, dragX) => {
+  const renderActions = (dragX, direction) => {
     const scale = dragX.interpolate({
-      inputRange: [-100, 0],
-      outputRange: [1, 0.8],
+      inputRange: [-100, 0, 100],
+      outputRange: [0.8, 1, 0.8],
       extrapolate: 'clamp',
     });
-
 
     const rotate = dragX.interpolate({
-      inputRange: [-100, 0],
-      outputRange: ['0deg', '-15deg'],
+      inputRange: [-100, 0, 100],
+      outputRange: ['-15deg', '0deg', '15deg'],
       extrapolate: 'clamp',
     });
 
+    const backgroundColor = direction === 'left' ? '#006600' : '#ff6666';
+    const iconName = direction === 'left' ? 'thumb-up' : 'thumb-down';
+    const actionText = direction === 'left' ? 'Interested' : 'Not Interested';
+
     return (
-      <View style={styles.leftAction}>
+      <View style={[styles.actionContainer, { backgroundColor }]}>
         <Animated.View style={[styles.actionContent, { transform: [{ scale }, { rotate }] }]}>
-          <Icon name="thumb-down" size={24} color="#fff" style={styles.icon} />
-          <Text style={styles.actionText}>Not Interested</Text>
+          <Icon name={iconName} size={24} color="#fff" style={styles.icon} />
+          <Text style={styles.actionText}>{actionText}</Text>
         </Animated.View>
       </View>
     );
   };
-
-  const renderRightActions = (_, dragX) => {
-    const scale = dragX.interpolate({
-      inputRange: [0, 100],
-      outputRange: [0.8, 1],
-      extrapolate: 'clamp',
-    });
-
-
-    const rotate = dragX.interpolate({
-      inputRange: [0, 100],
-      outputRange: ['15deg', '0deg'],
-      extrapolate: 'clamp',
-    });
-
-    return (
-      <View style={styles.rightAction}>
-        <Animated.View style={[styles.actionContent, { transform: [{ scale }, { rotate }] }]}>
-          <Icon name="thumb-up" size={24} color="#fff" style={styles.icon} />
-          <Text style={styles.actionText}>Interested</Text>
-        </Animated.View>
-      </View>
-    );
-  };
-
 
   const renderGenres = () => {
     if (genre_ids.length > 0 && state.genres.length > 0) {
@@ -102,8 +80,8 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
       {!swiped && (
         <Swipeable
           ref={swipeableRef}
-          renderLeftActions={renderLeftActions}
-          renderRightActions={renderRightActions}
+          renderLeftActions={(dragX) => renderActions(dragX, 'left')}
+          renderRightActions={(dragX) => renderActions(dragX, 'right')}
           onSwipeableOpen={handleSwipe}
           friction={2}
           leftThreshold={60}
@@ -128,11 +106,11 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
         </Swipeable>
       )}
       <View style={styles.buttonContainer}>
-        <TouchableOpacity style={styles.button} onPress={() => handleSwipe('left')}>
+        <TouchableOpacity style={styles.button} onPress={() => handleSwipe('right')}>
           <Icon name="skip-next" size={25} color="#fff" style={styles.icon} />
           <Text style={styles.buttonText}>Skip</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.button} onPress={() => handleSwipe('right')}>
+        <TouchableOpacity style={styles.button} onPress={() => handleSwipe('left')}>
           <Icon name="check" size={25} color="#fff" style={styles.icon} />
           <Text style={styles.buttonText}>Watched</Text>
         </TouchableOpacity>
@@ -173,8 +151,8 @@ const styles = StyleSheet.create({
   },
   genreContainer: {
     position: 'absolute',
-    flexDirection: 'row', // Lay out genres in a row
-    flexWrap: 'wrap', // Wrap to the next line if necessary
+    flexDirection: 'row',
+    flexWrap: 'wrap', 
     zIndex: 10,
     top: 364,
     justifyContent: 'center',
@@ -186,10 +164,10 @@ const styles = StyleSheet.create({
   },
   genre: {
     color: '#fff',
-    fontSize: 16,
-    fontFamily: 'WorkSans-Regular',
+    fontSize: 14,
+    fontFamily: 'WorkSans-Bold',
     lineHeight: 18,
-    paddingVertical: 4,
+    paddingVertical: 2,
     overflow: 'hidden',
     marginHorizontal: 4,
     textAlign: 'center',
@@ -198,19 +176,11 @@ const styles = StyleSheet.create({
   separator: {
     color: '#fff',
   },
-  leftAction: {
+  actionContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 24,
-    backgroundColor: '#ff6666',
-  },
-  rightAction: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 24,
-    backgroundColor: '#006600',
   },
   actionContent: {
     flexDirection: 'row',

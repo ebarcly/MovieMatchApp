@@ -10,6 +10,8 @@ const DetailScreen = ({ route }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [trailerUrl, setTrailerUrl] = useState(null);
+    const [likes, setLikes] = useState(0); // Added likes state
+    const [watchedCount, setWatchedCount] = useState(0); // Added watchedCount state
 
     useEffect(() => {
         const fetchDetails = async () => {
@@ -41,6 +43,25 @@ const DetailScreen = ({ route }) => {
         return <Text style={styles.errorText}>{error}</Text>;
     }
 
+    const availableProviders = [];
+    ['flatrate', 'rent', 'buy'].forEach((category) => {
+        if (detailData.providers && detailData.providers[category]) {
+            detailData.providers[category].forEach((provider) => {
+                if (!availableProviders.some((p) => p.provider_id === provider.provider_id)) {
+                    availableProviders.push(provider);
+                }
+            });
+        }
+    });
+
+    const handleLike = () => {
+        setLikes(likes + 1);
+    };
+
+    const handleWatched = () => {
+        setWatchedCount(watchedCount + 1);
+    };
+
     return (
         <ScrollView style={styles.container}>
             {detailData && (
@@ -61,39 +82,29 @@ const DetailScreen = ({ route }) => {
                         {detailData.certification && (
                             <Text style={styles.certificationBox}>{detailData.certification}</Text>
                         )}
-                        {detailData.providers && (
-                            <>
-                                {['flatrate', 'rent', 'buy'].map((category) => (
-                                    detailData.providers[category] && detailData.providers[category].length > 0 && (
-                                        <View key={category} style={styles.providersContainer}>
-                                            <Text style={styles.providerCategoryTitle}>{category.toUpperCase()}</Text>
-                                            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                                                {detailData.providers[category].slice(0, 2).map((provider) => (
-                                                    <View style={styles.providerText} key={provider.provider_id}>
-                                                        {provider.logo_path && (
-                                                            <Image
-                                                                source={{ uri: `https://image.tmdb.org/t/p/w500${provider.logo_path}` }}
-                                                                style={styles.providerLogo}
-                                                            />
-                                                        )}
-                                                        <Text style={styles.providerName}>{provider.provider_name}</Text>
-                                                    </View>
-                                                ))}
-                                            </ScrollView>
+                        {availableProviders.length > 0 ? (
+                            <View style={styles.providersContainer}>
+                                <Text style={styles.providerCategoryTitle}>Where to watch</Text>
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                                    {availableProviders.map((provider) => (
+                                        <View style={styles.providerText} key={provider.provider_id}>
+                                            {provider.logo_path && (
+                                                <Image
+                                                    source={{ uri: `https://image.tmdb.org/t/p/w500${provider.logo_path}` }}
+                                                    style={styles.providerLogo}
+                                                />
+                                            )}
                                         </View>
-                                    )
-                                ))}
-                            </>
+                                    ))}
+                                </ScrollView>
+                            </View>
+                        ) : (
+                            <Text style={styles.providerCategoryTitle}>Not streaming.</Text>
                         )}
 
                         <Text style={styles.movieTagline}>{detailData.tagline}</Text>
-                        <Text style={styles.movieH1}>Overview</Text>
                         <Text style={styles.movieOverview}>{detailData.overview}</Text>
                         <View style={styles.metaInfo}>
-                            <View style={styles.metaItem}>
-                                <Icon name="star" size={20} color="#FFD700" />
-                                <Text style={styles.metaText}>{detailData.vote_average}</Text>
-                            </View>
                             <View style={styles.metaItem}>
                                 <Icon name="theater-comedy" size={20} color="#FFF" />
                                 <Text style={styles.metaText}>{detailData.genres.map(genre => genre.name).join(' • ')}</Text>
@@ -101,6 +112,14 @@ const DetailScreen = ({ route }) => {
                             <View style={styles.metaItem}>
                                 <Icon name="schedule" size={20} color="#FFF" />
                                 <Text style={styles.metaText}>{detailData.runtime || detailData.episode_run_time} min</Text>
+                            </View>
+                            <View style={styles.metaItem}>
+                                <Icon name="favorite" size={20} color="#FF0000" onPress={handleLike} />
+                                <Text style={styles.metaText}>{likes}</Text>
+                            </View>
+                            <View style={styles.metaItem}>
+                                <Icon name="visibility" size={20} color="#FFF" onPress={handleWatched} />
+                                <Text style={styles.metaText}>{watchedCount}</Text>
                             </View>
                         </View>
                     </View>
@@ -167,11 +186,12 @@ const styles = StyleSheet.create({
         borderRadius: 5,
     },
     providerCategoryTitle: {
-        fontSize: 10,
+        fontSize: 16,
         color: '#FFF',
         fontFamily: 'WorkSans-Bold',
         marginTop: 10,
         marginRight: 10,
+        marginBottom: 10,
     },
     providerText: {
         flexDirection: 'row',
@@ -181,22 +201,20 @@ const styles = StyleSheet.create({
     providerLogo: {
         width: 30,
         height: 30,
-        marginRight: 5,
-    },
-    providerName: {
-        fontSize: 16,
-        color: '#FFF',
-        fontFamily: 'WorkSans-Regular',
+        marginRight: 10,
+        resizeMode: 'contain',
+        
     },
     movieTagline: {
-        fontSize: 17,
+        fontSize: 14,
         fontFamily: 'WorkSans-Thin',
         color: '#FFF',
         marginTop: 10,
-        marginBottom: 16,
+        marginBottom: 10,
+        textTransform: 'uppercase',
     },
     movieH1: {
-        fontSize: 18,
+        fontSize: 17,
         fontFamily: 'WorkSans-Bold',
         color: '#FFF',
         marginBottom: 10,
@@ -205,13 +223,13 @@ const styles = StyleSheet.create({
         fontSize: 16,
         lineHeight: 24,
         color: '#FFF',
-        marginBottom: 12,
+        marginBottom: 16,
         fontFamily: 'WorkSans-Regular',
     },
     metaInfo: {
         flexDirection: 'column',
         justifyContent: 'space-between',
-        marginBottom: 12,
+        marginBottom: 16,
     },
     certificationBox: {
         fontSize: 12,
@@ -228,12 +246,14 @@ const styles = StyleSheet.create({
     metaItem: {
         flexDirection: 'row',
         alignItems: 'baseline',
+        marginBottom: 6,
     },
     metaText: {
         fontSize: 14,
         color: '#FFF',
         fontFamily: 'WorkSans-Light',
         marginLeft: 6,
+        alignSelf: 'center',
     },
     castMemberContainer: {
         width: 120,
@@ -243,8 +263,8 @@ const styles = StyleSheet.create({
     castImage: {
         width: '100%',
         height: 120,
-        borderRadius: 24,
-        marginTop: 12,
+        borderRadius: 60,
+        marginTop: 10,
         marginBottom: 6,
         resizeMode: 'contain',
     },
@@ -253,12 +273,14 @@ const styles = StyleSheet.create({
         color: '#FFF',
         textAlign: 'center',
         fontFamily: 'WorkSans-Bold',
+        marginBottom: 4,
     },
     castCharacter: {
         fontSize: 12,
         color: '#FFF',
         textAlign: 'center',
-        fontFamily: 'WorkSans-Regular',
+        fontFamily: 'WorkSans-Light',
+
     },
     errorText: {
         fontSize: 18,

@@ -11,8 +11,8 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import { auth } from '../firebaseConfig';
+import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
-import { doc, getDoc } from "firebase/firestore";
 
 
 const MyCaveScreen = () => {
@@ -21,24 +21,33 @@ const MyCaveScreen = () => {
   const [headerImage, setHeaderImage] = useState(require('../assets/header_default.png'));
   const watchlist = useState([]);
   const [friendsActivity, setFriendsActivity] = useState([]);
+  const [userData, setUserData] = useState({});
 
+  const navigateToProfileEdit = () => {
+    navigation.navigate('Profile Setup', { isEditing: true }); // Pass a flag to indicate editing mode
+  };
 
   useEffect(() => {
-    // Fetch user profile data and set the initial values
+    // Fetch user profile data from Firestore
     const fetchUserProfile = async () => {
-      const userDoc = doc(db, "users", auth.currentUser.uid);
-      const userProfile = await getDoc(userDoc);
-
-      if (userProfile.exists()) {
-        const { username, profileName, bio, streamingServices } = userProfile.data();
-        username(username);
-        profileName(profileName);
-        setBio(bio);
-        streamingServices(streamingServices);
-      } else {
-        console.log("No such document!");
+      const user = auth.currentUser;
+      if (user) {
+        try {
+          const querySnapshot = await getDocs(collection(db, 'users'));
+          querySnapshot.forEach((doc) => {
+            if (doc.id === user.uid) {
+              setUserData(doc.data());
+            }
+          });
+        } catch (error) {
+          console.error("Error fetching users: ", error);
+        }
       }
     };
+    
+    // Fetch user profile data initially
+    fetchUserProfile();
+
     // Simulating real-time updates from a database or WebSocket connection
     const fetchFriendsActivity = () => {
       // Replace this with your own logic to fetch friends' activity in real-time
@@ -49,9 +58,6 @@ const MyCaveScreen = () => {
       ];
       setFriendsActivity(activityData);
     };
-
-    // Fetch user profile data initially
-    fetchUserProfile();
 
     // Fetch friends' activity initially
     fetchFriendsActivity();
@@ -103,56 +109,50 @@ const MyCaveScreen = () => {
       </TouchableOpacity>
       {/* Profile Section */}
       <View style={styles.profileSection}>
-        {/* Profile Image */}
         <TouchableOpacity onPress={handleProfileImageChange}>
           <Image source={profileImage} style={styles.profileImage} />
         </TouchableOpacity>
-        <Text style={styles.name}>Enrique Barclay</Text>
-        <Text style={styles.description}>Waited 28 years to watch Friends...</Text>
-        <View style={styles.genreContainer}>
-          {/* Genre tags */}
-          <Text style={styles.genreText}>Action</Text>
-          <Text style={styles.genreText}>Comedy</Text>
-          <Text style={styles.genreText}>Drama</Text>
-        </View>
-        <TouchableOpacity onPress={() => navigation.navigate('Profile Setup')} style={styles.editProfileButton}>
+        <Text style={styles.name}>{userData.profileName || 'Enrique'}</Text>
+        <Text style={styles.description}>{userData.bio || 'Your Bio'}</Text>
+        {/* Genre tags based on user data */}
+        {userData.genres?.map((genre, index) => (
+          <Text key={index} style={styles.genreText}>{genre}</Text>
+        ))}
+        <TouchableOpacity onPress={navigateToProfileEdit} style={styles.editProfileButton}>
           <Text style={styles.editProfileText}>Edit profile</Text>
         </TouchableOpacity>
       </View>
-      {/* Watchlist Section */}
+      {/* Watchlist Section - Needs dynamic data */}
       <Section title="Watchlist">
         <FlatList
-          horizontal
           data={watchlist}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          keyExtractor={(item) => item.id} // Add keyExtractor prop
           renderItem={({ item }) => (
-            <View style={styles.watchlistItemContainer}>
+            <View key={item.id} style={styles.watchlistItemContainer}>
               <Image source={item.image} style={styles.watchlistItemImage} />
               <Text style={styles.watchlistItemText}>{item.title}</Text>
-              <TouchableOpacity onPress={() => { }} style={styles.watchlistEditButton}>
+              <TouchableOpacity style={styles.watchlistEditButton}>
                 <Text style={styles.watchlistEditText}>Edit</Text>
               </TouchableOpacity>
             </View>
           )}
-          keyExtractor={item => item.id}
-          showsHorizontalScrollIndicator={false}
         />
       </Section>
-      {/* Friends Activity Section */}
-      <Section title="Friends activity">
-        <FlatList
-          data={friendsActivity}
-          renderItem={({ item }) => (
-            <View style={styles.activityItem}>
-              <Image source={item.userImage} style={styles.activityUserImage} />
-              <View style={styles.activityContent}>
-                <Text style={styles.activityText}>{item.message}</Text>
-                <Text style={styles.activityTime}>{item.time}</Text>
-              </View>
+      {/* Friends Activity Section - Needs dynamic data */}
+      <Section title="Friends Activity">
+        {friendsActivity.map((activity) => (
+          <View key={activity.id} style={styles.activityItem}>
+            <Image source={require('../assets/profile_default.jpg')} style={styles.activityUserImage} />
+            <View style={styles.activityContent}>
+              <Text style={styles.activityText}>{activity.message}</Text>
+              <Text style={styles.activityTime}>2 hours ago</Text>
             </View>
-          )}
-          keyExtractor={item => item.id}
-        />
+          </View>
+        ))}
       </Section>
+      {/* Logout Button */}
       <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
         <Text style={styles.logoutButtonText}>Logout</Text>
       </TouchableOpacity>
@@ -253,7 +253,6 @@ const styles = StyleSheet.create({
   watchlistItemContainer: {
     alignItems: 'center', // Center items vertically
     marginRight: 20,
-
   },
   watchlistItemImage: {
     width: 100, // Match the size from the mockup
@@ -266,7 +265,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'WorkSans-Bold',
     marginBottom: 8,
-
   },
   watchlistEditButton: {
     backgroundColor: '#333', // Darker background for the button

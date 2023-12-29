@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, Button, Text, StyleSheet, Image, TouchableOpacity, ScrollView, Switch } from 'react-native';
-import { auth, firestore } from '../firebaseConfig'; // Import Firestore
+import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, Switch } from 'react-native';
+import { auth } from '../firebaseConfig'; // Import Firestore
 import { useNavigation } from '@react-navigation/native';
+import { collection, getDocs, updateDoc, doc } from 'firebase/firestore';
+import { db } from '../firebaseConfig';
+
 
 // Dummy data for streaming services 
 const STREAMING_SERVICES = [
@@ -19,10 +22,10 @@ const STREAMING_SERVICES = [
 ];
 
 // Dummy data for genres
-const GENRES = ['Action', 'Comedy', 'Drama', 'Fantasy', 'Horror', 'Mystery', 'Romance', 'Thriller'];
+const GENRES = ['Action', 'Comedy', 'Drama', 'Fantasy', 'Horror', 'Mystery', 'Romance', 'Thriller', 'Sci-Fi', 'Anime', 'Documentary', 'Musical', 'Western', 'War', 'History', 'Crime', 'Family', 'Adventure', 'Biography', 'Sport', 'Music', 'Short', 'News', 'Talk-Show', 'Reality-TV', 'Game-Show', 'Film-Noir'];
 
 
-const ProfileSetupScreen = () => {
+const ProfileSetupScreen = ({ route }) => {
   const [username, setUsername] = useState('');
   const [profileName, setProfileName] = useState('');
   const [bio, setBio] = useState('');
@@ -30,37 +33,41 @@ const ProfileSetupScreen = () => {
   const [genres, setGenres] = useState([]);
   const [fullCatalogAccess, setFullCatalogAccess] = useState(false);
   const [error, setError] = useState('');
+  const isEditMode = route.params?.isEditing || false; // Get the flag from the route params
   const navigation = useNavigation();
 
   useEffect(() => {
-    const fetchUserProfile = async () => {
-      const user = auth.currentUser;
-      if (user) {
-        try {
-          const userProfile = await firestore.collection('users').doc(user.uid).get();
-          if (userProfile.exists()) {
-            const { username, profileName, bio, streamingServices, genres, fullCatalogAccess } = userProfile.data();
-            setUsername(username || '');
-            setProfileName(profileName || '');
-            setBio(bio || '');
-            setStreamingServices(streamingServices || []);
-            setGenres(genres || []);
-            setFullCatalogAccess(fullCatalogAccess || false);
-          }
-        } catch (error) {
-          setError(error.message);
-        }
-      }
-    };
+    // Only fetch data if in edit mode
+    if (isEditMode) {
+      fetchUserProfile();
+    }
+  }, [isEditMode]);
 
-    fetchUserProfile();
-  }, []);
+  const fetchUserProfile = async () => {
+    try {
+      const querySnapshot = await getDocs(collection(db, "users"));
+      querySnapshot.forEach((doc) => {
+        if (doc.id === auth.currentUser.uid) {
+          const userData = doc.data();
+          setUsername(userData.username);
+          setProfileName(userData.profileName);
+          setBio(userData.bio);
+          setStreamingServices(userData.streamingServices);
+          setGenres(userData.genres);
+          setFullCatalogAccess(userData.fullCatalogAccess);
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching users: ", error);
+    }
+  };
 
   const handleProfileUpdate = async () => {
     const user = auth.currentUser;
     if (user) {
       try {
-        await firestore.collection('users').doc(user.uid).update({
+        const userDocRef = doc(db, 'users', user.uid);
+        await updateDoc(userDocRef, {
           username,
           profileName,
           bio,
@@ -68,21 +75,29 @@ const ProfileSetupScreen = () => {
           genres,
           fullCatalogAccess,
         });
-        navigation.navigate('Home');
+
+        // Provide feedback and navigate back
+        if (isEditMode) {
+          alert('Profile Updated!');
+          navigation.goBack();
+        } else {
+          navigation.navigate('Home');
+        }
       } catch (error) {
         setError(error.message);
       }
     }
   };
 
+  
   const handleStreamingServiceChange = (service) => {
-    setStreamingServices((prev) => 
+    setStreamingServices((prev) =>
       prev.includes(service) ? prev.filter((s) => s !== service) : [...prev, service]
     );
   };
 
   const handleGenreChange = (genre) => {
-    setGenres((prev) => 
+    setGenres((prev) =>
       prev.includes(genre) ? prev.filter((g) => g !== genre) : [...prev, genre]
     );
   };
@@ -98,7 +113,7 @@ const ProfileSetupScreen = () => {
         <View style={styles.serviceList}>
           {STREAMING_SERVICES.map((service, index) => (
             <TouchableOpacity
-              key={service.name}
+              key={index}
               style={streamingServices.includes(service.name) ? styles.serviceItemSelected : styles.serviceItem}
               onPress={() => handleStreamingServiceChange(service.name)}
             >
@@ -133,9 +148,10 @@ const ProfileSetupScreen = () => {
           </TouchableOpacity>
         ))}
       </View>
-      {error ? <TouchableOpacity style={styles.updateButton} onPress={handleProfileUpdate}>
-  <Text style={styles.updateButtonText}>Update Profile</Text>
-</TouchableOpacity> : null}
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      <TouchableOpacity onPress={handleProfileUpdate} style={styles.updateButton}>
+        <Text style={styles.updateButtonText}>Update Profile</Text>
+      </TouchableOpacity>
     </ScrollView>
   );
 };
@@ -281,7 +297,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
-  
+
 });
 
 export default ProfileSetupScreen;

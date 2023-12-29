@@ -5,7 +5,7 @@ import NavigationBar from '../components/NavigationBar';
 import CategoryTabs from '../components/CategoryTabs';
 import { fetchPopularMovies, fetchPopularTVShows } from '../services/api'; // Ensure you have the fetchPopularTVShows API call implemented
 
-const HomeScreen = () => {
+const HomeScreen = ({ navigation }) => { // Add navigation as a prop
   const username = 'Enrique';
   const [content, setContent] = useState([]); // This will store either movies or TV shows based on selection
   const [loading, setLoading] = useState(true); // State to manage loading status
@@ -70,7 +70,7 @@ const HomeScreen = () => {
       <CategoryTabs onCategorySelect={(category) => setSelectedCategory(category)} />
       <View style={styles.cardContainer}>
         {content.slice(currentCardIndex, currentCardIndex + 1).map((item) => (
-          <SwipeableCard key={item.id.toString()} movie={item} onSwipeComplete={handleSwipeComplete} />
+          <SwipeableCard key={item.id.toString()} movie={item} onSwipeComplete={handleSwipeComplete} navigation={navigation} /> // Pass navigation as a prop
         ))}
       </View>
     </ScrollView>

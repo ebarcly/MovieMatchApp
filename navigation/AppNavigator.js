@@ -40,10 +40,9 @@ function HomeStackScreen() {
 function MyCaveStackScreen() {
   return (
     <ProfileStack.Navigator>
-      <ProfileStack.Screen name="My Cave" component={MyCaveScreen} options={{ headerShown: false }} />
+      <ProfileStack.Screen name="Profile" component={MyCaveScreen} options={{ headerShown: false }} />
       <ProfileStack.Screen name="Profile Setup" component={ProfileSetupScreen} />
-      {/* Add other screens related to user profile here */}
-    </ProfileStack.Navigator>
+    </ProfileStack.Navigator> 
   );
 }
 

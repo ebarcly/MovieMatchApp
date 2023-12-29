@@ -2,13 +2,14 @@ import React, { useContext, useState } from 'react';
 import { View, Image, Text, StyleSheet, Animated, TouchableOpacity, TouchableWithoutFeedback } from 'react-native';
 import { GestureHandlerRootView, Swipeable } from 'react-native-gesture-handler';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import { MoviesContext } from '../context/MoviesContext'; // Import the context
-import { useNavigation } from '@react-navigation/native'; // Import the useNavigation hook';
+import { MoviesContext } from '../context/MoviesContext';
+import { useNavigation } from '@react-navigation/native'; 
 
 const SwipeableCard = ({ movie, onSwipeComplete }) => {
   const { state, dispatch } = useContext(MoviesContext); // Use the context
   const swipeableRef = React.useRef(null);  // Create a ref for the Swipeable component
   const { poster_path, genre_ids = [] } = movie;
+  const navigation = useNavigation();
 
   // Use secure_base_url from configData and choose appropriate size for poster
   const imageBaseUrl = state.configData.images.secure_base_url;
@@ -72,8 +73,6 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
       return <Text style={styles.genre}>Genres unavailable</Text>;
     }
   };
-
-  const navigation = useNavigation(); // Get the navigation object from the hook
 
   return (
     <GestureHandlerRootView style={styles.container}>

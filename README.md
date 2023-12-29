@@ -20,8 +20,14 @@ MovieMatchApp
 │  │  ├─ WorkSans-Medium.ttf
 │  │  ├─ WorkSans-Regular.ttf
 │  │  └─ WorkSans-Thin.ttf
+│  ├─ header_default.png
 │  ├─ icon.png
-│  └─ splash.png
+│  ├─ profile_default.jpg
+│  ├─ splash.png
+│  ├─ still_1.jpg
+│  ├─ still_1.png
+│  ├─ watchlist_1.jpg
+│  └─ watchlist_1.png
 ├─ babel.config.js
 ├─ components
 │  ├─ CategoryButton.jsx
@@ -32,15 +38,20 @@ MovieMatchApp
 ├─ context
 │  └─ MoviesContext.js
 ├─ firebaseConfig.js
+├─ metro.config.js
 ├─ navigation
 │  └─ AppNavigator.js
 ├─ package-lock.json
 ├─ package.json
 ├─ screens
 │  ├─ DetailScreen.js
+│  ├─ ForgotPasswordScreen.js
 │  ├─ HomeScreen.js
+│  ├─ LoginScreen.js
 │  ├─ MatchesScreen.js
-│  └─ MyCaveScreen.js
+│  ├─ MyCaveScreen.js
+│  ├─ ProfileSetupScreen.js
+│  └─ RegisterScreen.js
 ├─ services
 │  └─ api.js
 └─ utils

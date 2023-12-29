@@ -22,7 +22,7 @@ const RegisterScreen = () => {
   
     try {
       await createUserWithEmailAndPassword(auth, email, password);
-      navigation.navigate('Profile Setup'); // Navigate to Profile Setup
+      navigation.navigate('Profile Setup');
     } catch (error) {
       setError(error.message);
     }

@@ -10,11 +10,13 @@ import RegisterScreen from '../screens/RegisterScreen';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 import ProfileSetupScreen from '../screens/ProfileSetupScreen';
 import { auth } from '../firebaseConfig';
-import { useNavigation } from '@react-navigation/native';
+
 
 const HomeStack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 const AuthStack = createStackNavigator();
+const ProfileStack = createStackNavigator();
+
 
 function AuthStackScreen() {
   return (
@@ -22,7 +24,6 @@ function AuthStackScreen() {
       <AuthStack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }}/>
       <AuthStack.Screen name="Register" component={RegisterScreen} options={{ headerShown: false }}/>
       <AuthStack.Screen name="Forgot Password" component={ForgotPasswordScreen} options={{ headerShown: false }}/>
-      <AuthStack.Screen name="Profile Setup" component={ProfileSetupScreen} />
     </AuthStack.Navigator>
   );
 }
@@ -36,6 +37,17 @@ function HomeStackScreen() {
   );
 }
 
+function MyCaveStackScreen() {
+  return (
+    <ProfileStack.Navigator>
+      <ProfileStack.Screen name="My Cave" component={MyCaveScreen} options={{ headerShown: false }} />
+      <ProfileStack.Screen name="Profile Setup" component={ProfileSetupScreen} />
+      {/* Add other screens related to user profile here */}
+    </ProfileStack.Navigator>
+  );
+}
+
+
 const AppNavigator = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isProfileSetupCompleted, setIsProfileSetupCompleted] = useState(false);
@@ -47,17 +59,17 @@ const AppNavigator = () => {
 
       // If the user is authenticated but hasn't completed profile setup, navigate to Profile Setup
       if (user && !isProfileSetupCompleted) {
-        useNavigation.navigate('Profile Setup');
+        navigation.navigate('Profile Setup');
       }
 
       // If the user is authenticated and has completed profile setup, navigate to the Home Screen
       if (user && isProfileSetupCompleted) {
-        useNavigation.navigate('Home');
+        navigation.navigate('Home');
       }
 
       // If the user is not authenticated, navigate to the Login Screen
       if (!user) {
-        useNavigation.navigate('Login');
+        navigation.navigate('Login');
       }
 
     });
@@ -72,7 +84,7 @@ const AppNavigator = () => {
     <Tab.Navigator>
       <Tab.Screen name="Deck" component={HomeStackScreen} options={{ headerShown: false }} />
       <Tab.Screen name="Matches" component={MatchesScreen} />
-      <Tab.Screen name="My Cave" component={MyCaveScreen} />
+      <Tab.Screen name="My Cave" component={MyCaveStackScreen} />
     </Tab.Navigator>
   );
 };

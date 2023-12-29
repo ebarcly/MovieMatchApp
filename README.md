@@ -1,6 +1,3 @@
-Creating a comprehensive `README.md` for your app is crucial for documenting its development process, features, and usage instructions. Below is a template you can use as a starting point:
-
----
 
 # MovieMatchApp
 

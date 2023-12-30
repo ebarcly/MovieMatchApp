@@ -1,7 +1,6 @@
 import axios from 'axios';
 import Constants from 'expo-constants';
 
-// Retrieve the TMDB API Key from app.json using Expo's Constants API
 const API_KEY = Constants.expoConfig.extra.TMDB_API_KEY;
 const BASE_URL = 'https://api.themoviedb.org/3';
 
@@ -12,89 +11,41 @@ const tmdbApi = axios.create({
     },
 });
 
-// Fetch popular movies from TMDB
-export const fetchPopularMovies = async (page = 1) => {
-    try {
-        const response = await tmdbApi.get('/movie/popular', { params: { page } });
-        let movies = response.data.results;
+// Helper function to format movie or TV show response
+const formatResponse = (results, genres) => {
+    const genresMap = genres.reduce((acc, genre) => {
+        acc[genre.id] = genre.name;
+        return acc;
+    }, {});
 
-        // Fetch genres if they are not included in the movie data
-        if (movies.length > 0 && !movies[0].genre_ids) {
-            // Always fetch genres to map ids to names
-            const genresResponse = await fetchGenres();
-            const genres = genresResponse.data.genres;
-            // Create a map for faster lookup
-            const genresMap = genres.reduce((acc, genre) => {
-                acc[genre.id] = genre.name;
-                return acc;
-            }, {});
-
-            // Map genre IDs to genre names
-            movies = movies.map((movie) => {
-                const genreNames = movie.genre_ids.map(genreId => genresMap[genreId] || 'Unknown Genre');
-                return { ...movie, genre_names: genreNames, type: 'movie', release_date: movie.release_date };
-            });
-        }
-
+    return results.map((item) => {
+        const genreNames = item.genre_ids.map(genreId => genresMap[genreId] || 'Unknown Genre');
         return {
-            results: movies,
-            totalResults: response.data.total_results,
-            totalPages: response.data.total_pages,
+            ...item,
+            genre_names: genreNames,
+            type: item.first_air_date ? 'tv' : 'movie',
+            release_date: item.release_date || item.first_air_date,
         };
-    } catch (error) {
-        console.error('Error fetching popular movies:', error);
-        throw error;
-    }
+    });
 };
 
-// Fetch TV shows from TMDB
-export const fetchPopularTVShows = async (page = 1) => {
+// This function maps service names to their IDs
+export const mapServiceNamesToIds = async (serviceNames) => {
     try {
-        const response = await tmdbApi.get('/tv/popular', { params: { page } });
-        let tvShows = response.data.results;
+        const allServices = await fetchStreamingServices(); // Fetch all services
+        const serviceMap = allServices.reduce((map, service) => {
+            map[service.provider_name] = service.provider_id;
+            return map;
+        }, {});
 
-        // Fetch genres if they are not included in the movie data
-        if (tvShows.length > 0 && !tvShows[0].genre_ids) {
-            // Always fetch genres to map ids to names
-            const genresResponse = await fetchGenres();
-            const genres = genresResponse.data.genres;
-            // Create a map for faster lookup
-            const genresMap = genres.reduce((acc, genre) => {
-                acc[genre.id] = genre.name;
-                return acc;
-            }, {});
-
-            // Map genre IDs to genre names
-            tvShows = tvShows.map((tvShow) => {
-                const genreNames = tvShow.genre_ids.map(genreId => genresMap[genreId] || 'Unknown Genre');
-                return { ...tvShow, genre_names: genreNames, type: 'tv', release_date: tvShow.first_air_date };
-            });
-        }
-
-        return {
-            results: tvShows,
-            totalResults: response.data.total_results,
-            totalPages: response.data.total_pages,
-        };
+        return serviceNames.map(name => serviceMap[name]).filter(id => id);
     } catch (error) {
-        console.error('Error fetching popular TV shows:', error);
+        console.error('Error mapping service names to IDs:', error);
         throw error;
     }
 };
 
-
-export const searchMovies = async (query) => {
-    try {
-        const response = await tmdbApi.get('/search/movie', {
-            params: { query },
-        });
-        return response.data.results;
-    } catch (error) {
-        console.error('Error searching for movies:', error);
-        throw error;
-    }
-};
-
+// Fetch genres from TMDB
 export const fetchGenres = async () => {
     try {
         const response = await tmdbApi.get('/genre/movie/list');
@@ -105,6 +56,65 @@ export const fetchGenres = async () => {
     }
 };
 
+// Fetch popular movies from TMDB
+export const fetchPopularMovies = async (page = 1) => {
+    try {
+        const genres = await fetchGenres();
+        const response = await tmdbApi.get('/movie/popular', { params: { page } });
+        return formatResponse(response.data.results, genres);
+    } catch (error) {
+        console.error('Error fetching popular movies:', error);
+        throw error;
+    }
+};
+
+// Fetch popular TV shows from TMDB
+export const fetchPopularTVShows = async (page = 1) => {
+    try {
+        const genres = await fetchGenres();
+        const response = await tmdbApi.get('/tv/popular', { params: { page } });
+        return formatResponse(response.data.results, genres);
+    } catch (error) {
+        console.error('Error fetching popular TV shows:', error);
+        throw error;
+    }
+};
+
+// Fetch movies by selected streaming services
+export const fetchMoviesByServices = async (serviceIds, page = 1) => {
+    try {
+        if (!serviceIds || serviceIds.length === 0) {
+            return fetchPopularMovies();
+        }
+        const genres = await fetchGenres();
+        const response = await tmdbApi.get('/discover/movie', {
+            params: { with_watch_providers: serviceIds.join(','), watch_region: 'US', page },
+        });
+        return formatResponse(response.data.results, genres);
+    } catch (error) {
+        console.error(`Error fetching movies for services ${serviceIds}:`, error);
+        throw error;
+    }
+};
+
+// Fetch TV shows by selected streaming services
+export const fetchTVShowsByServices = async (serviceIds, page = 1) => {
+    try {
+        if (!serviceIds || serviceIds.length === 0) {
+            return fetchPopularTVShows();
+        }
+        const genres = await fetchGenres();
+        const response = await tmdbApi.get('/discover/tv', {
+            params: { with_watch_providers: serviceIds.join(','), watch_region: 'US', page },
+        });
+        return formatResponse(response.data.results, genres);
+    } catch (error) {
+        console.error(`Error fetching TV shows for services ${serviceIds}:`, error);
+        throw error;
+    }
+};
+
+// Fetch movies by genre
 export const fetchMoviesByGenre = async (genreId) => {
     try {
         const response = await tmdbApi.get('/discover/movie', {
@@ -113,6 +123,28 @@ export const fetchMoviesByGenre = async (genreId) => {
         return response.data.results;
     } catch (error) {
         console.error(`Error fetching movies for genre ${genreId}:`, error);
+        throw error;
+    }
+};
+
+// Fetch movie watch providers from TMDB
+export const fetchMovieWatchProviders = async (movieId) => {
+    try {
+        const response = await tmdbApi.get(`/movie/${movieId}/watch/providers`);
+        return response.data.results;
+    } catch (error) {
+        console.error(`Error fetching watch providers for movie ${movieId}:`, error);
+        throw error;
+    }
+};
+
+// Fetch show watch providers from TMDB
+export const fetchShowWatchProviders = async (showId) => {
+    try {
+        const response = await tmdbApi.get(`/tv/${showId}/watch/providers`);
+        return response.data.results;
+    } catch (error) {
+        console.error(`Error fetching watch providers for show ${showId}:`, error);
         throw error;
     }
 };
@@ -149,24 +181,15 @@ export const fetchStreamingServices = async () => {
     }
 };
 
-// Fetch movie watch providers from TMDB
-export const fetchMovieWatchProviders = async (movieId) => {
+// Search movies
+export const searchMovies = async (query) => {
     try {
-        const response = await tmdbApi.get(`/movie/${movieId}/watch/providers`);
+        const response = await tmdbApi.get('/search/movie', {
+            params: { query },
+        });
         return response.data.results;
     } catch (error) {
-        console.error(`Error fetching watch providers for movie ${movieId}:`, error);
-        throw error;
-    }
-};
-
-// Fetch show watch providers from TMDB
-export const fetchShowWatchProviders = async (showId) => {
-    try {
-        const response = await tmdbApi.get(`/tv/${showId}/watch/providers`);
-        return response.data.results;
-    } catch (error) {
-        console.error(`Error fetching watch providers for show ${showId}:`, error);
+        console.error('Error searching for movies:', error);
         throw error;
     }
 };

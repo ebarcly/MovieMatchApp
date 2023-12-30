@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, Switch, TextInput } from 'react-native';
-import { auth } from '../firebaseConfig'; // Import Firestore
 import { useNavigation } from '@react-navigation/native';
 import { collection, getDocs, updateDoc, doc } from 'firebase/firestore';
+import { auth } from '../firebaseConfig';
 import { db } from '../firebaseConfig';
 import { fetchStreamingServices } from '../services/api';
 
@@ -222,22 +222,23 @@ const styles = StyleSheet.create({
   serviceList: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    justifyContent: 'space-between', // Added to create two columns
   },
   serviceItem: {
+    width: '48%', // Added to create two columns
     flexDirection: 'column',
     alignItems: 'center',
     marginBottom: 10,
-    marginRight: 20,
     borderWidth: 1,
     borderColor: '#ccc',
     borderRadius: 5,
     padding: 10,
   },
   serviceItemSelected: {
+    width: '48%', // Added to create two columns
     flexDirection: 'column',
     alignItems: 'center',
     marginBottom: 10,
-    marginRight: 20,
     borderWidth: 1,
     borderColor: 'blue',
     borderRadius: 5,
@@ -268,32 +269,33 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   genresLabel: {
-    fontWeight: 'bold',
+    fontFamily: 'WorkSans-Bold',
     marginBottom: 10,
   },
   genreList: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    justifyContent: 'space-between', // Added to create two columns
   },
   genreItem: {
+    width: '48%', // Added to create two columns
     flexDirection: 'column',
     alignItems: 'center',
     marginBottom: 10,
-    marginRight: 20,
     borderWidth: 1,
     borderColor: '#ccc',
     borderRadius: 5,
-    padding: 10,
+    padding: 12,
   },
   genreSelected: {
+    width: '48%', // Added to create two columns
     flexDirection: 'column',
     alignItems: 'center',
     marginBottom: 10,
-    marginRight: 20,
     borderWidth: 1,
     borderColor: 'blue',
     borderRadius: 5,
-    padding: 10,
+    padding: 12,
   },
   genreText: {
     fontSize: 12,

@@ -1,5 +1,5 @@
 import React, { createContext, useReducer, useEffect } from 'react';
-import { fetchConfiguration, fetchGenres, fetchDetailsById } from '../services/api'; // Import the API calls for configuration and genres
+import { fetchConfiguration, fetchGenres, fetchDetailsById } from '../services/api'; // Import the API calls
 
 const initialState = {
     movies: [],
@@ -8,12 +8,12 @@ const initialState = {
     likedMovies: [],  // Store liked movies
     dislikedMovies: [],  // Store disliked movies
     configData: {},
-    genres: []  // Store genres
+    genres: [],  // Store genres
+    error: null  // To handle errors
 };
 
 export const MoviesContext = createContext(initialState);
 
-// Create a reducer function to update the state based on the action dispatched
 const moviesReducer = (state, action) => {
     switch (action.type) {
         case 'SET_MOVIES':
@@ -28,17 +28,17 @@ const moviesReducer = (state, action) => {
             return { ...state, configData: action.payload };
         case 'SET_GENRES':
             return { ...state, genres: action.payload };
+        case 'SET_ERROR':
+            return { ...state, error: action.payload };
         default:
             return state;
     }
 };
 
-// Create the MoviesProvider component to wrap the entire app
-export const MoviesProvider = ({ children }) => {  
+export const MoviesProvider = ({ children }) => {
     const [state, dispatch] = useReducer(moviesReducer, initialState);
 
     useEffect(() => {
-        // Fetch configuration and genres on initial load
         const loadData = async () => {
             try {
                 const configData = await fetchConfiguration();
@@ -46,10 +46,9 @@ export const MoviesProvider = ({ children }) => {
 
                 const genresArray = await fetchGenres();
                 dispatch({ type: 'SET_GENRES', payload: genresArray });
-
             } catch (error) {
                 console.error('Error fetching data:', error);
-                // You may want to handle the error, e.g., by setting an error state
+                dispatch({ type: 'SET_ERROR', payload: error.message });
             }
         };
 

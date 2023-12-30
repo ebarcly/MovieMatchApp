@@ -1,47 +1,58 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, Switch } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, Switch, TextInput } from 'react-native';
 import { auth } from '../firebaseConfig'; // Import Firestore
 import { useNavigation } from '@react-navigation/native';
 import { collection, getDocs, updateDoc, doc } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
-
-
-// Dummy data for streaming services 
-const STREAMING_SERVICES = [
-  { name: 'Netflix', logo: 'https://imgs.search.brave.com/iMK0bpQOHFE9qAS6J2UI9mfJ97x8nhrepANtIF_PSds/rs:fit:860:0:0/g:ce/aHR0cHM6Ly9hc3Nl/dHMuc3RpY2twbmcu/Y29tL2ltYWdlcy81/ODBiNTdmY2Q5OTk2/ZTI0YmM0M2M1Mjku/cG5n' },
-  { name: 'Prime Video', logo: 'https://logodownload.org/wp-content/uploads/2018/07/prime-video-logo-0.png' },
-  { name: 'Hulu', logo: 'https://logodownload.org/wp-content/uploads/2019/09/hulu-logo-0.png' },
-  { name: 'HBO Max', logo: 'https://logodownload.org/wp-content/uploads/2022/12/hbo-max-logo-0.png' },
-  { name: 'Disney+', logo: 'https://logodownload.org/wp-content/uploads/2020/11/disney-plus-logo-0.png' },
-  { name: 'Apple TV+', logo: 'https://logodownload.org/wp-content/uploads/2023/05/apple-tv-logo-0.png' },
-  { name: 'Peacock', logo: 'https://logodownload.org/wp-content/uploads/2022/12/peacock-logo-0.png' },
-  { name: 'Paramount+', logo: 'https://logodownload.org/wp-content/uploads/2021/03/paramount-plus-logo-0.png' },
-  { name: 'Discovery+', logo: 'https://logodownload.org/wp-content/uploads/2021/11/discovery-plus-logo-0.png' },
-  { name: 'Showtime', logo: 'https://logodownload.org/wp-content/uploads/2021/05/showtime-logo-0.png' },
-  // Add more services here
-];
+import { fetchStreamingServices } from '../services/api';
 
 // Dummy data for genres
-const GENRES = ['Action', 'Comedy', 'Drama', 'Fantasy', 'Horror', 'Mystery', 'Romance', 'Thriller', 'Sci-Fi', 'Anime', 'Documentary', 'Musical', 'Western', 'War', 'History', 'Crime', 'Family', 'Adventure', 'Biography', 'Sport', 'Music', 'Short', 'News', 'Talk-Show', 'Reality-TV', 'Game-Show', 'Film-Noir'];
-
+const GENRES = ['Action', 'Comedy', 'Drama', 'Fantasy', 'Horror', 'Mystery', 'Romance', 'Thriller', 'Sci-Fi', 'Anime'];
 
 const ProfileSetupScreen = ({ route }) => {
   const [username, setUsername] = useState('');
   const [profileName, setProfileName] = useState('');
   const [bio, setBio] = useState('');
-  const [streamingServices, setStreamingServices] = useState([]);
+  const [streamingServices, setStreamingServices] = useState([]); // New state to store streaming services
+  const [streamingServicesData, setStreamingServicesData] = useState([]); // New state to store streaming services data
   const [genres, setGenres] = useState([]);
   const [fullCatalogAccess, setFullCatalogAccess] = useState(false);
   const [error, setError] = useState('');
+  const [profileData, setProfileData] = useState(null); // New state to store profile data
   const isEditMode = route.params?.isEditing || false; // Get the flag from the route params
   const navigation = useNavigation();
 
   useEffect(() => {
+    // Fetch streaming services data and logos from TMDB and store in state
+    const fetchStreamingServicesData = async () => {
+      try {
+        const data = await fetchStreamingServices();
+        setStreamingServicesData(data);
+      } catch (error) {
+        console.error('Error fetching streaming services:', error);
+      }
+    };
+
+    // Fetch streaming services data initially
+    fetchStreamingServicesData();
+
     // Only fetch data if in edit mode
     if (isEditMode) {
       fetchUserProfile();
     }
   }, [isEditMode]);
+
+  useEffect(() => {
+    // Update the profile data state whenever the profile data changes
+    setProfileData({
+      username,
+      profileName,
+      bio,
+      streamingServices,
+      genres,
+      fullCatalogAccess,
+    });
+  }, [username, profileName, bio, streamingServices, genres, fullCatalogAccess]);
 
   const fetchUserProfile = async () => {
     try {
@@ -67,14 +78,7 @@ const ProfileSetupScreen = ({ route }) => {
     if (user) {
       try {
         const userDocRef = doc(db, 'users', user.uid);
-        await updateDoc(userDocRef, {
-          username,
-          profileName,
-          bio,
-          streamingServices,
-          genres,
-          fullCatalogAccess,
-        });
+        await updateDoc(userDocRef, profileData); // Use the profileData state variable to update the document
 
         // Provide feedback and navigate back
         if (isEditMode) {
@@ -89,11 +93,14 @@ const ProfileSetupScreen = ({ route }) => {
     }
   };
 
-  
-  const handleStreamingServiceChange = (service) => {
-    setStreamingServices((prev) =>
-      prev.includes(service) ? prev.filter((s) => s !== service) : [...prev, service]
-    );
+  const handleStreamingServiceChange = (serviceName) => {
+    setStreamingServices(prevServices => {
+      if (prevServices.includes(serviceName)) {
+        return prevServices.filter(service => service !== serviceName);
+      } else {
+        return [...prevServices, serviceName];
+      }
+    });
   };
 
   const handleGenreChange = (genre) => {
@@ -106,47 +113,73 @@ const ProfileSetupScreen = ({ route }) => {
     <ScrollView style={styles.container}>
       <Text style={styles.title}>Edit Profile</Text>
       {/* Username, Profile Name, and Bio Inputs */}
-      {/* ... */}
+      <View style={styles.inputContainer}>
+        <Text style={styles.label}>Username</Text>
+        <TextInput
+          style={styles.input}
+          value={username}
+          onChangeText={setUsername}
+        />
+      </View>
+      <View style={styles.inputContainer}>
+        <Text style={styles.label}>Profile Name</Text>
+        <TextInput
+          style={styles.input}
+          value={profileName}
+          onChangeText={setProfileName}
+        />
+      </View>
+      <View style={styles.inputContainer}>
+        <Text style={styles.label}>Bio</Text>
+        <TextInput
+          style={styles.input}
+          value={bio}
+          onChangeText={setBio}
+          multiline
+        />
+      </View>
       {/* Streaming Services Selection */}
       <View style={styles.streamingServicesContainer}>
-        <Text style={styles.streamingServicesLabel}>Streaming Services:</Text>
+        <Text style={styles.streamingServicesLabel}>My Services:</Text>
         <View style={styles.serviceList}>
-          {STREAMING_SERVICES.map((service, index) => (
+          {streamingServicesData.map((service) => (
             <TouchableOpacity
-              key={index}
-              style={streamingServices.includes(service.name) ? styles.serviceItemSelected : styles.serviceItem}
-              onPress={() => handleStreamingServiceChange(service.name)}
+              key={service.provider_id}
+              style={streamingServices.includes(service.provider_name) ? styles.serviceItemSelected : styles.serviceItem}
+              onPress={() => handleStreamingServiceChange(service.provider_name)}
             >
-              <Image source={{ uri: service.logo }} style={styles.logo} />
-              <Text style={streamingServices.includes(service.name) ? styles.serviceNameSelected : styles.serviceName}>
-                {service.name}
+              <Image source={{ uri: service.logo_url }} style={styles.logo} />
+              <Text style={streamingServices.includes(service.provider_name) ? styles.serviceNameSelected : styles.serviceName}>
+                {service.provider_name}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
-        {/* Full Catalog Access Toggle */}
-        <View style={styles.fullCatalogContainer}>
-          <Text style={styles.fullCatalogLabel}>Access Full Catalog:</Text>
-          <Switch
-            value={fullCatalogAccess}
-            onValueChange={setFullCatalogAccess}
-          />
-        </View>
+      </View>
+      {/* Full Catalog Access Toggle */}
+      <View style={styles.fullCatalogContainer}>
+        <Text style={styles.fullCatalogLabel}>Access Full Catalog:</Text>
+        <Switch
+          value={fullCatalogAccess}
+          onValueChange={setFullCatalogAccess}
+        />
       </View>
       {/* Genre Preferences Selection */}
       <View style={styles.genresContainer}>
         <Text style={styles.genresLabel}>Genres:</Text>
-        {GENRES.map((genre, index) => (
-          <TouchableOpacity
-            key={genre}
-            style={genres.includes(genre) ? styles.genreSelected : styles.genreItem}
-            onPress={() => handleGenreChange(genre)}
-          >
-            <Text style={genres.includes(genre) ? styles.genreTextSelected : styles.genreText}>
-              {genre}
-            </Text>
-          </TouchableOpacity>
-        ))}
+        <View style={styles.genreList}>
+          {GENRES.map((genre) => (
+            <TouchableOpacity
+              key={genre}
+              style={genres.includes(genre) ? styles.genreSelected : styles.genreItem}
+              onPress={() => handleGenreChange(genre)}
+            >
+              <Text style={genres.includes(genre) ? styles.genreTextSelected : styles.genreText}>
+                {genre}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
       </View>
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
       <TouchableOpacity onPress={handleProfileUpdate} style={styles.updateButton}>
@@ -181,8 +214,6 @@ const styles = StyleSheet.create({
   },
   streamingServicesContainer: {
     marginBottom: 20,
-    marginTop: 20,
-    alignSelf: 'flex-start',
   },
   streamingServicesLabel: {
     fontWeight: 'bold',
@@ -235,12 +266,14 @@ const styles = StyleSheet.create({
   },
   genresContainer: {
     marginBottom: 20,
-    marginTop: 20,
-    alignSelf: 'flex-start',
   },
   genresLabel: {
     fontWeight: 'bold',
     marginBottom: 10,
+  },
+  genreList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
   },
   genreItem: {
     flexDirection: 'column',
@@ -277,14 +310,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 20,
-    marginTop: 20,
-    alignSelf: 'flex-start',
   },
   fullCatalogLabel: {
     fontWeight: 'bold',
     marginRight: 10,
   },
-
   updateButton: {
     backgroundColor: '#007BFF',
     padding: 10,
@@ -297,7 +327,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
-
 });
 
 export default ProfileSetupScreen;

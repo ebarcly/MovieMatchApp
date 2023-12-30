@@ -128,6 +128,27 @@ export const fetchConfiguration = async () => {
     }
 };
 
+// Fetch Available Streaming Services
+export const fetchStreamingServices = async () => {
+    try {
+        const response = await tmdbApi.get('/watch/providers/tv?watch_region=US');
+        const services = response.data.results;
+        const filteredServices = services.filter(service => service.provider_id && service.logo_path); // Ensure service has an ID and logo
+
+        // Sort services by popularity and take the top 25
+        const topServices = filteredServices.sort((a, b) => b.popularity - a.popularity).slice(0, 25);
+
+        // Update the logo URL for each streaming service
+        return topServices.map(service => ({
+            ...service,
+            logo_url: `https://image.tmdb.org/t/p/w500${service.logo_path}`
+        }));
+    } catch (error) {
+        console.error('Error fetching streaming services:', error);
+        throw error;
+    }
+};
+
 // Fetch movie watch providers from TMDB
 export const fetchMovieWatchProviders = async (movieId) => {
     try {
@@ -156,7 +177,7 @@ const fetchCertificationsById = async (id, type) => {
         const endpoint = type === 'tv' ? `/tv/${id}/content_ratings` : `/movie/${id}/release_dates`;
         const response = await tmdbApi.get(endpoint);
         let certification;
-        
+
         if (type === 'tv') {
             const usRating = response.data.results.find(r => r.iso_3166_1 === 'US');
             certification = usRating ? usRating.rating : 'NR';
@@ -164,7 +185,7 @@ const fetchCertificationsById = async (id, type) => {
             const usRelease = response.data.results.find(release => release.iso_3166_1 === 'US');
             certification = usRelease?.release_dates?.[0]?.certification || 'NR';
         }
-        
+
         return certification;
     } catch (error) {
         console.error(`Error fetching certifications for ${type} ${id}:`, error);
@@ -200,6 +221,3 @@ export const fetchDetailsById = async (id, type) => {
         throw error;
     }
 };
-
-
-

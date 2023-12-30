@@ -1,48 +1,68 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, ScrollView, StyleSheet, ActivityIndicator, Text } from 'react-native';
+import { doc, getDoc } from 'firebase/firestore';
 import SwipeableCard from '../components/SwipeableCard';
 import NavigationBar from '../components/NavigationBar';
 import CategoryTabs from '../components/CategoryTabs';
-import { fetchPopularMovies, fetchPopularTVShows } from '../services/api'; // Ensure you have the fetchPopularTVShows API call implemented
+import { fetchPopularMovies, fetchPopularTVShows, fetchMoviesByServices, fetchTVShowsByServices, mapServiceNamesToIds } from '../services/api';
+import { auth, db } from '../firebaseConfig';
 
-const HomeScreen = ({ navigation }) => { // Add navigation as a prop
-  const username = 'Enrique';
-  const [content, setContent] = useState([]); // This will store either movies or TV shows based on selection
-  const [loading, setLoading] = useState(true); // State to manage loading status
-  const [error, setError] = useState(''); // State to hold any error messages
-  const [selectedCategory, setSelectedCategory] = useState('Movies'); // Start with 'Movies' as default
-  const [currentCardIndex, setCurrentCardIndex] = useState(0); // State to keep track of the current card index
-  const [isRefreshing, setIsRefreshing] = useState(false); // State to manage pull-to-refresh
+const HomeScreen = ({ navigation }) => {
+  const [content, setContent] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('Movies');
+  const [currentCardIndex, setCurrentCardIndex] = useState(0);
 
-  // Fetch content based on the selected category
-  const fetchContent = useCallback(async () => {
-    if (!isRefreshing) setIsRefreshing(true); // If refresh is triggered, set isRefreshing to true
+  const fetchUserPreferences = async () => {
     try {
-      let data;
-      if (selectedCategory === 'Movies') {
-        data = await fetchPopularMovies();
-        data.results = data.results.map(item => ({ ...item, type: 'movie' })); // Set type property to 'movie'
-      } else if (selectedCategory === 'TV Shows') {
-        data = await fetchPopularTVShows();
-        data.results = data.results.map(item => ({ ...item, type: 'tv' })); // Set type property to 'tvshow'
-      } else {
-        // Handle other categories as needed
-        data = { results: [] };
+      const user = auth.currentUser;
+      if (!user) return null;
+      const docRef = doc(db, 'users', user.uid);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        return docSnap.data();
       }
-      setContent(data.results);
-      setCurrentCardIndex(0); // Reset the current card index to 0
-      setIsRefreshing(false); // If refresh is successful, set isRefreshing to false
+    } catch (error) {
+      console.error('Error fetching user preferences:', error);
+    }
+  };
+
+  const fetchContent = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const userPrefs = await fetchUserPreferences();
+      const { streamingServices, fullCatalogAccess } = userPrefs || {};
+
+      let data;
+      if (fullCatalogAccess) {
+        // Fetch full catalog
+        data = selectedCategory === 'Movies' ? await fetchPopularMovies() : await fetchPopularTVShows();
+      } else if (streamingServices && streamingServices.length > 0) {
+        // Fetch based on selected streaming services
+        const serviceIds = await mapServiceNamesToIds(streamingServices);
+        data = selectedCategory === 'Movies'
+          ? await fetchMoviesByServices(serviceIds)
+          : await fetchTVShowsByServices(serviceIds);
+      } else {
+        // Fallback to popular movies or TV shows
+        data = selectedCategory === 'Movies' ? await fetchPopularMovies() : await fetchPopularTVShows();
+      }
+
+      setContent(data);
+      setCurrentCardIndex(0);
     } catch (e) {
-      setError(`Failed to fetch ${selectedCategory.toLowerCase()}`);
-      console.error(e);
+      setError(`Failed to fetch ${selectedCategory.toLowerCase()}: ${e.message}`);
     } finally {
       setLoading(false);
     }
   }, [selectedCategory]);
 
+
   useEffect(() => {
     fetchContent();
-  }, [fetchContent]);
+  }, [fetchContent, selectedCategory]);
 
   const handleSwipeComplete = useCallback(() => {
     setCurrentCardIndex(prevIndex => Math.min(prevIndex + 1, content.length - 1));
@@ -61,17 +81,22 @@ const HomeScreen = ({ navigation }) => { // Add navigation as a prop
   }
 
   if (content.length === 0) {
-    return <Text style={styles.errorText}>Content is currently unavailable.</Text>;
+    return <Text style={styles.errorText}>No content available for your selection.</Text>;
   }
 
   return (
     <ScrollView style={styles.container}>
-      <NavigationBar username={username} />
+      <NavigationBar username={auth.currentUser?.displayName || 'User'} />
       <CategoryTabs onCategorySelect={(category) => setSelectedCategory(category)} />
       <View style={styles.cardContainer}>
-        {content.slice(currentCardIndex, currentCardIndex + 1).map((item) => (
-          <SwipeableCard key={item.id.toString()} movie={item} onSwipeComplete={handleSwipeComplete} navigation={navigation} /> // Pass navigation as a prop
-        ))}
+        {content[currentCardIndex] && (
+          <SwipeableCard
+            key={content[currentCardIndex].id.toString()}
+            movie={content[currentCardIndex]}
+            onSwipeComplete={handleSwipeComplete}
+            navigation={navigation}
+          />
+        )}
       </View>
     </ScrollView>
   );

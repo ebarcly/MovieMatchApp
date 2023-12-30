@@ -44,7 +44,7 @@ const MyCaveScreen = () => {
         }
       }
     };
-    
+
     // Fetch user profile data initially
     fetchUserProfile();
 
@@ -115,9 +115,11 @@ const MyCaveScreen = () => {
         <Text style={styles.name}>{userData.profileName || 'Enrique'}</Text>
         <Text style={styles.description}>{userData.bio || 'Your Bio'}</Text>
         {/* Genre tags based on user data */}
-        {userData.genres?.map((genre, index) => (
-          <Text key={index} style={styles.genreText}>{genre}</Text>
-        ))}
+        <View style={styles.genreContainer}>
+          {userData.genres?.map((genre, index) => (
+            <Text key={index} style={styles.genreText}>{genre}</Text>
+          ))}
+        </View>
         <TouchableOpacity onPress={navigateToProfileEdit} style={styles.editProfileButton}>
           <Text style={styles.editProfileText}>Edit profile</Text>
         </TouchableOpacity>
@@ -202,7 +204,7 @@ const styles = StyleSheet.create({
   },
   genreContainer: {
     flexDirection: 'row',
-    justifyContent: 'center', // Center the genre tags
+    justifyContent: 'center',
     marginBottom: 20,
   },
   genreText: {
@@ -210,13 +212,16 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 12,
     marginHorizontal: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)', // Semi-transparent white background
+    backgroundColor: '#445', // Update the background color
     borderRadius: 20,
     fontSize: 14,
-    overflow: 'hidden', // Ensures the background doesn't bleed outside the border radius
+    overflow: 'hidden',
+    fontFamily: 'WorkSans-Regular',
+    borderWidth: 1,
+    borderColor: '#fff',
   },
   editProfileButton: {
-    backgroundColor: '#445', // Dark button background
+    backgroundColor: '#445',
     paddingVertical: 10,
     paddingHorizontal: 20,
     borderRadius: 20,

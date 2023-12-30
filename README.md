@@ -47,6 +47,11 @@ Contributions to the MovieMatchApp are welcome. Please read our contribution gui
 
 ---
 
+
+---
+
+
+
 ```
 MovieMatchApp
 ├─ .git
@@ -86,6 +91,7 @@ MovieMatchApp
 ├─ context
 │  └─ MoviesContext.js
 ├─ firebaseConfig.js
+├─ jsconfig.json
 ├─ metro.config.js
 ├─ navigation
 │  └─ AppNavigator.js

@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, ScrollView } from 'react-native';
 import CategoryButton from './CategoryButton';
 
-const categories = ['Movies', 'TV Shows']; // add Categories later
+const categories = ['Movies', 'TV Shows', 'Trending']; // Updated categories list
 
 const CategoryTabs = ({ onCategorySelect }) => {
   const [activeTab, setActiveTab] = useState(categories[0]);
@@ -13,7 +13,11 @@ const CategoryTabs = ({ onCategorySelect }) => {
   }
 
   return (
-    <View style={styles.container}>
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={styles.container}
+    >
       {categories.map((category) => (
         <CategoryButton
           key={category}
@@ -22,7 +26,7 @@ const CategoryTabs = ({ onCategorySelect }) => {
           onPress={() => handleCategorySelect(category)}
         />
       ))}
-    </View>
+    </ScrollView>
   );
 };
 
@@ -31,8 +35,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     padding: 16,
     backgroundColor: '#f0f0f0',
-    justifyContent: 'left',
-    alignItems: 'left',
   },
 });
 

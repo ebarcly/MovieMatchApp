@@ -4,7 +4,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import SwipeableCard from '../components/SwipeableCard';
 import NavigationBar from '../components/NavigationBar';
 import CategoryTabs from '../components/CategoryTabs';
-import { fetchPopularMovies, fetchPopularTVShows, fetchMoviesByServices, fetchTVShowsByServices, mapServiceNamesToIds } from '../services/api';
+import { fetchPopularMovies, fetchPopularTVShows, fetchMoviesByServices, fetchTVShowsByServices, fetchTrendingContent, mapServiceNamesToIds } from '../services/api';
 import { auth, db } from '../firebaseConfig';
 
 const HomeScreen = ({ navigation }) => {
@@ -28,41 +28,37 @@ const HomeScreen = ({ navigation }) => {
     }
   };
 
-  const fetchContent = useCallback(async () => {
-    setLoading(true);
-    setError('');
+  const fetchContentBasedOnCategory = async (category) => {
     try {
       const userPrefs = await fetchUserPreferences();
       const { streamingServices, fullCatalogAccess } = userPrefs || {};
 
-      let data;
-      if (fullCatalogAccess) {
-        // Fetch full catalog
-        data = selectedCategory === 'Movies' ? await fetchPopularMovies() : await fetchPopularTVShows();
+      let data = [];
+      if (category === 'Trending') {
+        data = await fetchTrendingContent('all', 'week');
+      } else if (fullCatalogAccess) {
+        data = category === 'Movies' ? await fetchPopularMovies() : await fetchPopularTVShows();
       } else if (streamingServices && streamingServices.length > 0) {
-        // Fetch based on selected streaming services
         const serviceIds = await mapServiceNamesToIds(streamingServices);
-        data = selectedCategory === 'Movies'
+        data = category === 'Movies'
           ? await fetchMoviesByServices(serviceIds)
           : await fetchTVShowsByServices(serviceIds);
       } else {
-        // Fallback to popular movies or TV shows
-        data = selectedCategory === 'Movies' ? await fetchPopularMovies() : await fetchPopularTVShows();
+        data = category === 'Movies' ? await fetchPopularMovies() : await fetchPopularTVShows();
       }
 
       setContent(data);
       setCurrentCardIndex(0);
     } catch (e) {
-      setError(`Failed to fetch ${selectedCategory.toLowerCase()}: ${e.message}`);
+      setError(`Failed to fetch ${category.toLowerCase()}: ${e.message}`);
     } finally {
       setLoading(false);
     }
-  }, [selectedCategory]);
-
+  };
 
   useEffect(() => {
-    fetchContent();
-  }, [fetchContent, selectedCategory]);
+    fetchContentBasedOnCategory(selectedCategory);
+  }, [selectedCategory]);
 
   const handleSwipeComplete = useCallback(() => {
     setCurrentCardIndex(prevIndex => Math.min(prevIndex + 1, content.length - 1));
@@ -87,16 +83,16 @@ const HomeScreen = ({ navigation }) => {
   return (
     <ScrollView style={styles.container}>
       <NavigationBar username={auth.currentUser?.displayName || 'User'} />
-      <CategoryTabs onCategorySelect={(category) => setSelectedCategory(category)} />
+      <CategoryTabs onCategorySelect={setSelectedCategory} />
       <View style={styles.cardContainer}>
-        {content[currentCardIndex] && (
+        {content.slice(currentCardIndex, currentCardIndex + 1).map((item) => (
           <SwipeableCard
-            key={content[currentCardIndex].id.toString()}
-            movie={content[currentCardIndex]}
+            key={item.id.toString()}
+            movie={item}
             onSwipeComplete={handleSwipeComplete}
             navigation={navigation}
           />
-        )}
+        ))}
       </View>
     </ScrollView>
   );

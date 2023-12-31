@@ -88,7 +88,7 @@ export const fetchMoviesByServices = async (serviceIds, page = 1) => {
         }
         const genres = await fetchGenres();
         const response = await tmdbApi.get('/discover/movie', {
-            params: { with_watch_providers: serviceIds.join(','), watch_region: 'US', page },
+            params: { with_watch_providers: serviceIds.join('|'), watch_region: 'US', page },
         });
         return formatResponse(response.data.results, genres);
     } catch (error) {
@@ -105,7 +105,7 @@ export const fetchTVShowsByServices = async (serviceIds, page = 1) => {
         }
         const genres = await fetchGenres();
         const response = await tmdbApi.get('/discover/tv', {
-            params: { with_watch_providers: serviceIds.join(','), watch_region: 'US', page },
+            params: { with_watch_providers: serviceIds.join('|'), watch_region: 'US', page },
         });
         return formatResponse(response.data.results, genres);
     } catch (error) {

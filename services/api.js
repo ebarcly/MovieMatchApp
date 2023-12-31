@@ -45,6 +45,17 @@ export const mapServiceNamesToIds = async (serviceNames) => {
     }
 };
 
+// Fetch trending content from TMDB
+export const fetchTrendingContent = async (mediaType = 'all', timeWindow = 'day') => {
+    try {
+        const response = await tmdbApi.get(`/trending/${mediaType}/${timeWindow}`);
+        return formatResponse(response.data.results, await fetchGenres());
+    } catch (error) {
+        console.error(`Error fetching trending content:`, error);
+        throw error;
+    }
+};
+
 // Fetch genres from TMDB
 export const fetchGenres = async () => {
     try {

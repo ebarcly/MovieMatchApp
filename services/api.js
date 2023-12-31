@@ -87,7 +87,7 @@ export const fetchMoviesByServices = async (serviceIds, page = 1) => {
             return fetchPopularMovies();
         }
         const genres = await fetchGenres();
-        const response = await tmdbApi.get('/discover/movie', {
+        const response = await tmdbApi.get('/discover/movie?include_adult=false&include_video=false&page=1&sort_by=primary_release_date.desc&watch_region=US', {
             params: { with_watch_providers: serviceIds.join('|'), watch_region: 'US', page },
         });
         return formatResponse(response.data.results, genres);
@@ -104,7 +104,7 @@ export const fetchTVShowsByServices = async (serviceIds, page = 1) => {
             return fetchPopularTVShows();
         }
         const genres = await fetchGenres();
-        const response = await tmdbApi.get('/discover/tv', {
+        const response = await tmdbApi.get('/discover/tv?include_adult=false&include_null_first_air_dates=false&language=en-US&page=1&sort_by=primary_release_date.desc&watch_region=US', {
             params: { with_watch_providers: serviceIds.join('|'), watch_region: 'US', page },
         });
         return formatResponse(response.data.results, genres);

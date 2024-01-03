@@ -3,7 +3,7 @@ import { View, Image, Text, StyleSheet, Animated, TouchableOpacity, TouchableWit
 import { GestureHandlerRootView, Swipeable } from 'react-native-gesture-handler';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { MoviesContext } from '../context/MoviesContext';
-import { useNavigation } from '@react-navigation/native'; 
+import { useNavigation } from '@react-navigation/native';
 
 const SwipeableCard = ({ movie, onSwipeComplete }) => {
   const { state, dispatch } = useContext(MoviesContext); // Use the context
@@ -13,7 +13,7 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
 
   // Use secure_base_url from configData and choose appropriate size for poster
   const imageBaseUrl = state.configData.images.secure_base_url;
-  const imageSize = 'w500'; // Choose the appropriate image size from the available options
+  const imageSize = 'w780'; // Choose the appropriate image size
 
   // Construct the full URI for the movie poster image
   const imageUri = poster_path ? `${imageBaseUrl}${imageSize}${poster_path}` : require('../assets/default_image.jpeg');
@@ -56,22 +56,25 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
     );
   };
 
-  const renderGenres = () => {
-    if (genre_ids.length > 0 && state.genres.length > 0) {
-      // Map genre IDs to genre names
-      const genreNames = genre_ids.map(genreId => {
-        const genre = state.genres.find(g => g.id === genreId);
-        return genre ? genre.name : 'Unknown';
-      });
+const renderGenres = () => {
+  if (genre_ids.length > 0 && state.genres.length > 0) {
+    // Map genre IDs to genre names
+    const genreNames = genre_ids.map(genreId => {
+      const genre = state.genres.find(g => g.id === genreId);
+      return genre ? genre.name : null; // Return null instead of 'Unknown'
+    }).filter(Boolean); // Filter out null values
+
+    if (genreNames.length > 0) { // Check if there are any available genres
       return genreNames.slice(0, 3).map((name, index) => (
-        <Text key={index} style={styles.genre}>
-          {name}
-          {index !== genreNames.length - 1 && <Text style={styles.separator}> • </Text>}
+        <Text key={index} style={styles.genreSmall}>
+         • {name}
+          {index !== genreNames.length - 1}
         </Text>
       ));
-    } else {
-      return <Text style={styles.genre}>Genres unavailable</Text>;
     }
+  }
+
+  return <Text style={styles.genreSmall}>Genres unavailable</Text>;
   };
 
   return (
@@ -142,30 +145,30 @@ const styles = StyleSheet.create({
   },
   poster: {
     flex: 1,
-    width: '100%',
-    height: '100%',
+    width: '90%',
+    height: '90%',
     aspectRatio: 2 / 3,
     overflow: 'hidden',
     backfaceVisibility: 'hidden',
   },
   genreContainer: {
     position: 'absolute',
+    top: 8,
+    right: 8,
     flexDirection: 'row',
-    flexWrap: 'wrap', 
+    flexWrap: 'wrap',
     zIndex: 10,
-    top: 364,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(48,48,64,0.6)',
-    borderRadius: 24,
+    justifyContent: 'flex-end',
+    alignItems: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     paddingHorizontal: 8,
-    paddingVertical: 8,
+    paddingVertical: 4,
   },
-  genre: {
+  genreSmall: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: 12,
     fontFamily: 'WorkSans-Bold',
-    lineHeight: 18,
+    lineHeight: 16,
     paddingVertical: 2,
     overflow: 'hidden',
     marginHorizontal: 4,

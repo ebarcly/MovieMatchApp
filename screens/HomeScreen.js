@@ -11,7 +11,7 @@ const HomeScreen = ({ navigation }) => {
   const [content, setContent] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('Movies');
+  const [selectedCategory, setSelectedCategory] = useState('TV Shows'); 
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
 
   const fetchUserPreferences = async () => {
@@ -34,8 +34,8 @@ const HomeScreen = ({ navigation }) => {
       const { streamingServices, fullCatalogAccess } = userPrefs || {};
 
       let data = [];
-      if (category === 'Trending') {
-        data = await fetchTrendingContent('all', 'week');
+      if (category === 'All') {
+        data = await fetchTrendingContent('all', 'day');
       } else if (fullCatalogAccess) {
         data = category === 'Movies' ? await fetchPopularMovies() : await fetchPopularTVShows();
       } else if (streamingServices && streamingServices.length > 0) {
@@ -82,7 +82,7 @@ const HomeScreen = ({ navigation }) => {
 
   return (
     <ScrollView style={styles.container}>
-      <NavigationBar username={auth.currentUser?.displayName || 'User'} />
+      <NavigationBar profileName={auth.currentUser?.profileName} />
       <CategoryTabs onCategorySelect={setSelectedCategory} />
       <View style={styles.cardContainer}>
         {content.slice(currentCardIndex, currentCardIndex + 1).map((item) => (

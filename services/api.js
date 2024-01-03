@@ -91,15 +91,20 @@ export const fetchPopularTVShows = async (page = 1) => {
     }
 };
 
-// Fetch movies by selected streaming services
+// Fetch movies by selected streaming services with a focus on popularity
 export const fetchMoviesByServices = async (serviceIds, page = 1) => {
     try {
         if (!serviceIds || serviceIds.length === 0) {
             return fetchPopularMovies();
         }
         const genres = await fetchGenres();
-        const response = await tmdbApi.get('/discover/movie?include_adult=false&include_video=false&page=1&sort_by=primary_release_date.desc&watch_region=US', {
-            params: { with_watch_providers: serviceIds.join('|'), watch_region: 'US', page },
+        const response = await tmdbApi.get('/discover/movie', {
+            params: {
+                with_watch_providers: serviceIds.join('|'),
+                watch_region: 'US',
+                sort_by: 'popularity.desc', // Sorting by popularity
+                page
+            }
         });
         return formatResponse(response.data.results, genres);
     } catch (error) {
@@ -108,15 +113,21 @@ export const fetchMoviesByServices = async (serviceIds, page = 1) => {
     }
 };
 
-// Fetch TV shows by selected streaming services
+// Fetch TV shows by selected streaming services with a focus on new releases
 export const fetchTVShowsByServices = async (serviceIds, page = 1) => {
     try {
         if (!serviceIds || serviceIds.length === 0) {
             return fetchPopularTVShows();
         }
         const genres = await fetchGenres();
-        const response = await tmdbApi.get('/discover/tv?include_adult=false&include_null_first_air_dates=false&language=en-US&page=1&sort_by=primary_release_date.desc&watch_region=US', {
-            params: { with_watch_providers: serviceIds.join('|'), watch_region: 'US', page },
+        const response = await tmdbApi.get('/discover/tv', {
+            params: {
+                with_watch_providers: serviceIds.join('|'),
+                watch_region: 'US',
+                sort_by: 'first_air_date.desc', // Sorting by newest first
+                'air_date.lte': new Date().toISOString().split('T')[0], // Only include shows that have aired
+                page
+            }
         });
         return formatResponse(response.data.results, genres);
     } catch (error) {

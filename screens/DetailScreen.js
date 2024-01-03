@@ -46,6 +46,18 @@ const DetailScreen = ({ route }) => {
         return <Text style={styles.errorText}>{error}</Text>;
     }
 
+    // Display season count for TV shows or running time for movies
+    const displayTimeOrSeasons = () => {
+        if (type === 'tv') {
+            return `${detailData.number_of_seasons} ${detailData.number_of_seasons === 1 ? 'Season' : 'Seasons'}`;
+        } else {
+            const hours = Math.floor(detailData.runtime / 60);
+            const minutes = detailData.runtime % 60;
+            return `${hours}hr ${minutes}m`;
+        }
+    };
+
+    // Find all available providers
     const availableProviders = [];
     ['flatrate'].forEach((category) => {
         if (detailData.providers && detailData.providers[category]) {
@@ -77,7 +89,7 @@ const DetailScreen = ({ route }) => {
                         <Text style={styles.noTrailerText}>Trailer not available</Text>
                     )}
 
-                    {/* Movie Information */}
+                    {/* Titles Information */}
                     <View style={styles.movieInfoContainer}>
                         <Text style={styles.movieTitle}>
                             {detailData.title || detailData.name} ({type === 'tv' ? detailData.first_air_date && detailData.first_air_date.substring(0, 4) : detailData.release_date && detailData.release_date.substring(0, 4)})
@@ -114,7 +126,7 @@ const DetailScreen = ({ route }) => {
                             </View>
                             <View style={styles.metaItem}>
                                 <Icon name="schedule" size={20} color="#FFF" />
-                                <Text style={styles.metaText}>{detailData.runtime || detailData.episode_run_time} min</Text>
+                                <Text style={styles.metaText}>{displayTimeOrSeasons()}</Text>
                             </View>
                             <View style={styles.metaItem}>
                                 <Icon name="favorite" size={20} color="#FF0000" onPress={handleLike} />
@@ -254,7 +266,7 @@ const styles = StyleSheet.create({
     metaText: {
         fontSize: 14,
         color: '#FFF',
-        fontFamily: 'WorkSans-Light',
+        fontFamily: 'WorkSans-Bold',
         marginLeft: 6,
         alignSelf: 'center',
     },

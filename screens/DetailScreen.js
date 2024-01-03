@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, ScrollView, Image, ActivityIndicator, FlatList } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, Image, ActivityIndicator, FlatList, TouchableOpacity } from 'react-native';
 import { fetchDetailsById } from '../services/api';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { WebView } from 'react-native-webview';
@@ -10,6 +10,7 @@ const DetailScreen = ({ route }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [trailerUrl, setTrailerUrl] = useState(null);
+    const [showTrailer, setShowTrailer] = useState(false);
     const [likes, setLikes] = useState(0); // Added likes state
     const [watchedCount, setWatchedCount] = useState(0); // Added watchedCount state
 
@@ -23,12 +24,9 @@ const DetailScreen = ({ route }) => {
                 const trailer = data.videos.results.find(video => video.type === 'Trailer' && video.site === 'YouTube');
                 if (trailer) {
                     setTrailerUrl(`https://www.youtube.com/embed/${trailer.key}`);
-                } else if (data.videos.results.length > 0) {
-                    // If trailer is not available, display the first available video
-                    setTrailerUrl(`https://www.youtube.com/embed/${data.videos.results[0].key}`);
                 }
             } catch (e) {
-                setError('Unable to fetch details.');
+                setError('Unable to get details for this movie');
                 console.error(e);
             } finally {
                 setLoading(false);
@@ -37,6 +35,35 @@ const DetailScreen = ({ route }) => {
 
         fetchDetails();
     }, [id, type]);
+
+    const handlePlayTrailerClick = () => {
+        setShowTrailer(true);
+    };
+    
+    const renderTrailer = () => {
+        if (trailerUrl && showTrailer) {
+            return (
+                <View style={styles.videoPlayer}>
+                    <WebView source={{ uri: trailerUrl }} style={styles.video} />
+                </View>
+            );
+        } else if (trailerUrl) {
+            return (
+                <View style={styles.backdropContainer}>
+                    <Image source={{ uri: `https://image.tmdb.org/t/p/w500${detailData.backdrop_path}` }} style={styles.backdropImage} />
+                    <TouchableOpacity onPress={handlePlayTrailerClick} style={styles.playButton}>
+                        <Icon name="play-circle-outline" size={50} color="#FFF" />
+                    </TouchableOpacity>
+                </View>
+            );
+        } else {
+            return (
+                <View style={styles.videoPlayer}>
+                    <Text style={styles.noTrailerText}>No trailer available</Text>
+                </View>
+            );
+        }
+    };
 
     if (loading) {
         return <ActivityIndicator size="large" />;
@@ -79,17 +106,10 @@ const DetailScreen = ({ route }) => {
 
     return (
         <ScrollView style={styles.container}>
+            {renderTrailer()}
             {detailData && (
                 <>
-                    {trailerUrl ? (
-                        <View style={styles.videoPlayer}>
-                            <WebView source={{ uri: trailerUrl }} style={styles.video} />
-                        </View>
-                    ) : (
-                        <Text style={styles.noTrailerText}>Trailer not available</Text>
-                    )}
-
-                    {/* Titles Information */}
+                    {/* Movie or TV Show Information */}
                     <View style={styles.movieInfoContainer}>
                         <Text style={styles.movieTitle}>
                             {detailData.title || detailData.name} ({type === 'tv' ? detailData.first_air_date && detailData.first_air_date.substring(0, 4) : detailData.release_date && detailData.release_date.substring(0, 4)})
@@ -177,6 +197,31 @@ const styles = StyleSheet.create({
     video: {
         width: '100%',
         height: '100%',
+    },
+    backdropContainer: {
+        width: '100%',
+        height: 200,
+        justifyContent: 'center',
+        alignItems: 'center',
+        position: 'relative',
+    },
+    backdropImage: {
+        width: '100%',
+        height: '100%',
+        position: 'absolute',
+        resizeMode: 'cover',
+    },
+    playButton: {
+        position: 'absolute',
+        zIndex: 10,
+    },
+    video: {
+        width: '100%',
+        height: 200,
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        zIndex: 5,
     },
     noTrailerText: {
         textAlign: 'center',

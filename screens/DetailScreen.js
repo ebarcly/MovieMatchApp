@@ -23,6 +23,9 @@ const DetailScreen = ({ route }) => {
                 const trailer = data.videos.results.find(video => video.type === 'Trailer' && video.site === 'YouTube');
                 if (trailer) {
                     setTrailerUrl(`https://www.youtube.com/embed/${trailer.key}`);
+                } else if (data.videos.results.length > 0) {
+                    // If trailer is not available, display the first available video
+                    setTrailerUrl(`https://www.youtube.com/embed/${data.videos.results[0].key}`);
                 }
             } catch (e) {
                 setError('Unable to fetch details.');
@@ -44,7 +47,7 @@ const DetailScreen = ({ route }) => {
     }
 
     const availableProviders = [];
-    ['flatrate', 'rent', 'buy'].forEach((category) => {
+    ['flatrate'].forEach((category) => {
         if (detailData.providers && detailData.providers[category]) {
             detailData.providers[category].forEach((provider) => {
                 if (!availableProviders.some((p) => p.provider_id === provider.provider_id)) {
@@ -203,7 +206,7 @@ const styles = StyleSheet.create({
         height: 30,
         marginRight: 10,
         resizeMode: 'contain',
-        
+
     },
     movieTagline: {
         fontSize: 14,

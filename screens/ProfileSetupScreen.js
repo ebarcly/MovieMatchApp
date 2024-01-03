@@ -138,6 +138,14 @@ const ProfileSetupScreen = ({ route }) => {
           multiline
         />
       </View>
+      {/* Full Catalog Access Toggle */}
+      <View style={styles.fullCatalogContainer}>
+        <Text style={styles.fullCatalogLabel}>All Services:</Text>
+        <Switch
+          value={fullCatalogAccess}
+          onValueChange={setFullCatalogAccess}
+        />
+      </View>
       {/* Streaming Services Selection */}
       <View style={styles.streamingServicesContainer}>
         <Text style={styles.streamingServicesLabel}>My Services:</Text>
@@ -155,14 +163,6 @@ const ProfileSetupScreen = ({ route }) => {
             </TouchableOpacity>
           ))}
         </View>
-      </View>
-      {/* Full Catalog Access Toggle */}
-      <View style={styles.fullCatalogContainer}>
-        <Text style={styles.fullCatalogLabel}>Access Full Catalog:</Text>
-        <Switch
-          value={fullCatalogAccess}
-          onValueChange={setFullCatalogAccess}
-        />
       </View>
       {/* Genre Preferences Selection */}
       <View style={styles.genresContainer}>

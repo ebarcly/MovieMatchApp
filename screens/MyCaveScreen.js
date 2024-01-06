@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import {
   View,
   Text,
@@ -10,16 +10,16 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
-import { auth } from '../firebaseConfig';
+import { auth, db } from '../firebaseConfig';
 import { collection, getDocs } from 'firebase/firestore';
-import { db } from '../firebaseConfig';
-
+import { MoviesContext } from '../context/MoviesContext';
+import { fetchDetailsById } from '../services/api';
 
 const MyCaveScreen = () => {
   const navigation = useNavigation();
+  const { state, dispatch } = useContext(MoviesContext);
   const [profileImage, setProfileImage] = useState(require('../assets/profile_default.jpg'));
   const [headerImage, setHeaderImage] = useState(require('../assets/header_default.png'));
-  const watchlist = useState([]);
   const [friendsActivity, setFriendsActivity] = useState([]);
   const [userData, setUserData] = useState({});
 
@@ -28,7 +28,7 @@ const MyCaveScreen = () => {
   };
 
   useEffect(() => {
-    // Fetch user profile data from Firestore
+    // Fetch user profile data
     const fetchUserProfile = async () => {
       const user = auth.currentUser;
       if (user) {
@@ -45,33 +45,29 @@ const MyCaveScreen = () => {
       }
     };
 
-    // Fetch user profile data initially
-    fetchUserProfile();
+    // Fetch movie details for the watchlist
+    const fetchWatchlistDetails = async () => {
+      const detailsPromises = state.watchlist.map(async (item) => {
+        try {
+          const details = await fetchDetailsById(item.id, item.type);
+          return { id: item.id, title: details.title || details.name, poster_path: details.poster_path, type: item.type };
+        } catch (error) {
+          console.error(`Error fetching details for ${item.type} ${item.id}:`, error);
+          return null; // Handle the error appropriately
+        }
+      });
 
-    // Simulating real-time updates from a database or WebSocket connection
-    const fetchFriendsActivity = () => {
-      // Replace this with your own logic to fetch friends' activity in real-time
-      const activityData = [
-        { id: '1', message: 'John watched "The Avengers"' },
-        { id: '2', message: 'Sarah added "Inception" to her watchlist' },
-        // ...more activity items
-      ];
-      setFriendsActivity(activityData);
+      const watchlistWithDetails = (await Promise.all(detailsPromises)).filter(Boolean);
+      dispatch({ type: 'SET_WATCHLIST_DETAILS', payload: watchlistWithDetails });
     };
 
-    // Fetch friends' activity initially
-    fetchFriendsActivity();
-
-    // Set up a timer to fetch friends' activity periodically
-    const timer = setInterval(fetchFriendsActivity, 5000);
-
-    // Clean up the timer when the component is unmounted
-    return () => clearInterval(timer);
+    fetchUserProfile();
+    fetchWatchlistDetails();
   }, []);
 
   const handleLogout = () => {
     auth.signOut().then(() => {
-      navigation.replace('Login');
+      navigation.navigate('Login');
     });
   };
 
@@ -124,24 +120,24 @@ const MyCaveScreen = () => {
           <Text style={styles.editProfileText}>Edit profile</Text>
         </TouchableOpacity>
       </View>
-      {/* Watchlist Section - Needs dynamic data */}
+      {/* Watchlist Section */}
       <Section title="Watchlist">
         <FlatList
-          data={watchlist}
+          data={state.watchlist}
           horizontal
           showsHorizontalScrollIndicator={false}
-          keyExtractor={(item) => item.id} // Add keyExtractor prop
+          keyExtractor={(item) => item?.id?.toString()}
           renderItem={({ item }) => (
-            <View key={item.id} style={styles.watchlistItemContainer}>
-              <Image source={item.image} style={styles.watchlistItemImage} />
-              <Text style={styles.watchlistItemText}>{item.title}</Text>
-              <TouchableOpacity style={styles.watchlistEditButton}>
-                <Text style={styles.watchlistEditText}>Edit</Text>
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity onPress={() => navigation.navigate('Detail', { id: item.id, type: item.type })} style={styles.watchlistItemContainer}>
+              <Image
+                source={{ uri: `https://image.tmdb.org/t/p/w500${item.poster_path}` }}
+                style={styles.watchlistItemImage}
+              />
+            </TouchableOpacity>
           )}
         />
       </Section>
+      {/* Watched Section */}
       {/* Friends Activity Section - Needs dynamic data */}
       <Section title="Friends Activity">
         {friendsActivity.map((activity) => (
@@ -264,12 +260,8 @@ const styles = StyleSheet.create({
     height: 150,
     borderRadius: 8,
     marginBottom: 8,
-  },
-  watchlistItemText: {
-    color: '#fff',
-    fontSize: 16,
-    fontFamily: 'WorkSans-Bold',
-    marginBottom: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
   },
   watchlistEditButton: {
     backgroundColor: '#333', // Darker background for the button

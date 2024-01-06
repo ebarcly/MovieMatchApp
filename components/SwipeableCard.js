@@ -4,6 +4,8 @@ import { GestureHandlerRootView, Swipeable } from 'react-native-gesture-handler'
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { MoviesContext } from '../context/MoviesContext';
 import { useNavigation } from '@react-navigation/native';
+import { addToWatchlist } from '../utils/firebaseOperations';
+import { auth } from '../firebaseConfig';
 
 const SwipeableCard = ({ movie, onSwipeComplete }) => {
   const { state, dispatch } = useContext(MoviesContext); // Use the context
@@ -20,8 +22,13 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
 
   const [swiped, setSwiped] = useState(false); // Update the swiped state
 
+  // Handle swipe action
   const handleSwipe = (direction) => {
-    dispatch({ type: direction === 'left' ? 'LIKE_MOVIE' : 'DISLIKE_MOVIE', payload: movie });
+    dispatch({ type: direction === 'left' ? 'ADD_TO_WATCHLIST' : 'DISLIKE_MOVIE', payload: movie });
+    if (direction === 'left') {
+      const newWatchlistItem = { id: movie.id, type: movie.type };
+      addToWatchlist(auth.currentUser.uid, newWatchlistItem);
+    }
     setTimeout(() => {
       swipeableRef.current?.close();
       setSwiped(true); // Update the swiped state to true
@@ -42,9 +49,9 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
       extrapolate: 'clamp',
     });
 
-    const backgroundColor = direction === 'left' ? '#006600' : '#ff6666';
-    const iconName = direction === 'left' ? 'thumb-up' : 'thumb-down';
-    const actionText = direction === 'left' ? 'Interested' : 'Not Interested';
+    const backgroundColor = direction === 'right' ? '#006600' : '#ff6666';
+    const iconName = direction === 'right' ? 'thumb-up' : 'thumb-down';
+    const actionText = direction === 'right' ? 'Interested' : 'Not Interested';
 
     return (
       <View style={[styles.actionContainer, { backgroundColor }]}>
@@ -56,25 +63,25 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
     );
   };
 
-const renderGenres = () => {
-  if (genre_ids.length > 0 && state.genres.length > 0) {
-    // Map genre IDs to genre names
-    const genreNames = genre_ids.map(genreId => {
-      const genre = state.genres.find(g => g.id === genreId);
-      return genre ? genre.name : null; // Return null instead of 'Unknown'
-    }).filter(Boolean); // Filter out null values
+  const renderGenres = () => {
+    if (genre_ids.length > 0 && state.genres.length > 0) {
+      // Map genre IDs to genre names
+      const genreNames = genre_ids.map(genreId => {
+        const genre = state.genres.find(g => g.id === genreId);
+        return genre ? genre.name : null; // Return null instead of 'Unknown'
+      }).filter(Boolean); // Filter out null values
 
-    if (genreNames.length > 0) { // Check if there are any available genres
-      return genreNames.slice(0, 3).map((name, index) => (
-        <Text key={index} style={styles.genreSmall}>
-         • {name}
-          {index !== genreNames.length - 1}
-        </Text>
-      ));
+      if (genreNames.length > 0) { // Check if there are any available genres
+        return genreNames.slice(0, 3).map((name, index) => (
+          <Text key={index} style={styles.genreSmall}>
+            • {name}
+            {index !== genreNames.length - 1}
+          </Text>
+        ));
+      }
     }
-  }
 
-  return <Text style={styles.genreSmall}>Genres unavailable</Text>;
+    return <Text style={styles.genreSmall}>Genres unavailable</Text>;
   };
 
   return (
@@ -82,8 +89,8 @@ const renderGenres = () => {
       {!swiped && (
         <Swipeable
           ref={swipeableRef}
-          renderLeftActions={(dragX) => renderActions(dragX, 'left')}
-          renderRightActions={(dragX) => renderActions(dragX, 'right')}
+          renderLeftActions={(dragX) => renderActions(dragX, 'right')}
+          renderRightActions={(dragX) => renderActions(dragX, 'left')}
           onSwipeableOpen={handleSwipe}
           friction={2}
           leftThreshold={60}

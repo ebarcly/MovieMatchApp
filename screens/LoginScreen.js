@@ -67,7 +67,7 @@ const styles = StyleSheet.create({
   label: {
     color: '#fff',
     fontSize: 16,
-    marginBottom: 5,
+    marginBottom: 8,
     fontFamily: 'WorkSans-Regular',
   },
   input: {

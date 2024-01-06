@@ -11,8 +11,8 @@ const DetailScreen = ({ route }) => {
     const [error, setError] = useState('');
     const [trailerUrl, setTrailerUrl] = useState(null);
     const [showTrailer, setShowTrailer] = useState(false);
-    const [likes, setLikes] = useState(0); // Added likes state
-    const [watchedCount, setWatchedCount] = useState(0); // Added watchedCount state
+    const [likes, setLikes] = useState(0); // likes state from user's friends
+    const [watchedCount, setWatchedCount] = useState(0); // watchedCount state from user's friends
 
     useEffect(() => {
         const fetchDetails = async () => {

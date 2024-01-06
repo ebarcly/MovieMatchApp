@@ -1,15 +1,27 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, Text } from 'react-native';
 import SearchIcon from './SearchIcon';
+import { auth, db } from '../firebaseConfig';
+import { doc, onSnapshot } from 'firebase/firestore';
 
-const NavigationBar = ({ username }) => {
+const NavigationBar = () => {
+  const [profileName, setProfileName] = useState('');
+
+  useEffect(() => {
+    const unsubscribe = onSnapshot(doc(db, 'users', auth.currentUser.uid), (doc) => {
+      setProfileName(doc.data().profileName.split(' ')[0]);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>{`Hey ${username}!`}</Text>
+      <Text style={styles.title}>Hi, {profileName}</Text>
       <SearchIcon />
     </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {

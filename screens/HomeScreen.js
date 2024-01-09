@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useContext, useCallback } from 'react';
 import { View, ScrollView, StyleSheet, ActivityIndicator, Text } from 'react-native';
 import { doc, getDoc } from 'firebase/firestore';
 import SwipeableCard from '../components/SwipeableCard';
@@ -6,13 +6,15 @@ import NavigationBar from '../components/NavigationBar';
 import CategoryTabs from '../components/CategoryTabs';
 import { fetchPopularMovies, fetchPopularTVShows, fetchMoviesByServices, fetchTVShowsByServices, fetchTrendingContent, mapServiceNamesToIds } from '../services/api';
 import { auth, db } from '../firebaseConfig';
+import { MoviesContext } from '../context/MoviesContext';
 
 const HomeScreen = ({ navigation }) => {
   const [content, setContent] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('TV Shows'); 
+  const [selectedCategory, setSelectedCategory] = useState('TV Shows');
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
+  const { state, dispatch } = useContext(MoviesContext);
 
   const fetchUserPreferences = async () => {
     try {
@@ -48,7 +50,8 @@ const HomeScreen = ({ navigation }) => {
       }
 
       setContent(data);
-      setCurrentCardIndex(0);
+      const index = category === 'Movies' ? state.lastMovieIndex : state.lastTVShowIndex;
+      setCurrentCardIndex(index);
     } catch (e) {
       setError(`Failed to fetch ${category.toLowerCase()}: ${e.message}`);
     } finally {
@@ -61,8 +64,13 @@ const HomeScreen = ({ navigation }) => {
   }, [selectedCategory]);
 
   const handleSwipeComplete = useCallback(() => {
-    setCurrentCardIndex(prevIndex => Math.min(prevIndex + 1, content.length - 1));
-  }, [content.length]);
+    const newIndex = Math.min(currentCardIndex + 1, content.length - 1);
+    setCurrentCardIndex(newIndex);
+
+    // Dispatch action to update the index in context
+    const actionType = selectedCategory === 'Movies' ? 'UPDATE_LAST_MOVIE_INDEX' : 'UPDATE_LAST_TVSHOW_INDEX';
+    dispatch({ type: actionType, payload: newIndex });
+  }, [currentCardIndex, content.length, selectedCategory, dispatch]);
 
   if (loading) {
     return (

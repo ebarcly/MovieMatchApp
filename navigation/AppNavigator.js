@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
+import { useNavigation } from '@react-navigation/native';
 import HomeScreen from '../screens/HomeScreen';
 import DetailScreen from '../screens/DetailScreen';
 import MyCaveScreen from '../screens/MyCaveScreen';
@@ -11,12 +12,10 @@ import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 import ProfileSetupScreen from '../screens/ProfileSetupScreen';
 import { auth } from '../firebaseConfig';
 
-
 const HomeStack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 const AuthStack = createStackNavigator();
 const ProfileStack = createStackNavigator();
-
 
 function AuthStackScreen() {
   return (
@@ -46,8 +45,8 @@ function MyCaveStackScreen() {
   );
 }
 
-
 const AppNavigator = () => {
+  const navigation = useNavigation();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isProfileSetupCompleted, setIsProfileSetupCompleted] = useState(false);
 
@@ -58,7 +57,7 @@ const AppNavigator = () => {
 
       // If the user is authenticated but hasn't completed profile setup, navigate to Profile Setup
       if (user && !isProfileSetupCompleted) {
-        navigation.navigate('Profile Setup');
+        navigation.navigate('Profile Setup'); // Fix this later: navigation.navigate('My Cave', { screen: 'Profile Setup' });
       }
 
       // If the user is authenticated and has completed profile setup, navigate to the Home Screen
@@ -70,8 +69,8 @@ const AppNavigator = () => {
       if (!user) {
         navigation.navigate('Login');
       }
-
     });
+
     return () => unsubscribe();
   }, []);
 

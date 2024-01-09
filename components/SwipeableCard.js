@@ -23,12 +23,20 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
   const [swiped, setSwiped] = useState(false); // Update the swiped state
 
   // Handle swipe action
-  const handleSwipe = (direction) => {
-    dispatch({ type: direction === 'left' ? 'ADD_TO_WATCHLIST' : 'DISLIKE_MOVIE', payload: movie });
+  const handleSwipe = (direction, cardIndex) => {
+    const actionType = direction === 'left' ? 'ADD_TO_WATCHLIST' : 'DISLIKE_MOVIE';
+    dispatch({ type: actionType, payload: movie });
+
     if (direction === 'left') {
       const newWatchlistItem = { id: movie.id, type: movie.type };
       addToWatchlist(auth.currentUser.uid, newWatchlistItem);
     }
+
+    // Dispatch action to update the last index
+    const updateActionType = movie.type === 'movie' ? 'UPDATE_LAST_MOVIE_INDEX' : 'UPDATE_LAST_TVSHOW_INDEX';
+    dispatch({ type: updateActionType, payload: cardIndex });
+
+    // Close the swipeable card
     setTimeout(() => {
       swipeableRef.current?.close();
       setSwiped(true); // Update the swiped state to true

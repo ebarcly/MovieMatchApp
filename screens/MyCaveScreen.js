@@ -7,6 +7,7 @@ import {
   ScrollView,
   StyleSheet,
   FlatList,
+  ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
@@ -22,6 +23,7 @@ const MyCaveScreen = () => {
   const [headerImage, setHeaderImage] = useState(require('../assets/header_default.png'));
   const [friendsActivity, setFriendsActivity] = useState([]);
   const [userData, setUserData] = useState({});
+  const [loading, setLoading] = useState(true);
 
   const navigateToProfileEdit = () => {
     navigation.navigate('Profile Setup', { isEditing: true }); // Pass a flag to indicate editing mode
@@ -61,9 +63,46 @@ const MyCaveScreen = () => {
       dispatch({ type: 'SET_WATCHLIST_DETAILS', payload: watchlistWithDetails });
     };
 
-    fetchUserProfile();
-    fetchWatchlistDetails();
+    const fetchWatchlist = async () => {
+      const user = auth.currentUser;
+      if (user) {
+        try {
+          const querySnapshot = await getDocs(collection(db, 'users', user.uid, 'watchlist'));
+          const watchlist = querySnapshot.docs.map((doc) => doc.data());
+          dispatch({ type: 'SET_WATCHLIST', payload: watchlist });
+        } catch (error) {
+          console.error("Error fetching watchlist: ", error);
+        }
+      }
+    };
+
+    const fetchData = async () => {
+      setLoading(true);
+      await Promise.all([fetchUserProfile(), fetchWatchlistDetails(), fetchWatchlist()]);
+      setLoading(false);
+    };
+
+    fetchData();
   }, []);
+
+  // Remove items from the watchlist and firestore and update the state
+  const handleRemoveFromWatchlist = async (item) => {
+    const user = auth.currentUser;
+    if (user) {
+      try {
+        const docRef = collection(db, 'users', user.uid, 'watchlist');
+        const querySnapshot = await getDocs(docRef);
+        querySnapshot.forEach((doc) => {
+          if (doc.data().id === item.id) {
+            doc.ref.delete();
+          }
+        });
+        dispatch({ type: 'REMOVE_FROM_WATCHLIST', payload: item });
+      } catch (error) {
+        console.error("Error removing from watchlist: ", error);
+      }
+    }
+  };
 
   const handleLogout = () => {
     auth.signOut().then(() => {
@@ -133,6 +172,10 @@ const MyCaveScreen = () => {
                 source={{ uri: `https://image.tmdb.org/t/p/w500${item.poster_path}` }}
                 style={styles.watchlistItemImage}
               />
+              {/* Add remove button */}
+              <TouchableOpacity onPress={() => handleRemoveFromWatchlist(item)} style={styles.watchlistEditButton}>
+                <Text style={styles.watchlistEditText}>Remove</Text>
+              </TouchableOpacity>
             </TouchableOpacity>
           )}
         />
@@ -154,6 +197,8 @@ const MyCaveScreen = () => {
       <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
         <Text style={styles.logoutButtonText}>Logout</Text>
       </TouchableOpacity>
+      {/* Loading Indicator */}
+      {loading && <ActivityIndicator style={styles.loadingIndicator} />}
     </ScrollView>
   );
 };
@@ -301,6 +346,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 4,
     fontFamily: 'WorkSans-Regular',
+  },
+  loadingIndicator: {
+    marginTop: 20,
   },
 });
 

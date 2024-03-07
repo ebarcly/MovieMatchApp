@@ -12,16 +12,26 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import { auth, db } from '../firebaseConfig';
-import { collection, getDocs } from 'firebase/firestore';
+import {
+  collection,
+  doc,
+  getDocs,
+  getDoc,
+  updateDoc,
+} from 'firebase/firestore';
 import { MoviesContext } from '../context/MoviesContext';
 import { fetchDetailsById } from '../services/api';
 
 const MyCaveScreen = () => {
   const navigation = useNavigation();
   const { state, dispatch } = useContext(MoviesContext);
-  const [profileImage, setProfileImage] = useState(require('../assets/profile_default.jpg'));
-  const [headerImage, setHeaderImage] = useState(require('../assets/header_default.png'));
-  const [friendsActivity, setFriendsActivity] = useState([]);
+  const [profileImage, setProfileImage] = useState(
+    require('../assets/profile_default.jpg')
+  );
+  const [headerImage, setHeaderImage] = useState(
+    require('../assets/header_default.png')
+  );
+  const [friendsActivity] = useState([]);
   const [userData, setUserData] = useState({});
   const [loading, setLoading] = useState(true);
 
@@ -35,14 +45,15 @@ const MyCaveScreen = () => {
       const user = auth.currentUser;
       if (user) {
         try {
-          const querySnapshot = await getDocs(collection(db, 'users'));
-          querySnapshot.forEach((doc) => {
-            if (doc.id === user.uid) {
-              setUserData(doc.data());
-            }
-          });
+          const docRef = doc(db, 'users', user.uid); // Reference to the user's document
+          const docSnapshot = await getDoc(docRef);
+          if (docSnapshot.exists()) {
+            setUserData(docSnapshot.data());
+          } else {
+            console.log('No such document!');
+          }
         } catch (error) {
-          console.error("Error fetching users: ", error);
+          console.error('Error fetching users: ', error);
         }
       }
     };
@@ -52,54 +63,77 @@ const MyCaveScreen = () => {
       const detailsPromises = state.watchlist.map(async (item) => {
         try {
           const details = await fetchDetailsById(item.id, item.type);
-          return { id: item.id, title: details.title || details.name, poster_path: details.poster_path, type: item.type };
+          return {
+            id: item.id,
+            title: details.title || details.name,
+            poster_path: details.poster_path,
+            type: item.type,
+          };
         } catch (error) {
-          console.error(`Error fetching details for ${item.type} ${item.id}:`, error);
-          return null; // Handle the error appropriately
+          console.error(
+            `Error fetching details for ${item.type} ${item.id}:`,
+            error
+          );
+          return null; // Return null for failed requests
         }
       });
 
-      const watchlistWithDetails = (await Promise.all(detailsPromises)).filter(Boolean);
-      dispatch({ type: 'SET_WATCHLIST_DETAILS', payload: watchlistWithDetails });
+      const watchlistWithDetails = (await Promise.all(detailsPromises)).filter(
+        Boolean
+      );
+      dispatch({
+        type: 'SET_WATCHLIST_DETAILS',
+        payload: watchlistWithDetails,
+      });
     };
 
     const fetchWatchlist = async () => {
       const user = auth.currentUser;
       if (user) {
         try {
-          const querySnapshot = await getDocs(collection(db, 'users', user.uid, 'watchlist'));
+          const querySnapshot = await getDocs(
+            collection(db, 'users', user.uid, 'watchlist')
+          );
           const watchlist = querySnapshot.docs.map((doc) => doc.data());
           dispatch({ type: 'SET_WATCHLIST', payload: watchlist });
         } catch (error) {
-          console.error("Error fetching watchlist: ", error);
+          console.error('Error fetching watchlist: ', error);
         }
       }
     };
 
     const fetchData = async () => {
       setLoading(true);
-      await Promise.all([fetchUserProfile(), fetchWatchlistDetails(), fetchWatchlist()]);
+      await Promise.all([
+        fetchUserProfile(),
+        fetchWatchlistDetails(),
+        fetchWatchlist(),
+      ]);
       setLoading(false);
     };
 
     fetchData();
   }, []);
 
-  // Remove items from the watchlist and firestore and update the state
+  //  Remove the item from the watchlist and update the state and database
   const handleRemoveFromWatchlist = async (item) => {
     const user = auth.currentUser;
     if (user) {
       try {
-        const docRef = collection(db, 'users', user.uid, 'watchlist');
-        const querySnapshot = await getDocs(docRef);
-        querySnapshot.forEach((doc) => {
-          if (doc.data().id === item.id) {
-            doc.ref.delete();
-          }
-        });
-        dispatch({ type: 'REMOVE_FROM_WATCHLIST', payload: item });
+        const userDocRef = doc(db, 'users', user.uid);
+        const docSnap = await getDoc(userDocRef);
+        if (docSnap.exists()) {
+          const watchlist = docSnap.data().watchlist;
+          const updatedWatchlist = watchlist.filter(
+            (watchlistItem) => watchlistItem.id !== item.id
+          );
+          await updateDoc(userDocRef, {
+            watchlist: updatedWatchlist,
+          });
+          dispatch({ type: 'REMOVE_FROM_WATCHLIST', payload: item });
+        }
       } catch (error) {
-        console.error("Error removing from watchlist: ", error);
+        console.error('Error removing item from watchlist: ', error);
       }
     }
   };
@@ -111,7 +145,8 @@ const MyCaveScreen = () => {
   };
 
   const handleProfileImageChange = async () => {
-    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    const permissionResult =
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (permissionResult.granted === false) {
       alert('Permission to access camera roll is required!');
       return;
@@ -124,7 +159,8 @@ const MyCaveScreen = () => {
   };
 
   const handleHeaderImageChange = async () => {
-    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    const permissionResult =
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (permissionResult.granted === false) {
       alert('Permission to access camera roll is required!');
       return;
@@ -152,10 +188,15 @@ const MyCaveScreen = () => {
         {/* Genre tags based on user data */}
         <View style={styles.genreContainer}>
           {userData.genres?.map((genre, index) => (
-            <Text key={index} style={styles.genreText}>{genre}</Text>
+            <Text key={index} style={styles.genreText}>
+              {genre}
+            </Text>
           ))}
         </View>
-        <TouchableOpacity onPress={navigateToProfileEdit} style={styles.editProfileButton}>
+        <TouchableOpacity
+          onPress={navigateToProfileEdit}
+          style={styles.editProfileButton}
+        >
           <Text style={styles.editProfileText}>Edit profile</Text>
         </TouchableOpacity>
       </View>
@@ -167,13 +208,23 @@ const MyCaveScreen = () => {
           showsHorizontalScrollIndicator={false}
           keyExtractor={(item) => item?.id?.toString()}
           renderItem={({ item }) => (
-            <TouchableOpacity onPress={() => navigation.navigate('Detail', { id: item.id, type: item.type })} style={styles.watchlistItemContainer}>
+            <TouchableOpacity
+              onPress={() =>
+                navigation.navigate('Detail', { id: item.id, type: item.type })
+              }
+              style={styles.watchlistItemContainer}
+            >
               <Image
-                source={{ uri: `https://image.tmdb.org/t/p/w500${item.poster_path}` }}
+                source={{
+                  uri: `https://image.tmdb.org/t/p/w500${item.poster_path}`,
+                }}
                 style={styles.watchlistItemImage}
               />
               {/* Add remove button */}
-              <TouchableOpacity onPress={() => handleRemoveFromWatchlist(item)} style={styles.watchlistEditButton}>
+              <TouchableOpacity
+                onPress={() => handleRemoveFromWatchlist(item)}
+                style={styles.watchlistEditButton}
+              >
                 <Text style={styles.watchlistEditText}>Remove</Text>
               </TouchableOpacity>
             </TouchableOpacity>
@@ -185,7 +236,10 @@ const MyCaveScreen = () => {
       <Section title="Friends Activity">
         {friendsActivity.map((activity) => (
           <View key={activity.id} style={styles.activityItem}>
-            <Image source={require('../assets/profile_default.jpg')} style={styles.activityUserImage} />
+            <Image
+              source={require('../assets/profile_default.jpg')}
+              style={styles.activityUserImage}
+            />
             <View style={styles.activityContent}>
               <Text style={styles.activityText}>{activity.message}</Text>
               <Text style={styles.activityTime}>2 hours ago</Text>

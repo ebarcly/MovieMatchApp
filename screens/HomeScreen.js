@@ -1,18 +1,31 @@
-import React, { useState, useEffect, useContext, useCallback } from 'react';
-import { View, ScrollView, StyleSheet, ActivityIndicator, Text } from 'react-native';
-import { doc, getDoc } from 'firebase/firestore';
-import SwipeableCard from '../components/SwipeableCard';
-import NavigationBar from '../components/NavigationBar';
-import CategoryTabs from '../components/CategoryTabs';
-import { fetchPopularMovies, fetchPopularTVShows, fetchMoviesByServices, fetchTVShowsByServices, fetchTrendingContent, mapServiceNamesToIds } from '../services/api';
-import { auth, db } from '../firebaseConfig';
-import { MoviesContext } from '../context/MoviesContext';
+import React, { useState, useEffect, useContext, useCallback } from "react";
+import {
+  View,
+  ScrollView,
+  StyleSheet,
+  ActivityIndicator,
+  Text,
+} from "react-native";
+import { doc, getDoc } from "firebase/firestore";
+import SwipeableCard from "../components/SwipeableCard";
+import NavigationBar from "../components/NavigationBar";
+import CategoryTabs from "../components/CategoryTabs";
+import {
+  fetchPopularMovies,
+  fetchPopularTVShows,
+  fetchMoviesByServices,
+  fetchTVShowsByServices,
+  fetchTrendingContent,
+  mapServiceNamesToIds,
+} from "../services/api";
+import { auth, db } from "../firebaseConfig";
+import { MoviesContext } from "../context/MoviesContext";
 
 const HomeScreen = ({ navigation }) => {
   const [content, setContent] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('TV Shows');
+  const [error, setError] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("TV Shows");
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const { state, dispatch } = useContext(MoviesContext);
 
@@ -20,13 +33,13 @@ const HomeScreen = ({ navigation }) => {
     try {
       const user = auth.currentUser;
       if (!user) return null;
-      const docRef = doc(db, 'users', user.uid);
+      const docRef = doc(db, "users", user.uid);
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
         return docSnap.data();
       }
     } catch (error) {
-      console.error('Error fetching user preferences:', error);
+      console.error("Error fetching user preferences:", error);
     }
   };
 
@@ -36,21 +49,29 @@ const HomeScreen = ({ navigation }) => {
       const { streamingServices, fullCatalogAccess } = userPrefs || {};
 
       let data = [];
-      if (category === 'All') {
-        data = await fetchTrendingContent('all', 'day');
+      if (category === "All") {
+        data = await fetchTrendingContent("all", "day");
       } else if (fullCatalogAccess) {
-        data = category === 'Movies' ? await fetchPopularMovies() : await fetchPopularTVShows();
+        data =
+          category === "Movies"
+            ? await fetchPopularMovies()
+            : await fetchPopularTVShows();
       } else if (streamingServices && streamingServices.length > 0) {
         const serviceIds = await mapServiceNamesToIds(streamingServices);
-        data = category === 'Movies'
-          ? await fetchMoviesByServices(serviceIds)
-          : await fetchTVShowsByServices(serviceIds);
+        data =
+          category === "Movies"
+            ? await fetchMoviesByServices(serviceIds)
+            : await fetchTVShowsByServices(serviceIds);
       } else {
-        data = category === 'Movies' ? await fetchPopularMovies() : await fetchPopularTVShows();
+        data =
+          category === "Movies"
+            ? await fetchPopularMovies()
+            : await fetchPopularTVShows();
       }
 
       setContent(data);
-      const index = category === 'Movies' ? state.lastMovieIndex : state.lastTVShowIndex;
+      const index =
+        category === "Movies" ? state.lastMovieIndex : state.lastTVShowIndex;
       setCurrentCardIndex(index);
     } catch (e) {
       setError(`Failed to fetch ${category.toLowerCase()}: ${e.message}`);
@@ -68,7 +89,10 @@ const HomeScreen = ({ navigation }) => {
     setCurrentCardIndex(newIndex);
 
     // Dispatch action to update the index in context
-    const actionType = selectedCategory === 'Movies' ? 'UPDATE_LAST_MOVIE_INDEX' : 'UPDATE_LAST_TVSHOW_INDEX';
+    const actionType =
+      selectedCategory === "Movies"
+        ? "UPDATE_LAST_MOVIE_INDEX"
+        : "UPDATE_LAST_TVSHOW_INDEX";
     dispatch({ type: actionType, payload: newIndex });
   }, [currentCardIndex, content.length, selectedCategory, dispatch]);
 
@@ -85,7 +109,11 @@ const HomeScreen = ({ navigation }) => {
   }
 
   if (content.length === 0) {
-    return <Text style={styles.errorText}>No content available for your selection.</Text>;
+    return (
+      <Text style={styles.errorText}>
+        No content available for your selection.
+      </Text>
+    );
   }
 
   return (
@@ -109,23 +137,23 @@ const HomeScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: "#f0f0f0",
   },
   cardContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     padding: 16,
     flex: 1,
   },
   errorText: {
-    color: 'red',
+    color: "red",
     fontSize: 18,
-    textAlign: 'center',
+    textAlign: "center",
     marginTop: 20,
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     zIndex: 100,
   },
 });

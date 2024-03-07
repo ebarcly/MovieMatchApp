@@ -8,9 +8,12 @@ const NavigationBar = () => {
   const [profileName, setProfileName] = useState('');
 
   useEffect(() => {
-    const unsubscribe = onSnapshot(doc(db, 'users', auth.currentUser.uid), (doc) => {
-      setProfileName(doc.data().profileName.split(' ')[0]);
-    });
+    const unsubscribe = onSnapshot(
+      doc(db, 'users', auth.currentUser.uid),
+      (doc) => {
+        setProfileName(doc.data().profileName.split(' ')[0]);
+      }
+    );
 
     return () => unsubscribe();
   }, []);
@@ -21,7 +24,7 @@ const NavigationBar = () => {
       <SearchIcon />
     </View>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {

@@ -46,9 +46,9 @@ const App = () => {
 
   return (
     <NavigationContainer>
-    <MoviesProvider>
-      <AppNavigator />
-    </MoviesProvider>
+      <MoviesProvider>
+        <AppNavigator />
+      </MoviesProvider>
     </NavigationContainer>
   );
 };

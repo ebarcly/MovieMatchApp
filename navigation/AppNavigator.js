@@ -20,9 +20,21 @@ const ProfileStack = createStackNavigator();
 function AuthStackScreen() {
   return (
     <AuthStack.Navigator>
-      <AuthStack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }}/>
-      <AuthStack.Screen name="Register" component={RegisterScreen} options={{ headerShown: false }}/>
-      <AuthStack.Screen name="Forgot Password" component={ForgotPasswordScreen} options={{ headerShown: false }}/>
+      <AuthStack.Screen
+        name="Login"
+        component={LoginScreen}
+        options={{ headerShown: false }}
+      />
+      <AuthStack.Screen
+        name="Register"
+        component={RegisterScreen}
+        options={{ headerShown: false }}
+      />
+      <AuthStack.Screen
+        name="Forgot Password"
+        component={ForgotPasswordScreen}
+        options={{ headerShown: false }}
+      />
     </AuthStack.Navigator>
   );
 }
@@ -30,8 +42,12 @@ function AuthStackScreen() {
 function HomeStackScreen() {
   return (
     <HomeStack.Navigator>
-      <HomeStack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }}/>
-      <HomeStack.Screen name="Detail" component={DetailScreen}/>
+      <HomeStack.Screen
+        name="Home"
+        component={HomeScreen}
+        options={{ headerShown: false }}
+      />
+      <HomeStack.Screen name="Detail" component={DetailScreen} />
     </HomeStack.Navigator>
   );
 }
@@ -39,9 +55,16 @@ function HomeStackScreen() {
 function MyCaveStackScreen() {
   return (
     <ProfileStack.Navigator>
-      <ProfileStack.Screen name="Profile" component={MyCaveScreen} options={{ headerShown: false }} />
-      <ProfileStack.Screen name="Profile Setup" component={ProfileSetupScreen} />
-    </ProfileStack.Navigator> 
+      <ProfileStack.Screen
+        name="Profile"
+        component={MyCaveScreen}
+        options={{ headerShown: false }}
+      />
+      <ProfileStack.Screen
+        name="Profile Setup"
+        component={ProfileSetupScreen}
+      />
+    </ProfileStack.Navigator>
   );
 }
 
@@ -51,7 +74,7 @@ const AppNavigator = () => {
   const [isProfileSetupCompleted, setIsProfileSetupCompleted] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(user => {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
       setIsAuthenticated(!!user);
       setIsProfileSetupCompleted(!!user?.displayName);
 
@@ -79,8 +102,8 @@ const AppNavigator = () => {
   }
 
   return (
-    <Tab.Navigator>
-      <Tab.Screen name="Deck" component={HomeStackScreen} options={{ headerShown: false }} />
+    <Tab.Navigator screenOptions={{ headerShown: false }}>
+      <Tab.Screen name="Deck" component={HomeStackScreen} />
       <Tab.Screen name="Matches" component={MatchesScreen} />
       <Tab.Screen name="My Cave" component={MyCaveStackScreen} />
     </Tab.Navigator>

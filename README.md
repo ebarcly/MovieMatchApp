@@ -1,4 +1,3 @@
-
 # MovieMatchApp
 
 MovieMatchApp is a mobile application designed for movie and TV show enthusiasts. It provides a platform for users to discover new titles, create watchlists, and connect with friends over shared interests in movies and TV shows.
@@ -22,14 +21,26 @@ The development of MovieMatchApp involved several key steps:
 3. **Implementing Features**: Building out the app's functionalities, such as swipeable cards, user profiles, and matches.
 4. **Testing**: Rigorous testing was conducted to ensure functionality and user experience, including using test data in Firestore.
 
-## Usage Instructions
+## Deployment
 
-1. **Installation**: Download the app from the App Store or Google Play.
-2. **Registration and Login**: Create an account or log in using existing credentials.
-3. **Profile Setup**: Customize your profile by selecting preferred streaming services and genres.
-4. **Exploring Titles**: Swipe through the deck of titles, like or dislike them based on your interest.
-5. **Watchlist**: Access your watchlist to view titles you've liked.
-6. **Matches and Friends Activity**: Check out matches with friends and their recent activities.
+The app is in a usable state but is not yet finished. You can run the app locally using Expo or Expo Go. Here are the steps:
+
+1. Clone the repository to your local machine.
+2. Install the dependencies by running `npm install`.
+3. Start the app by running `expo start`.
+4. Open the app in the Expo app on your phone or in an iOS/Android simulator on your computer.
+
+## Contributions
+
+Contributions to the MovieMatchApp are welcome. If you wish to contribute, please follow these steps:
+
+1. Fork the repository.
+2. Create a new branch for your features or fixes.
+3. Commit your changes to this branch.
+4. Push your changes to your fork.
+5. Submit a pull request from your fork to the original repository.
+
+Please read our contribution guidelines before submitting a pull request.
 
 ## Future Updates
 
@@ -37,16 +48,8 @@ The development of MovieMatchApp involved several key steps:
 - More personalized recommendations based on user preferences.
 - Integration with additional streaming platforms.
 
-## Contributions
-
-Contributions to the MovieMatchApp are welcome. Please read our contribution guidelines before submitting a pull request.
-
 ## License
 
 [MIT License](LICENSE.txt)
 
 ---
-
-
----
-

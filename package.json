@@ -18,7 +18,7 @@
     "expo-constants": "~14.4.2",
     "expo-splash-screen": "~0.20.5",
     "expo-status-bar": "~1.6.0",
-    "firebase": "^10.7.1",
+    "firebase": "^10.12.4",
     "react": "18.2.0",
     "react-native": "0.72.10",
     "react-native-dotenv": "^3.4.9",

@@ -8,6 +8,7 @@ import {
   StyleSheet,
   FlatList,
   ActivityIndicator,
+  Alert, // Import Alert
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
@@ -18,159 +19,236 @@ import {
   getDocs,
   getDoc,
   updateDoc,
+  deleteDoc, // Import deleteDoc for removing items
 } from 'firebase/firestore';
 import { MoviesContext } from '../context/MoviesContext';
 import { fetchDetailsById } from '../services/api';
 
+// Default images (consider moving to an assets index file)
+const defaultProfileImage = require('../assets/profile_default.jpg');
+const defaultHeaderImage = require('../assets/header_default.png');
+
 const MyCaveScreen = () => {
   const navigation = useNavigation();
   const { state, dispatch } = useContext(MoviesContext);
-  const [profileImage, setProfileImage] = useState(
-    require('../assets/profile_default.jpg')
-  );
-  const [headerImage, setHeaderImage] = useState(
-    require('../assets/header_default.png')
-  );
-  const [friendsActivity] = useState([]);
+  const [profileImage, setProfileImage] = useState(defaultProfileImage);
+  const [headerImage, setHeaderImage] = useState(defaultHeaderImage);
+  const [friendsActivity] = useState([]); // Placeholder for friends activity
   const [userData, setUserData] = useState({});
   const [loading, setLoading] = useState(true);
+  const [watchlistDetails, setWatchlistDetails] = useState([]); // Local state for detailed watchlist
 
+  // --- Navigation ---
   const navigateToProfileEdit = () => {
-    navigation.navigate('Profile Setup', { isEditing: true }); // Pass a flag to indicate editing mode
+    // *** FIX: Navigate to the screen named "EditProfile" within the current stack ***
+    navigation.navigate('EditProfile', { isEditing: true });
   };
 
+  // --- Data Fetching ---
   useEffect(() => {
-    // Fetch user profile data
-    const fetchUserProfile = async () => {
-      const user = auth.currentUser;
-      if (user) {
-        try {
-          const docRef = doc(db, 'users', user.uid); // Reference to the user's document
-          const docSnapshot = await getDoc(docRef);
-          if (docSnapshot.exists()) {
+    const user = auth.currentUser;
+    if (!user) {
+        setLoading(false);
+        // Optionally navigate to login or show an error
+        console.log("No user found, cannot fetch data for MyCaveScreen");
+        return;
+    }
+
+    // Listener for real-time profile updates (Optional but good UX)
+    const userDocRef = doc(db, 'users', user.uid);
+    const unsubscribeProfile = getDoc(userDocRef).then(docSnapshot => {
+         if (docSnapshot.exists()) {
             setUserData(docSnapshot.data());
           } else {
-            console.log('No such document!');
+            console.log('User document does not exist!');
+            // Handle case where user exists in Auth but not Firestore? Maybe force profile setup?
           }
-        } catch (error) {
-          console.error('Error fetching users: ', error);
-        }
+    }).catch(error => {
+        console.error('Error fetching initial user profile: ', error);
+    });
+
+
+    // Fetch watchlist IDs first
+    const fetchWatchlistIds = async () => {
+      try {
+        const watchlistColRef = collection(db, 'users', user.uid, 'watchlist');
+        const querySnapshot = await getDocs(watchlistColRef);
+        // Assuming each doc ID is the movie/show ID and data contains { id, type }
+        const watchlistIds = querySnapshot.docs.map(doc => ({
+             docId: doc.id, // Keep Firestore doc ID for deletion
+             ...doc.data() // Should contain { id, type }
+            }));
+        return watchlistIds;
+      } catch (error) {
+        console.error('Error fetching watchlist IDs: ', error);
+        return [];
       }
     };
 
-    // Fetch movie details for the watchlist
-    const fetchWatchlistDetails = async () => {
-      const detailsPromises = state.watchlist.map(async (item) => {
+    // Fetch details based on IDs
+    const fetchWatchlistDetails = async (watchlistIds) => {
+       if (!watchlistIds || watchlistIds.length === 0) {
+           setWatchlistDetails([]); // Clear details if watchlist is empty
+           return;
+       }
+      const detailsPromises = watchlistIds.map(async (item) => {
         try {
+           // Ensure item has id and type before fetching
+           if (!item.id || !item.type) {
+               console.warn("Watchlist item missing id or type:", item);
+               return null;
+           }
           const details = await fetchDetailsById(item.id, item.type);
           return {
-            id: item.id,
+            ...item, // Include original item data (like docId)
             title: details.title || details.name,
             poster_path: details.poster_path,
-            type: item.type,
           };
         } catch (error) {
-          console.error(
-            `Error fetching details for ${item.type} ${item.id}:`,
-            error
-          );
-          return null; // Return null for failed requests
+          console.error(`Error fetching details for ${item.type} ${item.id}:`, error);
+          return null; // Keep original item data even if details fail? Maybe return item itself?
         }
       });
 
-      const watchlistWithDetails = (await Promise.all(detailsPromises)).filter(
-        Boolean
-      );
-      dispatch({
-        type: 'SET_WATCHLIST_DETAILS',
-        payload: watchlistWithDetails,
-      });
+      const results = (await Promise.all(detailsPromises)).filter(Boolean);
+      setWatchlistDetails(results); // Update local state with detailed watchlist
     };
 
-    const fetchWatchlist = async () => {
-      const user = auth.currentUser;
-      if (user) {
-        try {
-          const querySnapshot = await getDocs(
-            collection(db, 'users', user.uid, 'watchlist')
-          );
-          const watchlist = querySnapshot.docs.map((doc) => doc.data());
-          dispatch({ type: 'SET_WATCHLIST', payload: watchlist });
-        } catch (error) {
-          console.error('Error fetching watchlist: ', error);
-        }
-      }
+    // Chain the fetches
+    const loadData = async () => {
+        setLoading(true);
+        // Profile is fetched above via listener/initial fetch
+        const ids = await fetchWatchlistIds();
+        await fetchWatchlistDetails(ids);
+        setLoading(false);
     };
 
-    const fetchData = async () => {
-      setLoading(true);
-      await Promise.all([
-        fetchUserProfile(),
-        fetchWatchlistDetails(),
-        fetchWatchlist(),
-      ]);
-      setLoading(false);
-    };
+    loadData();
 
-    fetchData();
-  }, []);
+    // Cleanup listener if you implement one
+    // return () => unsubscribeProfile();
 
-  //  Remove the item from the watchlist and update the state and database
-  const handleRemoveFromWatchlist = async (item) => {
+  }, []); // Run once on mount
+
+
+  // --- Actions ---
+
+  // Remove item from watchlist
+  const handleRemoveFromWatchlist = async (itemToRemove) => {
     const user = auth.currentUser;
-    if (user) {
-      try {
-        const userDocRef = doc(db, 'users', user.uid);
-        const docSnap = await getDoc(userDocRef);
-        if (docSnap.exists()) {
-          const watchlist = docSnap.data().watchlist;
-          const updatedWatchlist = watchlist.filter(
-            (watchlistItem) => watchlistItem.id !== item.id
-          );
-          await updateDoc(userDocRef, {
-            watchlist: updatedWatchlist,
-          });
-          dispatch({ type: 'REMOVE_FROM_WATCHLIST', payload: item });
-        }
-      } catch (error) {
-        console.error('Error removing item from watchlist: ', error);
-      }
+    if (!user || !itemToRemove?.docId) {
+        Alert.alert("Error", "Could not remove item. User not found or item invalid.");
+        return;
     }
+
+    Alert.alert(
+        "Confirm Removal",
+        `Are you sure you want to remove "${itemToRemove.title}" from your watchlist?`,
+        [
+            { text: "Cancel", style: "cancel" },
+            {
+                text: "Remove",
+                style: "destructive",
+                onPress: async () => {
+                    try {
+                        const itemDocRef = doc(db, 'users', user.uid, 'watchlist', itemToRemove.docId);
+                        await deleteDoc(itemDocRef);
+
+                        // Update local state immediately for better UX
+                        setWatchlistDetails(prevDetails =>
+                            prevDetails.filter(item => item.docId !== itemToRemove.docId)
+                        );
+                        // Optionally dispatch to global context if needed elsewhere simultaneously
+                        // dispatch({ type: 'REMOVE_FROM_WATCHLIST', payload: { id: itemToRemove.id } });
+
+                        Alert.alert("Success", `"${itemToRemove.title}" removed from watchlist.`);
+                    } catch (error) {
+                        console.error('Error removing item from watchlist Firestore: ', error);
+                        Alert.alert("Error", "Could not remove item from watchlist.");
+                    }
+                }
+            }
+        ]
+    );
   };
 
+  // Logout
   const handleLogout = () => {
-    auth.signOut().then(() => {
-      navigation.navigate('Login');
+    auth.signOut().catch(error => {
+        console.error("Sign out error", error);
+        Alert.alert("Error", "Could not sign out.");
     });
+    // AppNavigator will handle navigation to Login via onAuthStateChanged
   };
 
+  // Image Picking Logic (Keep as is, but consider adding upload logic)
   const handleProfileImageChange = async () => {
-    const permissionResult =
-      await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (permissionResult.granted === false) {
-      alert('Permission to access camera roll is required!');
+    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permissionResult.granted) {
+      Alert.alert('Permission Required', 'Permission to access camera roll is required!');
       return;
     }
-
-    const pickerResult = await ImagePicker.launchImageLibraryAsync();
+    const pickerResult = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true, // Optional: allow editing
+        aspect: [1, 1], // Optional: force square aspect ratio
+        quality: 0.8, // Optional: compress image
+    });
     if (!pickerResult.canceled) {
-      setProfileImage({ uri: pickerResult.uri });
+      setProfileImage({ uri: pickerResult.assets[0].uri });
+      // TODO: Add logic to upload image to storage (e.g., Firebase Storage)
+      // and update the user's profileImageURL in Firestore/Auth profile.
     }
   };
 
   const handleHeaderImageChange = async () => {
-    const permissionResult =
-      await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (permissionResult.granted === false) {
-      alert('Permission to access camera roll is required!');
+     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permissionResult.granted) {
+      Alert.alert('Permission Required', 'Permission to access camera roll is required!');
       return;
     }
-
-    const pickerResult = await ImagePicker.launchImageLibraryAsync();
+     const pickerResult = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [16, 9], // Example aspect ratio for header
+        quality: 0.8,
+     });
     if (!pickerResult.canceled) {
-      setHeaderImage({ uri: pickerResult.uri });
+      setHeaderImage({ uri: pickerResult.assets[0].uri });
+       // TODO: Add logic to upload image to storage
+       // and update the user's headerImageURL in Firestore.
     }
   };
+
+  // --- Render ---
+
+  // Render item for Watchlist FlatList
+  const renderWatchlistItem = ({ item }) => (
+     <View style={styles.watchlistItemContainer}>
+        <TouchableOpacity onPress={() => navigation.navigate('Detail', { id: item.id, type: item.type })}>
+            <Image
+                source={item.poster_path ? { uri: `https://image.tmdb.org/t/p/w342${item.poster_path}` } : require('../assets/poster_placeholder.png')} // Add placeholder
+                style={styles.watchlistItemImage}
+                resizeMode="cover"
+            />
+        </TouchableOpacity>
+        <TouchableOpacity
+            onPress={() => handleRemoveFromWatchlist(item)}
+            style={styles.watchlistRemoveButton} // Changed style name for clarity
+        >
+            <Text style={styles.watchlistRemoveButtonText}>X</Text>
+        </TouchableOpacity>
+    </View>
+  );
+
+  // Show loading indicator while fetching
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <ActivityIndicator size="large" color="#fff" />
+      </View>
+    );
+  }
 
   return (
     <ScrollView style={styles.container}>
@@ -178,85 +256,80 @@ const MyCaveScreen = () => {
       <TouchableOpacity onPress={handleHeaderImageChange}>
         <Image source={headerImage} style={styles.headerImage} />
       </TouchableOpacity>
+
       {/* Profile Section */}
       <View style={styles.profileSection}>
         <TouchableOpacity onPress={handleProfileImageChange}>
+          {/* Use profileImage state, fallback to default */}
           <Image source={profileImage} style={styles.profileImage} />
         </TouchableOpacity>
-        <Text style={styles.name}>{userData.profileName || 'Enrique'}</Text>
-        <Text style={styles.description}>{userData.bio || 'Your Bio'}</Text>
-        {/* Genre tags based on user data */}
+        {/* Use userData from state */}
+        <Text style={styles.name}>{userData?.profileName || 'User Name'}</Text>
+        <Text style={styles.description}>{userData?.bio || 'User Bio'}</Text>
         <View style={styles.genreContainer}>
-          {userData.genres?.map((genre, index) => (
-            <Text key={index} style={styles.genreText}>
-              {genre}
-            </Text>
-          ))}
+          {userData?.genres?.length > 0 ? (
+             userData.genres.map((genre, index) => (
+                <View key={index} style={styles.genrePill}>
+                    <Text style={styles.genreText}>{genre}</Text>
+                </View>
+            ))
+          ) : (
+             <Text style={styles.noDataText}>No genres selected</Text>
+          )}
         </View>
         <TouchableOpacity
-          onPress={navigateToProfileEdit}
+          onPress={navigateToProfileEdit} // Calls the fixed navigation function
           style={styles.editProfileButton}
         >
           <Text style={styles.editProfileText}>Edit profile</Text>
         </TouchableOpacity>
       </View>
+
       {/* Watchlist Section */}
       <Section title="Watchlist">
-        <FlatList
-          data={state.watchlist}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          keyExtractor={(item) => item?.id?.toString()}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              onPress={() =>
-                navigation.navigate('Detail', { id: item.id, type: item.type })
-              }
-              style={styles.watchlistItemContainer}
-            >
-              <Image
-                source={{
-                  uri: `https://image.tmdb.org/t/p/w500${item.poster_path}`,
-                }}
-                style={styles.watchlistItemImage}
-              />
-              {/* Add remove button */}
-              <TouchableOpacity
-                onPress={() => handleRemoveFromWatchlist(item)}
-                style={styles.watchlistEditButton}
-              >
-                <Text style={styles.watchlistEditText}>Remove</Text>
-              </TouchableOpacity>
-            </TouchableOpacity>
-          )}
-        />
-      </Section>
-      {/* Watched Section */}
-      {/* Friends Activity Section - Needs dynamic data */}
-      <Section title="Friends Activity">
-        {friendsActivity.map((activity) => (
-          <View key={activity.id} style={styles.activityItem}>
-            <Image
-              source={require('../assets/profile_default.jpg')}
-              style={styles.activityUserImage}
+         {watchlistDetails.length > 0 ? (
+             <FlatList
+                data={watchlistDetails}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                keyExtractor={(item) => item.docId} // Use Firestore docId as key
+                renderItem={renderWatchlistItem}
+                contentContainerStyle={styles.listContentContainer} // Add padding
             />
-            <View style={styles.activityContent}>
-              <Text style={styles.activityText}>{activity.message}</Text>
-              <Text style={styles.activityTime}>2 hours ago</Text>
-            </View>
-          </View>
-        ))}
+         ) : (
+            <Text style={styles.noDataTextInSection}>Your watchlist is empty.</Text>
+         )}
       </Section>
+
+      {/* Watched Section (Placeholder) */}
+       <Section title="Watched">
+           <Text style={styles.noDataTextInSection}>Watched items coming soon.</Text>
+       </Section>
+
+
+      {/* Friends Activity Section (Placeholder) */}
+      <Section title="Friends Activity">
+         {friendsActivity.length > 0 ? (
+             friendsActivity.map((activity) => (
+              <View key={activity.id} style={styles.activityItem}>
+                {/* ... activity item structure ... */}
+              </View>
+            ))
+         ) : (
+             <Text style={styles.noDataTextInSection}>No friend activity yet.</Text>
+         )}
+      </Section>
+
       {/* Logout Button */}
       <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
         <Text style={styles.logoutButtonText}>Logout</Text>
       </TouchableOpacity>
-      {/* Loading Indicator */}
-      {loading && <ActivityIndicator style={styles.loadingIndicator} />}
+
     </ScrollView>
   );
 };
 
+// Section Component (Helper)
 const Section = ({ title, children }) => (
   <View style={styles.section}>
     <Text style={styles.sectionTitle}>{title}</Text>
@@ -264,146 +337,160 @@ const Section = ({ title, children }) => (
   </View>
 );
 
+// --- Styles --- (Includes refinements)
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#19192b', // The background color from the mockup
+    backgroundColor: '#19192b',
+  },
+  loadingContainer: {
+      justifyContent: 'center',
+      alignItems: 'center',
   },
   headerImage: {
     width: '100%',
-    height: 300, // Adjust according to the mockup
-    resizeMode: 'cover', // Make sure the image covers the area without stretching
+    height: 250, // Adjusted height
+    resizeMode: 'cover',
   },
   profileSection: {
     alignItems: 'center',
-    marginTop: -64, // Adjust as necessary to overlay on the header image
+    marginTop: -70, // Adjusted overlap
+    paddingBottom: 20, // Add padding at the bottom of the section
   },
   profileImage: {
-    width: 120, // Match the size from the mockup
-    height: 120,
-    borderRadius: 60, // This should be half the width/height to make the image round
+    width: 140, // Slightly larger
+    height: 140,
+    borderRadius: 70,
     borderWidth: 4,
-    borderColor: '#fff', // White border for profile image
+    borderColor: '#fff',
+    backgroundColor: '#555', // Background color while loading/if no image
   },
   name: {
-    fontSize: 24,
+    fontSize: 26, // Larger name
     color: '#fff',
     fontFamily: 'WorkSans-Bold',
-    marginVertical: 8,
+    marginTop: 15, // Increased margin
+    marginBottom: 5,
   },
   description: {
-    fontSize: 16,
-    color: '#fff',
+    fontSize: 15,
+    color: '#ccc', // Lighter color for bio
     fontFamily: 'WorkSans-Regular',
-    marginBottom: 20,
+    textAlign: 'center',
+    paddingHorizontal: 30, // Add horizontal padding
+    marginBottom: 15,
   },
   genreContainer: {
     flexDirection: 'row',
+    flexWrap: 'wrap', // Allow genres to wrap
     justifyContent: 'center',
     marginBottom: 20,
+    paddingHorizontal: 15, // Padding for the container
   },
-  genreText: {
-    color: '#fff',
+   genrePill: { // Changed from genreText for clarity
+    backgroundColor: 'rgba(255, 255, 255, 0.1)', // Semi-transparent background
+    borderRadius: 15, // Pill shape
     paddingVertical: 6,
     paddingHorizontal: 12,
-    marginHorizontal: 4,
-    backgroundColor: '#445', // Update the background color
-    borderRadius: 20,
-    fontSize: 14,
-    overflow: 'hidden',
-    fontFamily: 'WorkSans-Regular',
+    margin: 4, // Margin around each pill
     borderWidth: 1,
-    borderColor: '#fff',
+    borderColor: 'rgba(255, 255, 255, 0.2)', // Subtle border
+  },
+  genreText: {
+    color: '#eee', // Lighter genre text
+    fontSize: 13,
+    fontFamily: 'WorkSans-Regular',
   },
   editProfileButton: {
-    backgroundColor: '#445',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)', // Semi-transparent button
     paddingVertical: 10,
-    paddingHorizontal: 20,
+    paddingHorizontal: 25,
     borderRadius: 20,
-    marginVertical: 20,
+    marginTop: 10, // Adjusted margin
   },
   editProfileText: {
     color: '#fff',
-    fontSize: 16,
-    fontFamily: 'WorkSans-Bold',
+    fontSize: 15,
+    fontFamily: 'WorkSans-SemiBold', // Use SemiBold
   },
   logoutButton: {
-    backgroundColor: 'red',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 20,
-    alignSelf: 'center', // Center the logout button
-    marginBottom: 20,
+    backgroundColor: '#e74c3c', // A less harsh red
+    paddingVertical: 12,
+    paddingHorizontal: 30,
+    borderRadius: 25,
+    alignSelf: 'center',
+    marginTop: 20, // Add margin top
+    marginBottom: 40, // Increased bottom margin
   },
   logoutButtonText: {
     color: '#fff',
     fontSize: 16,
+    fontFamily: 'WorkSans-Bold',
   },
   section: {
-    marginTop: 10,
-    marginBottom: 20,
+    marginTop: 15, // Adjusted spacing
+    marginBottom: 15,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 20, // Slightly larger section title
     color: '#fff',
     paddingHorizontal: 20,
-    paddingVertical: 10,
+    marginBottom: 15, // Increased margin bottom
     fontFamily: 'WorkSans-Bold',
+  },
+   listContentContainer: {
+    paddingHorizontal: 20, // Add padding to the start/end of the list
+    paddingVertical: 5,
   },
   watchlistItemContainer: {
-    alignItems: 'center', // Center items vertically
-    marginRight: 20,
+    marginRight: 15, // Spacing between items
+    position: 'relative', // Needed for absolute positioning of the remove button
   },
   watchlistItemImage: {
-    width: 100, // Match the size from the mockup
-    height: 150,
+    width: 110, // Adjusted size
+    height: 165,
     borderRadius: 8,
-    marginBottom: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
+    backgroundColor: '#333', // Placeholder background
   },
-  watchlistEditButton: {
-    backgroundColor: '#333', // Darker background for the button
-    padding: 5,
-    borderRadius: 5,
-  },
-  watchlistEditText: {
-    color: '#fff',
-    fontSize: 14,
-    fontFamily: 'WorkSans-Bold',
-  },
-  activityItem: {
-    flexDirection: 'row',
+  watchlistRemoveButton: {
+    position: 'absolute',
+    top: 5,
+    right: 5,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)', // Dark semi-transparent background
+    borderRadius: 15, // Make it round
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#333', // Each activity item has a dark background
-    borderRadius: 10,
-    padding: 10,
-    marginHorizontal: 20,
-    marginVertical: 5,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
   },
-  activityUserImage: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginRight: 10,
-  },
-  activityContent: {
-    flex: 1,
-  },
-  activityText: {
+  watchlistRemoveButtonText: {
     color: '#fff',
-    fontSize: 14,
-    fontFamily: 'WorkSans-Regular',
-  },
-  activityTime: {
-    color: '#aaa', // Grey color for timestamps
     fontSize: 12,
-    marginTop: 4,
-    fontFamily: 'WorkSans-Regular',
+    fontWeight: 'bold',
+    lineHeight: 18, // Adjust for vertical centering
   },
-  loadingIndicator: {
-    marginTop: 20,
+  noDataText: {
+      color: '#aaa',
+      fontFamily: 'WorkSans-Regular',
+      fontSize: 14,
+      textAlign: 'center',
+      marginTop: 5,
   },
+   noDataTextInSection: {
+      color: '#aaa',
+      fontFamily: 'WorkSans-Regular',
+      fontSize: 14,
+      paddingHorizontal: 20, // Align with section title padding
+      marginTop: 5,
+  },
+  // Styles for Activity Section (if implemented)
+  activityItem: { /* ... */ },
+  activityUserImage: { /* ... */ },
+  activityContent: { /* ... */ },
+  activityText: { /* ... */ },
+  activityTime: { /* ... */ },
 });
 
 export default MyCaveScreen;

@@ -97,9 +97,7 @@ I'm actively looking for contributors! Whether you're a developer, designer, or 
 git checkout -b feature/AmazingFeature
 ```
 3. Make your changes
-```bash
-# Add your feature code here
-```
+
 4. Commit your changes
 ```bash
 git commit -m 'Add some AmazingFeature'

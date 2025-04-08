@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
-import { useNavigation } from '@react-navigation/native';
 import HomeScreen from '../screens/HomeScreen';
 import DetailScreen from '../screens/DetailScreen';
 import MyCaveScreen from '../screens/MyCaveScreen';
@@ -9,105 +8,123 @@ import MatchesScreen from '../screens/MatchesScreen';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
-import ProfileSetupScreen from '../screens/ProfileSetupScreen';
+import ProfileSetupScreen from '../screens/ProfileSetupScreen'; // Ensure this is imported
 import { auth } from '../firebaseConfig';
+import { onAuthStateChanged } from 'firebase/auth';
+import { ActivityIndicator, View } from 'react-native';
 
-const HomeStack = createStackNavigator();
-const Tab = createBottomTabNavigator();
-const AuthStack = createStackNavigator();
-const ProfileStack = createStackNavigator();
+// Define navigators outside the component
+const HomeStackNav = createStackNavigator();
+const TabNav = createBottomTabNavigator();
+const AuthStackNav = createStackNavigator();
+const ProfileSetupStackNav = createStackNavigator();
+const MyCaveStackNav = createStackNavigator(); // Navigator for the "My Cave" tab
+
+// --- Navigator Screens ---
 
 function AuthStackScreen() {
   return (
-    <AuthStack.Navigator>
-      <AuthStack.Screen
-        name="Login"
-        component={LoginScreen}
-        options={{ headerShown: false }}
-      />
-      <AuthStack.Screen
-        name="Register"
-        component={RegisterScreen}
-        options={{ headerShown: false }}
-      />
-      <AuthStack.Screen
-        name="Forgot Password"
-        component={ForgotPasswordScreen}
-        options={{ headerShown: false }}
-      />
-    </AuthStack.Navigator>
+    <AuthStackNav.Navigator screenOptions={{ headerShown: false }}>
+      <AuthStackNav.Screen name="Login" component={LoginScreen} />
+      <AuthStackNav.Screen name="Register" component={RegisterScreen} />
+      <AuthStackNav.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+    </AuthStackNav.Navigator>
   );
 }
 
 function HomeStackScreen() {
   return (
-    <HomeStack.Navigator>
-      <HomeStack.Screen
+    <HomeStackNav.Navigator>
+      <HomeStackNav.Screen
         name="Home"
         component={HomeScreen}
         options={{ headerShown: false }}
       />
-      <HomeStack.Screen name="Detail" component={DetailScreen} />
-    </HomeStack.Navigator>
+      <HomeStackNav.Screen name="Detail" component={DetailScreen} />
+    </HomeStackNav.Navigator>
   );
 }
 
+// Stack specifically for the initial Profile Setup flow
+function ProfileSetupStackScreen() {
+  return (
+    <ProfileSetupStackNav.Navigator>
+      <ProfileSetupStackNav.Screen
+          name="ProfileSetupInitial"
+          component={ProfileSetupScreen}
+          options={{ headerShown: false }}
+        />
+    </ProfileSetupStackNav.Navigator>
+  );
+}
+
+
+// Stack used *within* the 'My Cave' Tab
 function MyCaveStackScreen() {
   return (
-    <ProfileStack.Navigator>
-      <ProfileStack.Screen
-        name="Profile"
+    // Use the MyCaveStackNav here
+    <MyCaveStackNav.Navigator>
+      <MyCaveStackNav.Screen
+        name="MyCaveProfile" // Screen that shows the user's profile (MyCaveScreen component)
         component={MyCaveScreen}
-        options={{ headerShown: false }}
+        options={{ headerShown: false }} // Hide header for the main profile view
       />
-      <ProfileStack.Screen
-        name="Profile Setup"
-        component={ProfileSetupScreen}
+      {/* *** ADD THIS SCREEN FOR EDITING *** */}
+      <MyCaveStackNav.Screen
+        name="EditProfile" // New screen name within this stack for editing
+        component={ProfileSetupScreen} // Reuse the ProfileSetupScreen component
+        options={{ title: 'Edit Profile' }} // Show a header title for the edit screen
       />
-    </ProfileStack.Navigator>
+    </MyCaveStackNav.Navigator>
   );
 }
 
+// Main App Tabs shown after login and profile setup
+function MainAppTabs() {
+  return (
+    <TabNav.Navigator screenOptions={{ headerShown: false }}>
+      <TabNav.Screen name="Deck" component={HomeStackScreen} />
+      <TabNav.Screen name="Matches" component={MatchesScreen} />
+      {/* The "My Cave" tab now renders the MyCaveStackScreen function */}
+      <TabNav.Screen name="My Cave" component={MyCaveStackScreen} />
+    </TabNav.Navigator>
+  );
+}
+
+// --- App Navigator (Decision Logic) ---
+
 const AppNavigator = () => {
-  const navigation = useNavigation();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isProfileSetupCompleted, setIsProfileSetupCompleted] = useState(false);
+  const [user, setUser] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isProfileSetupComplete, setIsProfileSetupComplete] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      setIsAuthenticated(!!user);
-      setIsProfileSetupCompleted(!!user?.displayName);
-
-      // If the user is authenticated but hasn't completed profile setup, navigate to Profile Setup
-      if (user && !isProfileSetupCompleted) {
-        navigation.navigate('Profile Setup'); // Fix this later: navigation.navigate('My Cave', { screen: 'Profile Setup' });
-      }
-
-      // If the user is authenticated and has completed profile setup, navigate to the Home Screen
-      if (user && isProfileSetupCompleted) {
-        navigation.navigate('Home');
-      }
-
-      // If the user is not authenticated, navigate to the Login Screen
-      if (!user) {
-        navigation.navigate('Login');
-      }
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setIsProfileSetupComplete(!!currentUser?.displayName);
+      setIsLoading(false);
     });
-
     return () => unsubscribe();
   }, []);
 
-  if (!isAuthenticated) {
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
+
+  if (!user) {
     return <AuthStackScreen />;
   }
 
-  return (
-    <Tab.Navigator screenOptions={{ headerShown: false }}>
-      <Tab.Screen name="Deck" component={HomeStackScreen} />
-      <Tab.Screen name="Matches" component={MatchesScreen} />
-      <Tab.Screen name="My Cave" component={MyCaveStackScreen} />
-    </Tab.Navigator>
-  );
+  if (user && !isProfileSetupComplete) {
+    return <ProfileSetupStackScreen />; // Show initial setup stack
+  }
+
+  // User logged in AND profile complete
+  return <MainAppTabs />; // Show main app with tabs
 };
 
 export default AppNavigator;

@@ -53,6 +53,14 @@ function ProfileSetupStackScreen() {
           name="ProfileSetupInitial"
           component={ProfileSetupScreen}
           options={{ headerShown: false }}
+          initialParams={{ isEditing: false }} // Pass a flag to indicate initial setup mode
+          initialRouteName="ProfileSetup"
+          screenOptions={{ headerShown: false }}
+          navigationKey="profileSetup"
+          path="profileSetup"
+          mode="modal"
+          headerMode="none"
+          headerShown={false}
         />
     </ProfileSetupStackNav.Navigator>
   );

@@ -1,7 +1,7 @@
 # 🎬 MovieMatchApp
 
 <p align="center">
-  <img src="[your-logo-path-here]" alt="MovieMatchApp Logo" width="200"/>
+  <img src="https://github.com/ebarcly/MovieMatchApp/blob/7fe7f5e3305af203298703614bb7cbb1c4018da6/assets/app_logo.png" alt="MovieMatchApp Logo" width="200"/>
 </p>
 
 <p align="center">

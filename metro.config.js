@@ -1,6 +1,13 @@
-const { getDefaultConfig } = require('@expo/metro-config');
+// Learn more https://docs.expo.io/guides/customizing-metro
+const { getDefaultConfig } = require('expo/metro-config');
 
-const defaultConfig = getDefaultConfig(__dirname);
-defaultConfig.resolver.sourceExts.push('cjs');
+/** @type {import('expo/metro-config').MetroConfig} */
+const config = getDefaultConfig(__dirname);
 
-module.exports = defaultConfig;
+// Add support for .cjs files
+config.resolver.sourceExts.push('cjs');
+
+// Disable package exports to prevent potential issues
+config.resolver.unstable_enablePackageExports = false;
+
+module.exports = config;

@@ -13,12 +13,12 @@ import { auth } from '../firebaseConfig';
 import { onAuthStateChanged } from 'firebase/auth';
 import { ActivityIndicator, View } from 'react-native';
 
-// Define navigators outside the component
+
 const HomeStackNav = createStackNavigator();
 const TabNav = createBottomTabNavigator();
 const AuthStackNav = createStackNavigator();
 const ProfileSetupStackNav = createStackNavigator();
-const MyCaveStackNav = createStackNavigator(); // Navigator for the "My Cave" tab
+const MyCaveStackNav = createStackNavigator();
 
 // --- Navigator Screens ---
 
@@ -45,7 +45,7 @@ function HomeStackScreen() {
   );
 }
 
-// Stack specifically for the initial Profile Setup flow
+// Stack for the initial Profile Setup flow
 function ProfileSetupStackScreen() {
   return (
     <ProfileSetupStackNav.Navigator>
@@ -53,7 +53,7 @@ function ProfileSetupStackScreen() {
           name="ProfileSetupInitial"
           component={ProfileSetupScreen}
           options={{ headerShown: false }}
-          initialParams={{ isEditing: false }} // Pass a flag to indicate initial setup mode
+          initialParams={{ isEditing: false }} 
           initialRouteName="ProfileSetup"
           screenOptions={{ headerShown: false }}
           navigationKey="profileSetup"
@@ -67,21 +67,20 @@ function ProfileSetupStackScreen() {
 }
 
 
-// Stack used *within* the 'My Cave' Tab
+// Stack used within the My Cave Tab
 function MyCaveStackScreen() {
   return (
-    // Use the MyCaveStackNav here
     <MyCaveStackNav.Navigator>
       <MyCaveStackNav.Screen
-        name="MyCaveProfile" // Screen that shows the user's profile (MyCaveScreen component)
+        name="MyCaveProfile"
         component={MyCaveScreen}
-        options={{ headerShown: false }} // Hide header for the main profile view
+        options={{ headerShown: false }}
       />
       {/* *** ADD THIS SCREEN FOR EDITING *** */}
       <MyCaveStackNav.Screen
-        name="EditProfile" // New screen name within this stack for editing
-        component={ProfileSetupScreen} // Reuse the ProfileSetupScreen component
-        options={{ title: 'Edit Profile' }} // Show a header title for the edit screen
+        name="EditProfile" 
+        component={ProfileSetupScreen} 
+        options={{ title: 'Edit Profile' }} 
       />
     </MyCaveStackNav.Navigator>
   );
@@ -107,13 +106,21 @@ const AppNavigator = () => {
   const [isProfileSetupComplete, setIsProfileSetupComplete] = useState(false);
 
   useEffect(() => {
+    let isMounted = true;
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      setIsProfileSetupComplete(!!currentUser?.displayName);
-      setIsLoading(false);
+      if (isMounted) {
+        if (currentUser !== user) {
+          setUser(currentUser);
+          setIsProfileSetupComplete(!!currentUser?.displayName);
+        }
+        setIsLoading(false);
+      }
     });
-    return () => unsubscribe();
-  }, []);
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
+  }, [user]);
 
   if (isLoading) {
     return (
@@ -128,11 +135,11 @@ const AppNavigator = () => {
   }
 
   if (user && !isProfileSetupComplete) {
-    return <ProfileSetupStackScreen />; // Show initial setup stack
+    return <ProfileSetupStackScreen />; 
   }
 
   // User logged in AND profile complete
-  return <MainAppTabs />; // Show main app with tabs
+  return <MainAppTabs />; 
 };
 
 export default AppNavigator;

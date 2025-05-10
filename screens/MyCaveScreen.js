@@ -139,9 +139,7 @@ const MyCaveScreen = () => {
   };
 
   const handleLogout = () => {
-    auth.signOut().then(() => {
-      navigation.navigate('Login');
-    });
+    auth.signOut();
   };
 
   const handleProfileImageChange = async () => {

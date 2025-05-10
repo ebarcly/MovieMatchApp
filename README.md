@@ -114,7 +114,7 @@ git checkout -b feature/AmazingFeature
 
 Check out our Contributing Guidelines for more details.
 
-## 📅 Roadmap
+<!-- ## 📅 Roadmap
 - [ ] Implement in-app chat system
 - [ ] Advanced recommendation algorithm
 - [ ] Cross-platform streaming service integration
@@ -128,7 +128,7 @@ Check out our Contributing Guidelines for more details.
 - [ ] Expand to web and desktop platforms
 - [ ] Collaborate with streaming services for exclusive content
 - [ ] Explore partnerships with movie studios for early access to content
-- [ ] Community-driven features and suggestions
+- [ ] Community-driven features and suggestions -->
 
 
 📄 License

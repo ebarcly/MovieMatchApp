@@ -40,6 +40,8 @@ const HomeScreen = ({ navigation }) => {
       }
     } catch (error) {
       console.error("Error fetching user preferences:", error);
+      setError("Failed to load user preferences. Please check your internet connection.");
+      return null;
     }
   };
 

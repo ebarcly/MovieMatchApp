@@ -22,7 +22,6 @@ const RegisterScreen = () => {
   
     try {
       await createUserWithEmailAndPassword(auth, email, password);
-      navigation.navigate('Profile Setup');
     } catch (error) {
       setError(error.message);
     }

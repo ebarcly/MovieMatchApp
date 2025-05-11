@@ -16,7 +16,6 @@ import {
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { MoviesContext } from '../context/MoviesContext';
 import { useNavigation } from '@react-navigation/native';
-import { addToWatchlist } from '../utils/firebaseOperations';
 import { auth, db } from '../firebaseConfig';
 import { collection, query, where, getDocs, addDoc } from 'firebase/firestore';
 import { addToWatchlist, createMatchDocument } from '../utils/firebaseOperations';

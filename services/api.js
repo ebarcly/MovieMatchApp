@@ -23,7 +23,7 @@ const formatResponse = (results, genres) => {
         return {
             ...item,
             genre_names: genreNames,
-            type: item.first_air_date ? 'tv' : 'movie',
+            type: item.first_air_date ? 'tv' : 'movie', // IMPORTATN
             release_date: item.release_date || item.first_air_date,
         };
     });

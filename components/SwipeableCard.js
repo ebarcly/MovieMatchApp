@@ -7,6 +7,7 @@ import {
   Animated,
   TouchableOpacity,
   TouchableWithoutFeedback,
+  Alert,
 } from 'react-native';
 import {
   GestureHandlerRootView,
@@ -18,11 +19,13 @@ import { useNavigation } from '@react-navigation/native';
 import { addToWatchlist } from '../utils/firebaseOperations';
 import { auth, db } from '../firebaseConfig';
 import { collection, query, where, getDocs, addDoc } from 'firebase/firestore';
+import { addToWatchlist, createMatchDocument } from '../utils/firebaseOperations';
+
 
 const SwipeableCard = ({ movie, onSwipeComplete }) => {
-  const { state, dispatch } = useContext(MoviesContext); // Use the context
-  const swipeableRef = useRef(null); // Create a ref for the Swipeable component
-  const { poster_path, genre_ids = [] } = movie;
+  const { state, dispatch } = useContext(MoviesContext);
+  const swipeableRef = useRef(null);
+  const { poster_path, genre_ids = [], type } = movie;
   const navigation = useNavigation();
 
   // Use secure_base_url from configData and choose appropriate size for poster
@@ -38,8 +41,7 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
 
   // Function to check for a match and create a match document
   const checkForMatchAndCreate = async (newWatchlistItem) => {
-    // Query the watchlists of the user's friends for the same title
-    const friendsList = state.friends; // Assuming you have a friends list in your state
+    const friendsList = state.friends;
     for (const friendId of friendsList) {
       const friendWatchlistRef = collection(db, 'users', friendId, 'watchlist');
       const q = query(
@@ -49,15 +51,14 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
       const querySnapshot = await getDocs(q);
       if (!querySnapshot.empty) {
         // A match is found, create a match document
-        const matchRef = collection(db, 'matches');
-        await addDoc(matchRef, {
-          userIds: [auth.currentUser.uid, friendId],
-          titleId: newWatchlistItem.id,
-          timestamp: serverTimestamp(), // Use Firebase server timestamp in production
-          status: 'new',
-        });
-        // Notify the user about the match (implementation depends on your app's logic)
-        break; // Exit the loop after finding the first match
+        await createMatchDocument(
+          [auth.currentUser.uid, friendId],
+          newWatchlistItem.id,
+          newWatchlistItem.type,
+          serverTimestamp(),
+        );
+        console.log('Match found with ${friendId} for title ${newWatchlistItem.id} (type: ${newWatchlistItem.type})');
+        break;
       }
     }
   };
@@ -66,12 +67,22 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
   const handleSwipe = async (direction, cardIndex) => {
     const actionType =
       direction === 'left' ? 'ADD_TO_WATCHLIST' : 'DISLIKE_MOVIE';
+
+    
     dispatch({ type: actionType, payload: movie });
 
     if (direction === 'left') {
       const newWatchlistItem = { id: movie.id, type: movie.type };
+
+      if (!movie.id || !movie.type) {
+        console.error("Movie ID or Type is missing in SwippeableCard, cannot process swipe.", movie);
+        Alert.alert("Error", "Could not process this title. Please try another.");
+        return;
+      }
+
+
       await addToWatchlist(auth.currentUser.uid, newWatchlistItem);
-      await checkForMatchAndCreate(newWatchlistItem); // Check for a match
+      await checkForMatchAndCreate(newWatchlistItem);
     }
 
     // Dispatch action to update the last index
@@ -84,9 +95,9 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
     // Close the swipeable card
     setTimeout(() => {
       swipeableRef.current?.close();
-      setSwiped(true); // Update the swiped state to true
-      onSwipeComplete(); // Notify parent to load the next card
-    }, 250); // Add a delay for user to see the action feedback
+      setSwiped(true);
+      onSwipeComplete();
+    }, 250);
   };
 
   const renderActions = (dragX, direction) => {

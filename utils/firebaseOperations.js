@@ -17,7 +17,7 @@ import { db } from '../firebaseConfig';
 /// --- USER DATA MANAGEMENT --- ///
 
 // Function to add a title to the watchlist
-export const addToWatchlist = async (userId, movie) => {
+export const addToWatchlist = async (userId, movie) => { // 'movie' here is newWatchlistItem
   const userRef = doc(db, 'users', userId);
   try {
     await updateDoc(userRef, {

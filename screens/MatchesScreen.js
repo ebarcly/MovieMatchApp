@@ -4,7 +4,7 @@ import { fetchUserMatches } from '../utils/firebaseOperations';
 import { auth } from '../firebaseConfig';
 import { MoviesContext } from '../context/MoviesContext'; // for context data (if we need)
 
-const MatchesScreen = () => {
+const MatchesScreen = ({ navigation }) => {
   const [matchesList, setMatchesList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);

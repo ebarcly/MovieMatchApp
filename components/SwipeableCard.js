@@ -53,8 +53,7 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
         await createMatchDocument(
           [auth.currentUser.uid, friendId],
           newWatchlistItem.id,
-          newWatchlistItem.type,
-          serverTimestamp(),
+          newWatchlistItem.type
         );
         console.log('Match found with ${friendId} for title ${newWatchlistItem.id} (type: ${newWatchlistItem.type})');
         break;

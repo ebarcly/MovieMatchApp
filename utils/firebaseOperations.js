@@ -1,7 +1,5 @@
 import {
   doc,
-  updateDoc,
-  arrayUnion,
   getDoc,
   collection,
   query,
@@ -9,6 +7,7 @@ import {
   getDocs,
   orderBy,
   addDoc,
+  setDoc,
   serverTimestamp,
 } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
@@ -17,14 +16,19 @@ import { db } from '../firebaseConfig';
 /// --- USER DATA MANAGEMENT --- ///
 
 // Function to add a title to the watchlist
-export const addToWatchlist = async (userId, movie) => { // 'movie' here is newWatchlistItem
-  const userRef = doc(db, 'users', userId);
+export const addToWatchlist = async (userId, movieItem) => {
+  if (!userId || !movieItem || !movieItem.id) {
+    console.error("Invalid data for addToWatchlist:", { userId, movieItem });
+    throw error;
+    // return [];
+  }
+
+  const watchlistItemRef = doc(db, 'users', userId, 'watchlist', String(movieItem.id));
   try {
-    await updateDoc(userRef, {
-      watchlist: arrayUnion(movie),
-    });
+    await setDoc(watchlistItemRef, movieItem);
+    console.log(`Movie ${movieItem.id} (${movieItem.type}) added/updated in watchlist subcollection for user ${userId}`);
   } catch (error) {
-    console.error('Error adding to watchlist:', error);
+    console.error('Error adding to watchlist subcollection:', error);
   }
 };
 

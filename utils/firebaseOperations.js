@@ -4,17 +4,24 @@ import {
   arrayUnion,
   getDoc,
   collection,
+  query,
+  where,
+  getDocs,
+  orderBy,
   addDoc,
   serverTimestamp,
 } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
+
+
+/// --- USER DATA MANAGEMENT --- ///
 
 // Function to add a title to the watchlist
 export const addToWatchlist = async (userId, movie) => {
   const userRef = doc(db, 'users', userId);
   try {
     await updateDoc(userRef, {
-      watchlist: arrayUnion(movie), // movie should be an object with id and other relevant details
+      watchlist: arrayUnion(movie),
     });
   } catch (error) {
     console.error('Error adding to watchlist:', error);
@@ -70,7 +77,7 @@ export const fetchFriendsList = async (userId) => {
   try {
     const docSnap = await getDoc(userRef);
     if (docSnap.exists()) {
-      return docSnap.data().friends || []; // Assuming 'friends' is an array of friend user IDs
+      return docSnap.data().friends || [];
     } else {
       return [];
     }
@@ -80,14 +87,47 @@ export const fetchFriendsList = async (userId) => {
   }
 };
 
+/// --- MATCHING LOGIC --- ///
+
+// New function to fetch matches for a user
+export const fetchUserMatches = async (userId) => {
+  if (!userId) {
+    console.error("User ID is undefined, cannot fetch matches.");
+    throw error;
+    // return [];
+  }
+  try {
+    const matchesRef = collection(db, 'matches');
+    // Create a query to find matches where the user's ID is in the 'userIds' array
+    // and order them by timestamp in descending order (newest first)
+    const q = query(
+      matchesRef,
+      where('userIds', 'array-contains', userId),
+      orderBy('timestamp', 'desc')
+    );
+
+    const querySnapshot = await getDocs(q);
+    const matches = [];
+    querySnapshot.forEach((doc) => {
+      matches.push({ id: doc.id, ...doc.data() });
+    });
+    return matches;
+  } catch (error) {
+    console.error("Error fetching user matches:", error);
+    throw error; 
+    // return [];
+  }
+};
+
 // Function to create a match document
-export const createMatchDocument = async (userIds, titleId) => {
+export const createMatchDocument = async (userIds, titleId, titleType) => {
   const matchRef = collection(db, 'matches');
   try {
     await addDoc(matchRef, {
       userIds: userIds,
       titleId: titleId,
-      timestamp: serverTimestamp(), // Use Firebase server timestamp
+      titleType: titleType,
+      timestamp: serverTimestamp(),
       status: 'new',
     });
   } catch (error) {

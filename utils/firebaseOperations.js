@@ -127,7 +127,25 @@ export const fetchUserMatches = async (userId) => {
 export const createMatchDocument = async (userIds, titleId, titleType) => {
   console.log("CREATE_MATCH_DOCUMENT: Called with (initial params):", { userIds, titleId, titleType });
   const matchRef = collection(db, 'matches');
+  const sortedUserIds = [...userIds].sort();
+  
+  // Query to check for an existing match with the same two users and same title
+  const q = query(matchRef,
+    where('userIds', '==', sortedUserIds),
+    where('titleId', '==', titleId)
+  );
+
   try {
+    const querySnapshot = await getDocs(q);
+    if (!querySnapshot.empty) {
+      // a match already exists
+      console.log("MATCH_PREVENTION: Match already exists for users", sortedUserIds, "and title", titleId, "- Not creating duplicate.");
+      querySnapshot.forEach(doc => {
+        console.log("Existing match doc ID:", doc.id, "Data:", doc.data());
+      });
+      return;
+    }
+
     const dataToWrite = {
       userIds: userIds,
       titleId: titleId,

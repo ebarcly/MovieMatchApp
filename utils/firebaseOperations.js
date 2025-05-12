@@ -125,16 +125,20 @@ export const fetchUserMatches = async (userId) => {
 
 // Function to create a match document
 export const createMatchDocument = async (userIds, titleId, titleType) => {
+  console.log("CREATE_MATCH_DOCUMENT: Called with (initial params):", { userIds, titleId, titleType });
   const matchRef = collection(db, 'matches');
   try {
-    await addDoc(matchRef, {
+    const dataToWrite = {
       userIds: userIds,
       titleId: titleId,
       titleType: titleType,
       timestamp: serverTimestamp(),
       status: 'new',
-    });
+    };
+    console.log("CREATE_MATCH_DOCUMENT: Data being written:", dataToWrite);
+    const docRef = await addDoc(matchRef, dataToWrite);
+    console.log("CREATE_MATCH_DOCUMENT: Success! Doc ID:", docRef.id);
   } catch (error) {
-    console.error('Error creating match document:', error);
+    console.error('CREATE_MATCH_DOCUMENT: Error:', error);
   }
 };

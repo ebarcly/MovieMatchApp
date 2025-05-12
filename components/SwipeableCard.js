@@ -17,7 +17,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import { MoviesContext } from '../context/MoviesContext';
 import { useNavigation } from '@react-navigation/native';
 import { auth, db } from '../firebaseConfig';
-import { collection, query, where, getDocs, addDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, Timestamp } from 'firebase/firestore';
 import { addToWatchlist, createMatchDocument } from '../utils/firebaseOperations';
 
 
@@ -43,6 +43,7 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
     const friendsList = state.friends;
     for (const friendId of friendsList) {
       const friendWatchlistRef = collection(db, 'users', friendId, 'watchlist');
+      console.log(`SWIPEABLE_CARD: Checking friend ${friendId}. newWatchlistItem.id is: ${newWatchlistItem.id} (type: ${typeof newWatchlistItem.id})`);
       const q = query(
         friendWatchlistRef,
         where('id', '==', newWatchlistItem.id)
@@ -50,6 +51,7 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
       const querySnapshot = await getDocs(q);
       if (!querySnapshot.empty) {
         // A match is found, create a match document
+        console.log("SWIPEABLE_CARD: Friend's watchlist contains the item. About to create match.");
         await createMatchDocument(
           [auth.currentUser.uid, friendId],
           newWatchlistItem.id,
@@ -57,6 +59,8 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
         );
         console.log('Match found with ${friendId} for title ${newWatchlistItem.id} (type: ${newWatchlistItem.type})');
         break;
+      } else {
+        console.log("SWIPEABLE_CARD: Friend", friendId, "does NOT have item", newWatchlistItem.id, "in their watchlist subcollection.");
       }
     }
   };

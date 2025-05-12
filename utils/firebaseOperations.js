@@ -15,6 +15,26 @@ import { db } from '../firebaseConfig';
 
 /// --- USER DATA MANAGEMENT --- ///
 
+export const recordTitleInteraction = async (userId, titleId, titleType, action) => {
+  if (!userId || !titleId || !titleType) {
+    console.error("Invalid data for recordTitleInteraction:", { userId, titleId, titleType, action });
+    throw error;
+  }
+  try {
+    const interactionRef = doc(db, 'users', userId, 'interactedTitles', String(titleId)); // REVIEW TYPE CASTING!!!
+    await setDoc(interactionRef, {
+      id: titleId,
+      type: titleType,
+      action: action,
+      interactedAt: serverTimestamp()
+    });
+    console.log(`Interaction recorded for user ${userId}, title <span class="math-inline">\{titleId\} \(</span>{titleType}), action ${action}`);
+  } catch (error) {
+    console.error("Error recording title interaction:", error);
+    // possibly need to handle this diff
+  }
+};
+
 // Function to add a title to the watchlist
 export const addToWatchlist = async (userId, movieItem) => {
   if (!userId || !movieItem || !movieItem.id) {

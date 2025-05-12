@@ -13,7 +13,7 @@ import {
   GestureHandlerRootView,
   Swipeable,
 } from 'react-native-gesture-handler';
-import Icon from 'react-native-vector-icons/MaterialIcons';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { MoviesContext } from '../context/MoviesContext';
 import { useNavigation } from '@react-navigation/native';
 import { auth, db } from '../firebaseConfig';
@@ -124,7 +124,7 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
         <Animated.View
           style={[styles.actionContent, { transform: [{ scale }, { rotate }] }]}
         >
-          <Icon name={iconName} size={24} color="#fff" style={styles.icon} />
+          <MaterialIcons name={iconName} size={24} color="#fff" style={styles.icon} />
           <Text style={styles.actionText}>{actionText}</Text>
         </Animated.View>
       </View>
@@ -192,14 +192,14 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
           style={styles.button}
           onPress={() => handleSwipe('right', movie.index)}
         >
-          <Icon name="skip-next" size={25} color="#fff" style={styles.icon} />
+          <MaterialIcons name="skip-next" size={25} color="#fff" style={styles.icon} />
           <Text style={styles.buttonText}>Skip</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.button}
           onPress={() => handleSwipe('left', movie.index)}
         >
-          <Icon name="check" size={25} color="#fff" style={styles.icon} />
+          <MaterialIcons name="check" size={25} color="#fff" style={styles.icon} />
           <Text style={styles.buttonText}>Watched</Text>
         </TouchableOpacity>
       </View>

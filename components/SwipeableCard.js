@@ -18,7 +18,7 @@ import { MoviesContext } from '../context/MoviesContext';
 import { useNavigation } from '@react-navigation/native';
 import { auth, db } from '../firebaseConfig';
 import { collection, query, where, getDocs, addDoc, Timestamp } from 'firebase/firestore';
-import { addToWatchlist, createMatchDocument } from '../utils/firebaseOperations';
+import { addToWatchlist, createMatchDocument, recordTitleInteraction } from '../utils/firebaseOperations';
 
 
 const SwipeableCard = ({ movie, onSwipeComplete }) => {
@@ -65,34 +65,36 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
     }
   };
 
-  // Modify the handleSwipe function to include match checking
+  // Handle users card swipe action
   const handleSwipe = async (direction, cardIndex) => {
-    const actionType =
-      direction === 'left' ? 'ADD_TO_WATCHLIST' : 'DISLIKE_MOVIE';
+    const isLikeAction = direction === 'left';
+    const localDispatchActionType = isLikeAction ? 'ADD_TO_WATCHLIST' : 'DISLIKE_MOVIE';
 
-    
-    dispatch({ type: actionType, payload: movie });
+    dispatch({ type: localDispatchActionType, payload: movie });
 
-    if (direction === 'left') {
+    const interactionAction = isLikeAction ? 'liked' : 'disliked_or_skipped';
+    if (auth.currentUser && movie.id && movie.type) {
+      await recordTitleInteraction(auth.currentUser.uid, movie.id, movie.type, interactionAction);
+    } else {
+      console.warn("Cannot record interaction: missing user, movie.id, or movie.type");
+    }
+
+    if (isLikeAction) {
       const newWatchlistItem = { id: movie.id, type: movie.type };
-
       if (!movie.id || !movie.type) {
-        console.error("Movie ID or Type is missing in SwippeableCard, cannot process swipe.", movie);
+        console.error("Movie ID or Type is missing in SwipeableCard, cannot process swipe.", movie);
         Alert.alert("Error", "Could not process this title. Please try another.");
         return;
       }
-
-
       await addToWatchlist(auth.currentUser.uid, newWatchlistItem);
       await checkForMatchAndCreate(newWatchlistItem);
     }
 
-    // Dispatch action to update the last index
-    const updateActionType =
-      movie.type === 'movie'
-        ? 'UPDATE_LAST_MOVIE_INDEX'
-        : 'UPDATE_LAST_TVSHOW_INDEX';
-    dispatch({ type: updateActionType, payload: cardIndex });
+    const updateContextIndexActionType = 
+    movie.type === 'movie'
+    ? 'UPDATE_LAST_MOVIE_INDEX'
+    : 'UPDATE_LAST_TVSHOW_INDEX';
+    dispatch({ type: updateContextIndexActionType, payload: cardIndex });
 
     // Close the swipeable card
     setTimeout(() => {

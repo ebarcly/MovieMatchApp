@@ -19,7 +19,7 @@ const initialState = {
   configData: {},
   genres: [],
   error: null,
-  friends: [], // Add this line
+  friends: [],
 };
 
 export const MoviesContext = createContext(initialState);
@@ -95,7 +95,7 @@ const moviesReducer = (state, action) => {
       return { ...state, watched: action.payload };
     case 'SET_ERROR':
       return { ...state, error: action.payload };
-    case 'SET_FRIENDS_LIST': // Add this case
+    case 'SET_FRIENDS_LIST':
       return { ...state, friends: action.payload };
     default:
       return state;
@@ -116,57 +116,49 @@ export const MoviesProvider = ({ children }) => {
         dispatch({ type: 'SET_GENRES', payload: genresArray });
       } catch (error) {
         console.error('Error fetching config/genres:', error);
-        // Optionally dispatch an error specific to config/genres
         dispatch({ type: 'SET_ERROR', payload: 'Failed to load configuration or genres.' });
       }
     };
 
-    loadConfigAndGenres(); // Call the function to load config/genres
+    loadConfigAndGenres(); // load config/genres
 
     // --- 2. Set up the listener for authentication state ---
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        // --- 3. User is logged in, NOW fetch user-specific data ---
+        // User is logged in
+        console.log('User is logged in:', user.uid);
         try {
-          console.log('User is logged in:', user.uid); // Good for debugging
-
-          // Fetch watchlist using the user object from the listener
-          const watchlist = await fetchUserWatchlist(user.uid);
+          const watchlist = await fetchUserWatchlist(user.uid); // This seems to fetch from user doc field, not subcollection
           dispatch({ type: 'SET_WATCHLIST', payload: watchlist });
-
-          // Fetch friends list using the user object from the listener
+  
           const friendsList = await fetchFriendsList(user.uid);
           dispatch({ type: 'SET_FRIENDS_LIST', payload: friendsList });
-
-          // Clear any previous general errors if data loading succeeds
-          // dispatch({ type: 'SET_ERROR', payload: null }); // Optional: clear error on success
-
+  
+          // Reset indices for a new session or fetch user-specific persisted indices
+          dispatch({ type: 'UPDATE_LAST_MOVIE_INDEX', payload: 0 }); 
+          dispatch({ type: 'UPDATE_LAST_TVSHOW_INDEX', payload: 0 });
+  
         } catch (error) {
           console.error('Error fetching user data (watchlist/friends):', error);
           dispatch({ type: 'SET_ERROR', payload: 'Failed to load user data.' });
         }
       } else {
-        // --- 4. User is logged out ---
-        console.log('User is logged out.');
-        // Clear user-specific data from the state
+        // User is logged out
+        console.log('User is logged out.')
         dispatch({ type: 'SET_WATCHLIST', payload: [] });
         dispatch({ type: 'SET_FRIENDS_LIST', payload: [] });
-        // Potentially clear other user-specific state like favorites, watched etc.
-        // dispatch({ type: 'SET_FAVORITES', payload: [] }); // Example if you add favorites loading
-        // dispatch({ type: 'SET_WATCHED', payload: [] });
-        // Clear any previous errors
-        // dispatch({ type: 'SET_ERROR', payload: null }); // Optional: clear error on logout
+        // Reset indices on logout
+        dispatch({ type: 'UPDATE_LAST_MOVIE_INDEX', payload: 0 });
+        dispatch({ type: 'UPDATE_LAST_TVSHOW_INDEX', payload: 0 });
       }
     });
 
     // --- 5. Cleanup function ---
-    // Return the unsubscribe function to remove the listener when the component unmounts
     return () => {
       console.log('Unsubscribing auth listener');
       unsubscribe();
-    }
-
-  }, []); // Empty dependency array means this effect runs once on mount to set up the listener
+    };
+  }, []);
 
   return (
     <MoviesContext.Provider value={{ state, dispatch }}>

@@ -15,6 +15,27 @@ import { db } from '../firebaseConfig';
 
 /// --- USER DATA MANAGEMENT --- ///
 
+export const fetchInteractedTitleIds = async (userId) => {
+  if (!userId) {
+    console.log("No user ID provided to fetchInteractedTitleIds");
+    return []; // Return an empty set or array
+  }
+  try {
+    const interactionsRef = collection(db, 'users', userId, 'interactedTitles');
+    const q = query(interactionsRef);
+    const querySnapshot = await getDocs(q);
+    const ids = new Set();
+    querySnapshot.forEach(doc => {
+      ids.add(doc.data().id); 
+    });
+    console.log(`User ${userId} has interacted with ${ids.size} titles.`);
+    return Array.from(ids);
+  } catch (error) {
+    console.error("Error fetching interacted title IDs for user:", userId, error);
+    return [];
+  }
+};
+
 export const recordTitleInteraction = async (userId, titleId, titleType, action) => {
   if (!userId || !titleId || !titleType) {
     console.error("Invalid data for recordTitleInteraction:", { userId, titleId, titleType, action });

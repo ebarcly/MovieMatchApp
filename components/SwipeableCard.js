@@ -17,9 +17,19 @@ import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { MoviesContext } from '../context/MoviesContext';
 import { useNavigation } from '@react-navigation/native';
 import { auth, db } from '../firebaseConfig';
-import { collection, query, where, getDocs, addDoc, Timestamp } from 'firebase/firestore';
-import { addToWatchlist, createMatchDocument, recordTitleInteraction } from '../utils/firebaseOperations';
-
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  addDoc,
+  Timestamp,
+} from 'firebase/firestore';
+import {
+  addToWatchlist,
+  createMatchDocument,
+  recordTitleInteraction,
+} from '../utils/firebaseOperations';
 
 const SwipeableCard = ({ movie, onSwipeComplete }) => {
   const { state, dispatch } = useContext(MoviesContext);
@@ -43,7 +53,11 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
     const friendsList = state.friends;
     for (const friendId of friendsList) {
       const friendWatchlistRef = collection(db, 'users', friendId, 'watchlist');
-      console.log(`SWIPEABLE_CARD: Checking friend ${friendId}. newWatchlistItem.id is: ${newWatchlistItem.id} (type: ${typeof newWatchlistItem.id})`);
+      console.log(
+        `SWIPEABLE_CARD: Checking friend ${friendId}. newWatchlistItem.id is: ${
+          newWatchlistItem.id
+        } (type: ${typeof newWatchlistItem.id})`
+      );
       const q = query(
         friendWatchlistRef,
         where('id', '==', newWatchlistItem.id)
@@ -51,16 +65,26 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
       const querySnapshot = await getDocs(q);
       if (!querySnapshot.empty) {
         // A match is found, create a match document
-        console.log("SWIPEABLE_CARD: Friend's watchlist contains the item. About to create match.");
+        console.log(
+          "SWIPEABLE_CARD: Friend's watchlist contains the item. About to create match."
+        );
         await createMatchDocument(
           [auth.currentUser.uid, friendId],
           newWatchlistItem.id,
           newWatchlistItem.type
         );
-        console.log('Match found with ${friendId} for title ${newWatchlistItem.id} (type: ${newWatchlistItem.type})');
+        console.log(
+          `Match found with ${friendId} for title ${newWatchlistItem.id} (type: ${newWatchlistItem.type})`
+        );
         break;
       } else {
-        console.log("SWIPEABLE_CARD: Friend", friendId, "does NOT have item", newWatchlistItem.id, "in their watchlist subcollection.");
+        console.log(
+          'SWIPEABLE_CARD: Friend',
+          friendId,
+          'does NOT have item',
+          newWatchlistItem.id,
+          'in their watchlist subcollection.'
+        );
       }
     }
   };
@@ -68,32 +92,47 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
   // Handle users card swipe action
   const handleSwipe = async (direction, cardIndex) => {
     const isLikeAction = direction === 'left';
-    const localDispatchActionType = isLikeAction ? 'ADD_TO_WATCHLIST' : 'DISLIKE_MOVIE';
+    const localDispatchActionType = isLikeAction
+      ? 'ADD_TO_WATCHLIST'
+      : 'DISLIKE_MOVIE';
 
     dispatch({ type: localDispatchActionType, payload: movie });
 
     const interactionAction = isLikeAction ? 'liked' : 'disliked_or_skipped';
     if (auth.currentUser && movie.id && movie.type) {
-      await recordTitleInteraction(auth.currentUser.uid, movie.id, movie.type, interactionAction);
+      await recordTitleInteraction(
+        auth.currentUser.uid,
+        movie.id,
+        movie.type,
+        interactionAction
+      );
     } else {
-      console.warn("Cannot record interaction: missing user, movie.id, or movie.type");
+      console.warn(
+        'Cannot record interaction: missing user, movie.id, or movie.type'
+      );
     }
 
     if (isLikeAction) {
       const newWatchlistItem = { id: movie.id, type: movie.type };
       if (!movie.id || !movie.type) {
-        console.error("Movie ID or Type is missing in SwipeableCard, cannot process swipe.", movie);
-        Alert.alert("Error", "Could not process this title. Please try another.");
+        console.error(
+          'Movie ID or Type is missing in SwipeableCard, cannot process swipe.',
+          movie
+        );
+        Alert.alert(
+          'Error',
+          'Could not process this title. Please try another.'
+        );
         return;
       }
       await addToWatchlist(auth.currentUser.uid, newWatchlistItem);
       await checkForMatchAndCreate(newWatchlistItem);
     }
 
-    const updateContextIndexActionType = 
-    movie.type === 'movie'
-    ? 'UPDATE_LAST_MOVIE_INDEX'
-    : 'UPDATE_LAST_TVSHOW_INDEX';
+    const updateContextIndexActionType =
+      movie.type === 'movie'
+        ? 'UPDATE_LAST_MOVIE_INDEX'
+        : 'UPDATE_LAST_TVSHOW_INDEX';
     dispatch({ type: updateContextIndexActionType, payload: cardIndex });
 
     // Close the swipeable card
@@ -126,7 +165,12 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
         <Animated.View
           style={[styles.actionContent, { transform: [{ scale }, { rotate }] }]}
         >
-          <MaterialIcons name={iconName} size={24} color="#fff" style={styles.icon} />
+          <MaterialIcons
+            name={iconName}
+            size={24}
+            color="#fff"
+            style={styles.icon}
+          />
           <Text style={styles.actionText}>{actionText}</Text>
         </Animated.View>
       </View>
@@ -194,14 +238,24 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
           style={styles.button}
           onPress={() => handleSwipe('right', movie.index)}
         >
-          <MaterialIcons name="skip-next" size={25} color="#fff" style={styles.icon} />
+          <MaterialIcons
+            name="skip-next"
+            size={25}
+            color="#fff"
+            style={styles.icon}
+          />
           <Text style={styles.buttonText}>Skip</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.button}
           onPress={() => handleSwipe('left', movie.index)}
         >
-          <MaterialIcons name="check" size={25} color="#fff" style={styles.icon} />
+          <MaterialIcons
+            name="check"
+            size={25}
+            color="#fff"
+            style={styles.icon}
+          />
           <Text style={styles.buttonText}>Watched</Text>
         </TouchableOpacity>
       </View>

@@ -1,14 +1,28 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { View, Text, FlatList, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  FlatList,
+  StyleSheet,
+  ActivityIndicator,
+  Alert,
+  Image,
+  TouchableOpacity,
+} from 'react-native';
 import { fetchUserMatches } from '../utils/firebaseOperations';
 import { auth } from '../firebaseConfig';
-import { MoviesContext } from '../context/MoviesContext'; // for context data (if we need)
+// import { MoviesContext } from '../context/MoviesContext'; // for context data (if we need)
 
 const MatchesScreen = ({ navigation }) => {
   const [matchesList, setMatchesList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  // const { state: moviesState } = useContext(MoviesContext); // for context data (if we need)
+
+  // Placeholder function for chat functionality
+  const handleChatPress = (match) => {
+    // TODO: Implement chat functionality
+    Alert.alert('Chat', `Chat with ${match.friend.name} coming soon!`);
+  };
 
   useEffect(() => {
     const loadMatches = async () => {
@@ -20,14 +34,14 @@ const MatchesScreen = ({ navigation }) => {
           const fetchedMatches = await fetchUserMatches(currentUser.uid);
           setMatchesList(fetchedMatches);
         } catch (err) {
-          console.error("Failed to load matches on screen:", err);
+          console.error('Failed to load matches on screen:', err);
           setError("Couldn't load your matches. Please try again later.");
-          Alert.alert("Error", "Couldn't load your matches.");
+          Alert.alert('Error', "Couldn't load your matches.");
         } finally {
           setLoading(false);
         }
       } else {
-        setError("Please log in to see your matches.");
+        setError('Please log in to see your matches.');
         setLoading(false);
       }
     };
@@ -63,20 +77,28 @@ const MatchesScreen = ({ navigation }) => {
     );
   }
 
-  // Temporary render item to just show some data
   const renderMatchItem = ({ item }) => {
-    // Identify the other user
-    const currentUserUID = auth.currentUser ? auth.currentUser.uid : null;
-    const otherUserID = item.userIds.find(uid => uid !== currentUserUID);
+    const imageUrl = item.title.poster_path
+      ? `https://image.tmdb.org/t/p/w500${item.title.poster_path}`
+      : null;
 
     return (
       <View style={styles.matchItem}>
-        <Text>Match ID: {item.id}</Text>
-        <Text>Matched with: {otherUserID || 'Unknown User'}</Text>
-        <Text>Content ID: {item.titleId}</Text>
-        <Text>Content Type: {item.titleType}</Text>
-        <Text>Status: {item.status}</Text>
-        {item.timestamp && <Text>Date: {new Date(item.timestamp.seconds * 1000).toLocaleDateString()}</Text>}
+        <Image source={{ uri: imageUrl }} style={styles.matchImage} />
+        <View style={styles.matchDetails}>
+          <Text style={styles.matchTitle}>
+            {item.title.title || item.title.name}
+          </Text>
+          <Text style={styles.matchText}>
+            You and {item.friend.name} both liked this.
+          </Text>
+          <TouchableOpacity
+            style={styles.chatButton}
+            onPress={() => handleChatPress(item)}
+          >
+            <Text style={styles.chatButtonText}>Chat</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   };
@@ -88,7 +110,6 @@ const MatchesScreen = ({ navigation }) => {
         data={matchesList}
         renderItem={renderMatchItem}
         keyExtractor={(item) => item.id}
-        ListEmptyComponent={<Text>No matches found.</Text>} // covered by the check above
       />
     </View>
   );
@@ -98,6 +119,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 10,
+    backgroundColor: '#f0f0f0',
   },
   centered: {
     flex: 1,
@@ -111,18 +133,52 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   matchItem: {
-    padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#ccc',
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 10,
     marginBottom: 10,
-    backgroundColor: '#f9f9f9',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  matchImage: {
+    width: 100,
+    height: 150,
+    borderRadius: 8,
+  },
+  matchDetails: {
+    flex: 1,
+    marginLeft: 10,
+    justifyContent: 'center',
+  },
+  matchTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  matchText: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 5,
+  },
+  chatButton: {
+    backgroundColor: '#007bff',
+    padding: 10,
     borderRadius: 5,
+    marginTop: 10,
+    alignItems: 'center',
+  },
+  chatButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
   },
   errorText: {
     color: 'red',
     fontSize: 16,
     textAlign: 'center',
-  }
+  },
 });
 
 export default MatchesScreen;

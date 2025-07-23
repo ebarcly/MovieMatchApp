@@ -33,6 +33,16 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
+# app.json
 app.json
 
+# firestore.rules
 firestore.rules
+
+# firestore.indexes.json
+firestore.indexes.json
+
+# firbase
+.firebaserc
+firebase.json
+GEMINI.md

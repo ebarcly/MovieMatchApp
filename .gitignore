@@ -1,5 +1,3 @@
-# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
-
 # dependencies
 node_modules/
 
@@ -35,4 +33,16 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
+# app.json
 app.json
+
+# firestore.rules
+firestore.rules
+
+# firestore.indexes.json
+firestore.indexes.json
+
+# firbase
+.firebaserc
+firebase.json
+GEMINI.md

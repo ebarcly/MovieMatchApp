@@ -7,22 +7,34 @@ import {
   Animated,
   TouchableOpacity,
   TouchableWithoutFeedback,
+  Alert,
 } from 'react-native';
 import {
   GestureHandlerRootView,
   Swipeable,
 } from 'react-native-gesture-handler';
-import Icon from 'react-native-vector-icons/MaterialIcons';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { MoviesContext } from '../context/MoviesContext';
 import { useNavigation } from '@react-navigation/native';
-import { addToWatchlist } from '../utils/firebaseOperations';
 import { auth, db } from '../firebaseConfig';
-import { collection, query, where, getDocs, addDoc } from 'firebase/firestore';
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  addDoc,
+  Timestamp,
+} from 'firebase/firestore';
+import {
+  addToWatchlist,
+  createMatchDocument,
+  recordTitleInteraction,
+} from '../utils/firebaseOperations';
 
 const SwipeableCard = ({ movie, onSwipeComplete }) => {
-  const { state, dispatch } = useContext(MoviesContext); // Use the context
-  const swipeableRef = useRef(null); // Create a ref for the Swipeable component
-  const { poster_path, genre_ids = [] } = movie;
+  const { state, dispatch } = useContext(MoviesContext);
+  const swipeableRef = useRef(null);
+  const { poster_path, genre_ids = [], type } = movie;
   const navigation = useNavigation();
 
   // Use secure_base_url from configData and choose appropriate size for poster
@@ -38,10 +50,14 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
 
   // Function to check for a match and create a match document
   const checkForMatchAndCreate = async (newWatchlistItem) => {
-    // Query the watchlists of the user's friends for the same title
-    const friendsList = state.friends; // Assuming you have a friends list in your state
+    const friendsList = state.friends;
     for (const friendId of friendsList) {
       const friendWatchlistRef = collection(db, 'users', friendId, 'watchlist');
+      console.log(
+        `SWIPEABLE_CARD: Checking friend ${friendId}. newWatchlistItem.id is: ${
+          newWatchlistItem.id
+        } (type: ${typeof newWatchlistItem.id})`
+      );
       const q = query(
         friendWatchlistRef,
         where('id', '==', newWatchlistItem.id)
@@ -49,44 +65,82 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
       const querySnapshot = await getDocs(q);
       if (!querySnapshot.empty) {
         // A match is found, create a match document
-        const matchRef = collection(db, 'matches');
-        await addDoc(matchRef, {
-          userIds: [auth.currentUser.uid, friendId],
-          titleId: newWatchlistItem.id,
-          timestamp: serverTimestamp(), // Use Firebase server timestamp in production
-          status: 'new',
-        });
-        // Notify the user about the match (implementation depends on your app's logic)
-        break; // Exit the loop after finding the first match
+        console.log(
+          "SWIPEABLE_CARD: Friend's watchlist contains the item. About to create match."
+        );
+        await createMatchDocument(
+          [auth.currentUser.uid, friendId],
+          newWatchlistItem.id,
+          newWatchlistItem.type
+        );
+        console.log(
+          `Match found with ${friendId} for title ${newWatchlistItem.id} (type: ${newWatchlistItem.type})`
+        );
+        break;
+      } else {
+        console.log(
+          'SWIPEABLE_CARD: Friend',
+          friendId,
+          'does NOT have item',
+          newWatchlistItem.id,
+          'in their watchlist subcollection.'
+        );
       }
     }
   };
 
-  // Modify the handleSwipe function to include match checking
+  // Handle users card swipe action
   const handleSwipe = async (direction, cardIndex) => {
-    const actionType =
-      direction === 'left' ? 'ADD_TO_WATCHLIST' : 'DISLIKE_MOVIE';
-    dispatch({ type: actionType, payload: movie });
+    const isLikeAction = direction === 'left';
+    const localDispatchActionType = isLikeAction
+      ? 'ADD_TO_WATCHLIST'
+      : 'DISLIKE_MOVIE';
 
-    if (direction === 'left') {
-      const newWatchlistItem = { id: movie.id, type: movie.type };
-      await addToWatchlist(auth.currentUser.uid, newWatchlistItem);
-      await checkForMatchAndCreate(newWatchlistItem); // Check for a match
+    dispatch({ type: localDispatchActionType, payload: movie });
+
+    const interactionAction = isLikeAction ? 'liked' : 'disliked_or_skipped';
+    if (auth.currentUser && movie.id && movie.type) {
+      await recordTitleInteraction(
+        auth.currentUser.uid,
+        movie.id,
+        movie.type,
+        interactionAction
+      );
+    } else {
+      console.warn(
+        'Cannot record interaction: missing user, movie.id, or movie.type'
+      );
     }
 
-    // Dispatch action to update the last index
-    const updateActionType =
+    if (isLikeAction) {
+      const newWatchlistItem = { id: movie.id, type: movie.type };
+      if (!movie.id || !movie.type) {
+        console.error(
+          'Movie ID or Type is missing in SwipeableCard, cannot process swipe.',
+          movie
+        );
+        Alert.alert(
+          'Error',
+          'Could not process this title. Please try another.'
+        );
+        return;
+      }
+      await addToWatchlist(auth.currentUser.uid, newWatchlistItem);
+      await checkForMatchAndCreate(newWatchlistItem);
+    }
+
+    const updateContextIndexActionType =
       movie.type === 'movie'
         ? 'UPDATE_LAST_MOVIE_INDEX'
         : 'UPDATE_LAST_TVSHOW_INDEX';
-    dispatch({ type: updateActionType, payload: cardIndex });
+    dispatch({ type: updateContextIndexActionType, payload: cardIndex });
 
     // Close the swipeable card
     setTimeout(() => {
       swipeableRef.current?.close();
-      setSwiped(true); // Update the swiped state to true
-      onSwipeComplete(); // Notify parent to load the next card
-    }, 250); // Add a delay for user to see the action feedback
+      setSwiped(true);
+      onSwipeComplete();
+    }, 250);
   };
 
   const renderActions = (dragX, direction) => {
@@ -111,7 +165,12 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
         <Animated.View
           style={[styles.actionContent, { transform: [{ scale }, { rotate }] }]}
         >
-          <Icon name={iconName} size={24} color="#fff" style={styles.icon} />
+          <MaterialIcons
+            name={iconName}
+            size={24}
+            color="#fff"
+            style={styles.icon}
+          />
           <Text style={styles.actionText}>{actionText}</Text>
         </Animated.View>
       </View>
@@ -179,14 +238,24 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
           style={styles.button}
           onPress={() => handleSwipe('right', movie.index)}
         >
-          <Icon name="skip-next" size={25} color="#fff" style={styles.icon} />
+          <MaterialIcons
+            name="skip-next"
+            size={25}
+            color="#fff"
+            style={styles.icon}
+          />
           <Text style={styles.buttonText}>Skip</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.button}
           onPress={() => handleSwipe('left', movie.index)}
         >
-          <Icon name="check" size={25} color="#fff" style={styles.icon} />
+          <MaterialIcons
+            name="check"
+            size={25}
+            color="#fff"
+            style={styles.icon}
+          />
           <Text style={styles.buttonText}>Watched</Text>
         </TouchableOpacity>
       </View>

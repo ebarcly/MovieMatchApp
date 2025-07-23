@@ -70,7 +70,7 @@ export const recordTitleInteraction = async (
       interactedAt: serverTimestamp(),
     });
     console.log(
-      `Interaction recorded for user ${userId}, title <span class="math-inline">\{titleId\} \(</span>{titleType}), action ${action}`
+      `Interaction recorded for user ${userId}, title ${titleId} (${titleType}), action ${action}`
     );
   } catch (error) {
     console.error('Error recording title interaction:', error);

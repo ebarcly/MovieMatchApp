@@ -1,6 +1,8 @@
 import React from 'react';
-import Icon from 'react-native-vector-icons/MaterialIcons';
+import { MagnifyingGlass } from 'phosphor-react-native';
 
-const SearchIcon = () => <Icon name="search" size={32} color="#000" />;
+const SearchIcon = () => (
+  <MagnifyingGlass size={28} color="#000" weight="regular" />
+);
 
 export default SearchIcon;

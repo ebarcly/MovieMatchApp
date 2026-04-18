@@ -13,7 +13,7 @@ import {
   GestureHandlerRootView,
   Swipeable,
 } from 'react-native-gesture-handler';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import { SkipForward, Check, ThumbsUp, ThumbsDown } from 'phosphor-react-native';
 import { MoviesContext } from '../context/MoviesContext';
 import { useNavigation } from '@react-navigation/native';
 import { auth, db } from '../firebaseConfig';
@@ -166,7 +166,7 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
     });
 
     const backgroundColor = direction === 'right' ? '#006600' : '#ff6666';
-    const iconName = direction === 'right' ? 'thumb-up' : 'thumb-down';
+    const ActionIcon = direction === 'right' ? ThumbsUp : ThumbsDown;
     const actionText = direction === 'right' ? 'Interested' : 'Not Interested';
 
     return (
@@ -174,10 +174,10 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
         <Animated.View
           style={[styles.actionContent, { transform: [{ scale }, { rotate }] }]}
         >
-          <MaterialIcons
-            name={iconName}
-            size={24}
+          <ActionIcon
+            size={28}
             color="#fff"
+            weight="fill"
             style={styles.icon}
           />
           <Text style={styles.actionText}>{actionText}</Text>
@@ -253,10 +253,10 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
           style={styles.button}
           onPress={() => handleSwipe('reject', movie.index)}
         >
-          <MaterialIcons
-            name="skip-next"
-            size={25}
+          <SkipForward
+            size={22}
             color="#fff"
+            weight="bold"
             style={styles.icon}
           />
           <Text style={styles.buttonText}>Skip</Text>
@@ -265,10 +265,10 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
           style={styles.button}
           onPress={() => handleSwipe('accept', movie.index)}
         >
-          <MaterialIcons
-            name="check"
-            size={25}
+          <Check
+            size={22}
             color="#fff"
+            weight="bold"
             style={styles.icon}
           />
           <Text style={styles.buttonText}>Watched</Text>

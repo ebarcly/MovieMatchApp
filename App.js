@@ -23,15 +23,6 @@ const loadFonts = async () => {
     // TTF is missing from assets/fonts/. Falls back to platform default until
     // the file is added. Track as follow-up.
     'WorkSans-SemiBold': require('./assets/fonts/WorkSans-Bold.ttf'),
-    // react-native-vector-icons relies on native autolinking in bare RN. In
-    // Expo managed workflow the TTF has to be registered via expo-font at
-    // runtime — otherwise glyph lookups fall back to platform defaults, which
-    // is why Skip showed a martini glass and Watched/metadata rows showed "?"
-    // placeholders. The .font shortcut was removed in v10; load the TTF
-    // directly. The key 'MaterialIcons' matches the Android file basename;
-    // Expo's Font.loadAsync also registers the TTF's embedded "Material Icons"
-    // family name automatically, which covers iOS lookup.
-    MaterialIcons: require('react-native-vector-icons/Fonts/MaterialIcons.ttf'),
   });
 };
 

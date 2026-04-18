@@ -10,7 +10,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { fetchDetailsById } from '../services/api';
-import Icon from 'react-native-vector-icons/MaterialIcons';
+import { PlayCircle, FilmStrip, Clock } from 'phosphor-react-native';
 import { WebView } from 'react-native-webview';
 
 const DetailScreen = ({ route }) => {
@@ -70,7 +70,7 @@ const DetailScreen = ({ route }) => {
             onPress={handlePlayTrailerClick}
             style={styles.playButton}
           >
-            <Icon name="play-circle-outline" size={50} color="#FFF" />
+            <PlayCircle size={56} color="#FFF" weight="fill" />
           </TouchableOpacity>
         </View>
       );
@@ -173,13 +173,13 @@ const DetailScreen = ({ route }) => {
             <Text style={styles.movieOverview}>{detailData.overview}</Text>
             <View style={styles.metaInfo}>
               <View style={styles.metaItem}>
-                <Icon name="theater-comedy" size={20} color="#FFF" />
+                <FilmStrip size={20} color="#FFF" weight="regular" />
                 <Text style={styles.metaText}>
                   {detailData.genres.map((genre) => genre.name).join(' • ')}
                 </Text>
               </View>
               <View style={styles.metaItem}>
-                <Icon name="schedule" size={20} color="#FFF" />
+                <Clock size={20} color="#FFF" weight="regular" />
                 <Text style={styles.metaText}>{displayTimeOrSeasons()}</Text>
               </View>
             </View>

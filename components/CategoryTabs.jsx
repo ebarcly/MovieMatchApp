@@ -10,7 +10,7 @@ const CategoryTabs = ({ onCategorySelect }) => {
   const handleCategorySelect = (category) => {
     setActiveTab(category);
     onCategorySelect(category);
-  }
+  };
 
   return (
     <ScrollView

@@ -30,7 +30,7 @@ const moviesReducer = (state, action) => {
       return {
         ...state,
         favorites: state.favorites.some(
-          (movie) => movie.id === action.payload.id
+          (movie) => movie.id === action.payload.id,
         )
           ? state.favorites
           : [...state.favorites, action.payload],
@@ -39,7 +39,7 @@ const moviesReducer = (state, action) => {
       return {
         ...state,
         dislikedMovies: state.dislikedMovies.some(
-          (movie) => movie.id === action.payload.id
+          (movie) => movie.id === action.payload.id,
         )
           ? state.dislikedMovies
           : [...state.dislikedMovies, action.payload],
@@ -48,7 +48,7 @@ const moviesReducer = (state, action) => {
       return {
         ...state,
         watchlist: state.watchlist.some(
-          (movie) => movie.id === action.payload.id
+          (movie) => movie.id === action.payload.id,
         )
           ? state.watchlist
           : [...state.watchlist, action.payload],
@@ -62,21 +62,21 @@ const moviesReducer = (state, action) => {
       };
     case 'REMOVE_FROM_WATCHLIST':
       const updatedWatchlist = state.watchlist.filter(
-        (movie) => movie.id !== action.payload.id
+        (movie) => movie.id !== action.payload.id,
       );
       return { ...state, watchlist: updatedWatchlist };
     case 'REMOVE_FROM_FAVORITES':
       return {
         ...state,
         favorites: state.favorites.filter(
-          (movie) => movie.id !== action.payload.id
+          (movie) => movie.id !== action.payload.id,
         ),
       };
     case 'REMOVE_FROM_WATCHED':
       return {
         ...state,
         watched: state.watched.filter(
-          (movie) => movie.id !== action.payload.id
+          (movie) => movie.id !== action.payload.id,
         ),
       };
     case 'UPDATE_LAST_MOVIE_INDEX':
@@ -116,7 +116,10 @@ export const MoviesProvider = ({ children }) => {
         dispatch({ type: 'SET_GENRES', payload: genresArray });
       } catch (error) {
         console.error('Error fetching config/genres:', error);
-        dispatch({ type: 'SET_ERROR', payload: 'Failed to load configuration or genres.' });
+        dispatch({
+          type: 'SET_ERROR',
+          payload: 'Failed to load configuration or genres.',
+        });
       }
     };
 
@@ -130,21 +133,20 @@ export const MoviesProvider = ({ children }) => {
         try {
           const watchlist = await fetchUserWatchlist(user.uid); // This seems to fetch from user doc field, not subcollection
           dispatch({ type: 'SET_WATCHLIST', payload: watchlist });
-  
+
           const friendsList = await fetchFriendsList(user.uid);
           dispatch({ type: 'SET_FRIENDS_LIST', payload: friendsList });
-  
+
           // Reset indices for a new session or fetch user-specific persisted indices
-          dispatch({ type: 'UPDATE_LAST_MOVIE_INDEX', payload: 0 }); 
+          dispatch({ type: 'UPDATE_LAST_MOVIE_INDEX', payload: 0 });
           dispatch({ type: 'UPDATE_LAST_TVSHOW_INDEX', payload: 0 });
-  
         } catch (error) {
           console.error('Error fetching user data (watchlist/friends):', error);
           dispatch({ type: 'SET_ERROR', payload: 'Failed to load user data.' });
         }
       } else {
         // User is logged out
-        console.log('User is logged out.')
+        console.log('User is logged out.');
         dispatch({ type: 'SET_WATCHLIST', payload: [] });
         dispatch({ type: 'SET_FRIENDS_LIST', payload: [] });
         // Reset indices on logout

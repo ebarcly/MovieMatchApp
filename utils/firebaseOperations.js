@@ -36,7 +36,7 @@ export const fetchInteractedTitleIds = async (userId) => {
     console.error(
       'Error fetching interacted title IDs for user:',
       userId,
-      error
+      error,
     );
     return [];
   }
@@ -46,7 +46,7 @@ export const recordTitleInteraction = async (
   userId,
   titleId,
   titleType,
-  action
+  action,
 ) => {
   if (!userId || !titleId || !titleType) {
     throw new Error(
@@ -59,7 +59,7 @@ export const recordTitleInteraction = async (
       'users',
       userId,
       'interactedTitles',
-      String(titleId)
+      String(titleId),
     ); // REVIEW TYPE CASTING!!!
     await setDoc(interactionRef, {
       id: titleId,
@@ -68,7 +68,7 @@ export const recordTitleInteraction = async (
       interactedAt: serverTimestamp(),
     });
     console.log(
-      `Interaction recorded for user ${userId}, title ${titleId} (${titleType}), action ${action}`
+      `Interaction recorded for user ${userId}, title ${titleId} (${titleType}), action ${action}`,
     );
   } catch (error) {
     console.error('Error recording title interaction:', error);
@@ -89,12 +89,12 @@ export const addToWatchlist = async (userId, movieItem) => {
     'users',
     userId,
     'watchlist',
-    String(movieItem.id)
+    String(movieItem.id),
   );
   try {
     await setDoc(watchlistItemRef, movieItem);
     console.log(
-      `Movie ${movieItem.id} (${movieItem.type}) added/updated in watchlist subcollection for user ${userId}`
+      `Movie ${movieItem.id} (${movieItem.type}) added/updated in watchlist subcollection for user ${userId}`,
     );
   } catch (error) {
     console.error('Error adding to watchlist subcollection:', error);
@@ -173,7 +173,7 @@ export const fetchUserMatches = async (userId) => {
     const q = query(
       matchesRef,
       where('userIds', 'array-contains', userId),
-      orderBy('timestamp', 'desc')
+      orderBy('timestamp', 'desc'),
     );
 
     const querySnapshot = await getDocs(q);
@@ -194,7 +194,7 @@ export const fetchUserMatches = async (userId) => {
       // Fetch title details
       const titleDetails = await fetchDetailsById(
         matchData.titleId,
-        matchData.titleType
+        matchData.titleType,
       );
 
       return {
@@ -234,7 +234,7 @@ export const createMatchDocument = async (userIds, titleId, titleType) => {
   const q = query(
     matchRef,
     where('userIds', '==', sortedUserIds),
-    where('titleId', '==', titleId)
+    where('titleId', '==', titleId),
   );
 
   try {
@@ -246,7 +246,7 @@ export const createMatchDocument = async (userIds, titleId, titleType) => {
         sortedUserIds,
         'and title',
         titleId,
-        '- Not creating duplicate.'
+        '- Not creating duplicate.',
       );
       querySnapshot.forEach((doc) => {
         console.log('Existing match doc ID:', doc.id, 'Data:', doc.data());

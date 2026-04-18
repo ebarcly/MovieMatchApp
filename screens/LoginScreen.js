@@ -1,5 +1,11 @@
 import React, { useState } from 'react';
-import { View, TextInput, TouchableOpacity, Text, StyleSheet } from 'react-native';
+import {
+  View,
+  TextInput,
+  TouchableOpacity,
+  Text,
+  StyleSheet,
+} from 'react-native';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../firebaseConfig';
 
@@ -15,7 +21,7 @@ const LoginScreen = ({ navigation }) => {
     } catch (error) {
       setError(error.message);
     }
-  }
+  };
 
   return (
     <View style={styles.container}>
@@ -40,10 +46,16 @@ const LoginScreen = ({ navigation }) => {
       <TouchableOpacity onPress={handleLogin} style={styles.button}>
         <Text style={styles.buttonText}>Log In</Text>
       </TouchableOpacity>
-      <TouchableOpacity onPress={() => navigation.navigate('Forgot Password')} style={styles.forgotPassword}>
+      <TouchableOpacity
+        onPress={() => navigation.navigate('Forgot Password')}
+        style={styles.forgotPassword}
+      >
         <Text style={styles.linkText}>Forgot your password?</Text>
       </TouchableOpacity>
-      <TouchableOpacity onPress={() => navigation.navigate('Register')} style={styles.signup}>
+      <TouchableOpacity
+        onPress={() => navigation.navigate('Register')}
+        style={styles.signup}
+      >
         <Text style={styles.linkText}>Don't have an account? Register</Text>
       </TouchableOpacity>
     </View>
@@ -91,7 +103,7 @@ const styles = StyleSheet.create({
     fontFamily: 'WorkSans-Bold',
   },
   linkText: {
-    color: '#fff', 
+    color: '#fff',
     marginTop: 15,
     textAlign: 'center',
     fontFamily: 'WorkSans-Regular',

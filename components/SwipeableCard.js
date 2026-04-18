@@ -56,25 +56,25 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
       console.log(
         `SWIPEABLE_CARD: Checking friend ${friendId}. newWatchlistItem.id is: ${
           newWatchlistItem.id
-        } (type: ${typeof newWatchlistItem.id})`
+        } (type: ${typeof newWatchlistItem.id})`,
       );
       const q = query(
         friendWatchlistRef,
-        where('id', '==', newWatchlistItem.id)
+        where('id', '==', newWatchlistItem.id),
       );
       const querySnapshot = await getDocs(q);
       if (!querySnapshot.empty) {
         // A match is found, create a match document
         console.log(
-          "SWIPEABLE_CARD: Friend's watchlist contains the item. About to create match."
+          "SWIPEABLE_CARD: Friend's watchlist contains the item. About to create match.",
         );
         await createMatchDocument(
           [auth.currentUser.uid, friendId],
           newWatchlistItem.id,
-          newWatchlistItem.type
+          newWatchlistItem.type,
         );
         console.log(
-          `Match found with ${friendId} for title ${newWatchlistItem.id} (type: ${newWatchlistItem.type})`
+          `Match found with ${friendId} for title ${newWatchlistItem.id} (type: ${newWatchlistItem.type})`,
         );
         break;
       } else {
@@ -83,7 +83,7 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
           friendId,
           'does NOT have item',
           newWatchlistItem.id,
-          'in their watchlist subcollection.'
+          'in their watchlist subcollection.',
         );
       }
     }
@@ -104,11 +104,11 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
         auth.currentUser.uid,
         movie.id,
         movie.type,
-        interactionAction
+        interactionAction,
       );
     } else {
       console.warn(
-        'Cannot record interaction: missing user, movie.id, or movie.type'
+        'Cannot record interaction: missing user, movie.id, or movie.type',
       );
     }
 
@@ -117,11 +117,11 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
       if (!movie.id || !movie.type) {
         console.error(
           'Movie ID or Type is missing in SwipeableCard, cannot process swipe.',
-          movie
+          movie,
         );
         Alert.alert(
           'Error',
-          'Could not process this title. Please try another.'
+          'Could not process this title. Please try another.',
         );
         return;
       }

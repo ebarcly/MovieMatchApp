@@ -12,7 +12,7 @@ const NavigationBar = () => {
       doc(db, 'users', auth.currentUser.uid),
       (doc) => {
         setProfileName(doc.data().profileName.split(' ')[0]);
-      }
+      },
     );
 
     return () => unsubscribe();

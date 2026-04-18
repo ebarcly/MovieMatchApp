@@ -1,7 +1,13 @@
 import React, { useState } from 'react';
-import { View, TextInput, TouchableOpacity, Text, StyleSheet } from 'react-native';
+import {
+  View,
+  TextInput,
+  TouchableOpacity,
+  Text,
+  StyleSheet,
+} from 'react-native';
 import Checkbox from 'expo-checkbox';
-import { createUserWithEmailAndPassword } from "firebase/auth";
+import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../firebaseConfig'; // assuming this path is correct
 import { useNavigation } from '@react-navigation/native';
 
@@ -19,7 +25,7 @@ const RegisterScreen = () => {
       setError("Passwords don't match");
       return;
     }
-  
+
     try {
       await createUserWithEmailAndPassword(auth, email, password);
     } catch (error) {
@@ -30,7 +36,9 @@ const RegisterScreen = () => {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Create an account</Text>
-      <Text style={styles.subtitle}>Join EventMate and unlock personalized movie recommendations</Text>
+      <Text style={styles.subtitle}>
+        Join EventMate and unlock personalized movie recommendations
+      </Text>
       <View style={styles.inputContainer}>
         <Text style={styles.label}>Name</Text>
         <TextInput
@@ -83,7 +91,10 @@ const RegisterScreen = () => {
         />
         <Text style={styles.rememberMeText}>Remember me</Text>
       </View>
-      <TouchableOpacity onPress={() => navigation.navigate('Login')} style={styles.login}>
+      <TouchableOpacity
+        onPress={() => navigation.navigate('Login')}
+        style={styles.login}
+      >
         <Text style={styles.linkText}>Already have an account? Login</Text>
       </TouchableOpacity>
     </View>

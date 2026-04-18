@@ -32,9 +32,7 @@ const CategoryButton = ({ label, isActive, onPress }) => {
       style={[styles.button, isActive && styles.activeButton]}
       onPress={onPress}
     >
-      <Text style={[styles.text, isActive && styles.activeText]}>
-        {label}
-      </Text>
+      <Text style={[styles.text, isActive && styles.activeText]}>{label}</Text>
     </TouchableOpacity>
   );
 };

@@ -26,10 +26,10 @@ const MyCaveScreen = () => {
   const navigation = useNavigation();
   const { state, dispatch } = useContext(MoviesContext);
   const [profileImage, setProfileImage] = useState(
-    require('../assets/profile_default.jpg')
+    require('../assets/profile_default.jpg'),
   );
   const [headerImage, setHeaderImage] = useState(
-    require('../assets/header_default.png')
+    require('../assets/header_default.png'),
   );
   const [friendsActivity] = useState([]);
   const [userData, setUserData] = useState({});
@@ -72,14 +72,14 @@ const MyCaveScreen = () => {
         } catch (error) {
           console.error(
             `Error fetching details for ${item.type} ${item.id}:`,
-            error
+            error,
           );
           return null; // Return null for failed requests
         }
       });
 
       const watchlistWithDetails = (await Promise.all(detailsPromises)).filter(
-        Boolean
+        Boolean,
       );
       dispatch({
         type: 'SET_WATCHLIST_DETAILS',
@@ -92,7 +92,7 @@ const MyCaveScreen = () => {
       if (user) {
         try {
           const querySnapshot = await getDocs(
-            collection(db, 'users', user.uid, 'watchlist')
+            collection(db, 'users', user.uid, 'watchlist'),
           );
           const watchlist = querySnapshot.docs.map((doc) => doc.data());
           dispatch({ type: 'SET_WATCHLIST', payload: watchlist });
@@ -125,7 +125,7 @@ const MyCaveScreen = () => {
         if (docSnap.exists()) {
           const watchlist = docSnap.data().watchlist;
           const updatedWatchlist = watchlist.filter(
-            (watchlistItem) => watchlistItem.id !== item.id
+            (watchlistItem) => watchlistItem.id !== item.id,
           );
           await updateDoc(userDocRef, {
             watchlist: updatedWatchlist,

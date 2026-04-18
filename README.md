@@ -20,6 +20,7 @@ MovieMatchApp is your go-to platform for discovering and sharing movies and TV s
 ## ✨ Features
 
 ### Current Features
+
 - 🔐 **Secure Authentication** - Firebase-powered user authentication
 - 👤 **Profile Customization** - Personalized streaming preferences and genre selection
 - 🎴 **Interactive Swiping** - Tinder-style card swiping for movies/shows
@@ -28,6 +29,7 @@ MovieMatchApp is your go-to platform for discovering and sharing movies and TV s
 - 🎥 **TMDB Integration** - Rich, up-to-date movie and show information
 
 ### 🚧 Under Development
+
 - 💬 In-app chat system
 - 🎯 Advanced recommendation algorithm
 - 📱 Cross-platform streaming service integration
@@ -35,6 +37,7 @@ MovieMatchApp is your go-to platform for discovering and sharing movies and TV s
 ## 🚀 Getting Started
 
 ### Prerequisites
+
 - Node.js (v14 or higher)
 - npm or yarn
 - Expo CLI
@@ -43,36 +46,42 @@ MovieMatchApp is your go-to platform for discovering and sharing movies and TV s
 ### Installation
 
 1. Clone the repository
+
 ```bash
 git clone https://github.com/yourusername/MovieMatchApp.git
 ```
 
 2. Install dependencies
+
 ```bash
 cd MovieMatchApp
 npm install
 ```
 
 3. Set up environment variables
+
 ```bash
 cp .env.example .env
 ```
+
 Fill in your API keys and configuration values
 
-
 4. Start the development server
+
 ```bash
 expo start
 ```
+
 5. Open the app on your simulator or physical device using the Expo Go app.
+
 - For iOS, press `i` in the terminal to open in the iOS simulator.
 - For Android, press `a` in the terminal to open in the Android emulator.
 - For physical devices, scan the QR code displayed in the terminal using the Expo Go app.
 
 6. Follow the on-screen instructions to test the app.
 
-
 ## 🤝 Contributing
+
 I'm actively looking for contributors! Whether you're a developer, designer, or movie enthusiast, there are many ways to help:
 
 ### Areas We Need Help With
@@ -90,26 +99,35 @@ I'm actively looking for contributors! Whether you're a developer, designer, or 
 - Documentation
 
 ### How to Contribute
+
 1. Fork the repository
 
 2. Create your feature branch
+
 ```bash
 git checkout -b feature/AmazingFeature
 ```
+
 3. Make your changes
 
 4. Commit your changes
+
 ```bash
 git commit -m 'Add some AmazingFeature'
 ```
+
 5. Push to the branch
+
 ```bash
 git push origin feature/AmazingFeature
 ```
+
 6. Open a Pull Request
+
 ```bash
 git checkout -b feature/AmazingFeature
 ```
+
 7. Describe your changes and submit the pull request.
 
 Check out our Contributing Guidelines for more details.
@@ -129,7 +147,6 @@ Check out our Contributing Guidelines for more details.
 - [ ] Collaborate with streaming services for exclusive content
 - [ ] Explore partnerships with movie studios for early access to content
 - [ ] Community-driven features and suggestions -->
-
 
 📄 License
 This project is licensed under the MIT License - see the LICENSE file for details.

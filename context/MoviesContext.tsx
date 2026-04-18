@@ -1,14 +1,80 @@
-import React, { createContext, useReducer, useEffect } from 'react';
-import { fetchConfiguration, fetchGenres } from '../services/api';
+import React, {
+  createContext,
+  useReducer,
+  useEffect,
+  type ReactNode,
+  type Dispatch,
+} from 'react';
+import {
+  fetchConfiguration,
+  fetchGenres,
+  type TmdbConfiguration,
+  type TmdbGenre,
+} from '../services/api';
 import {
   fetchUserWatchlist,
   fetchFriendsList,
+  type WatchlistItem,
 } from '../utils/firebaseOperations';
 import { auth, db } from '../firebaseConfig';
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, onSnapshot } from 'firebase/firestore';
+import {
+  doc,
+  onSnapshot,
+  type DocumentData,
+  type Unsubscribe,
+} from 'firebase/firestore';
 
-const initialState = {
+// --- Types ------------------------------------------------------------
+
+export interface MovieItem {
+  id: number;
+  type?: 'movie' | 'tv';
+  title?: string;
+  name?: string;
+  poster_path?: string | null;
+  [key: string]: unknown;
+}
+
+export interface MoviesState {
+  movies: MovieItem[];
+  tvShows: MovieItem[];
+  watchlist: WatchlistItem[];
+  favorites: MovieItem[];
+  dislikedMovies: MovieItem[];
+  watched: MovieItem[];
+  lastMovieIndex: number;
+  lastTVShowIndex: number;
+  configData: Partial<TmdbConfiguration>;
+  genres: TmdbGenre[];
+  error: string | null;
+  friends: string[];
+}
+
+export type MoviesAction =
+  | { type: 'LIKE_MOVIE'; payload: MovieItem }
+  | { type: 'DISLIKE_MOVIE'; payload: MovieItem }
+  | { type: 'ADD_TO_WATCHLIST'; payload: WatchlistItem }
+  | { type: 'MARK_AS_WATCHED'; payload: MovieItem }
+  | { type: 'REMOVE_FROM_WATCHLIST'; payload: { id: number | string } }
+  | { type: 'REMOVE_FROM_FAVORITES'; payload: { id: number | string } }
+  | { type: 'REMOVE_FROM_WATCHED'; payload: { id: number | string } }
+  | { type: 'UPDATE_LAST_MOVIE_INDEX'; payload: number }
+  | { type: 'UPDATE_LAST_TVSHOW_INDEX'; payload: number }
+  | { type: 'SET_CONFIG'; payload: TmdbConfiguration }
+  | { type: 'SET_GENRES'; payload: TmdbGenre[] }
+  | { type: 'SET_WATCHLIST'; payload: WatchlistItem[] }
+  | { type: 'SET_WATCHLIST_DETAILS'; payload: WatchlistItem[] }
+  | { type: 'SET_WATCHED'; payload: MovieItem[] }
+  | { type: 'SET_ERROR'; payload: string | null }
+  | { type: 'SET_FRIENDS_LIST'; payload: string[] };
+
+export interface MoviesContextValue {
+  state: MoviesState;
+  dispatch: Dispatch<MoviesAction>;
+}
+
+const initialState: MoviesState = {
   movies: [],
   tvShows: [],
   watchlist: [],
@@ -23,9 +89,17 @@ const initialState = {
   friends: [],
 };
 
-export const MoviesContext = createContext(initialState);
+export const MoviesContext = createContext<MoviesContextValue>({
+  state: initialState,
+  dispatch: () => {
+    // no-op default; real dispatch is provided by MoviesProvider.
+  },
+});
 
-const moviesReducer = (state, action) => {
+export const moviesReducer = (
+  state: MoviesState,
+  action: MoviesAction,
+): MoviesState => {
   switch (action.type) {
     case 'LIKE_MOVIE':
       return {
@@ -61,11 +135,12 @@ const moviesReducer = (state, action) => {
           ? state.watched
           : [...state.watched, action.payload],
       };
-    case 'REMOVE_FROM_WATCHLIST':
+    case 'REMOVE_FROM_WATCHLIST': {
       const updatedWatchlist = state.watchlist.filter(
         (movie) => movie.id !== action.payload.id,
       );
       return { ...state, watchlist: updatedWatchlist };
+    }
     case 'REMOVE_FROM_FAVORITES':
       return {
         ...state,
@@ -103,12 +178,18 @@ const moviesReducer = (state, action) => {
   }
 };
 
-export const MoviesProvider = ({ children }) => {
+interface MoviesProviderProps {
+  children: ReactNode;
+}
+
+export const MoviesProvider = ({
+  children,
+}: MoviesProviderProps): React.ReactElement => {
   const [state, dispatch] = useReducer(moviesReducer, initialState);
 
   useEffect(() => {
     // --- 1. Fetch non-user-specific data immediately ---
-    const loadConfigAndGenres = async () => {
+    const loadConfigAndGenres = async (): Promise<void> => {
       try {
         const configData = await fetchConfiguration();
         dispatch({ type: 'SET_CONFIG', payload: configData });
@@ -134,7 +215,7 @@ export const MoviesProvider = ({ children }) => {
     // and only dispatch once snapshot.exists() is true. This
     // simultaneously closes the Sprint 1 "profile-complete signal
     // gap" that motivated the AppNavigator onSnapshot.
-    let userDocUnsubscribe = null;
+    let userDocUnsubscribe: Unsubscribe | null = null;
 
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       // Tear down any previous user's listener first — critical on
@@ -172,7 +253,9 @@ export const MoviesProvider = ({ children }) => {
             // Subsequent change — re-sync friends from the doc field
             // so friend-accept flows reflect immediately. Watchlist is
             // a subcollection and has its own read path per screen.
-            const data = snapshot.data();
+            const data = snapshot.data() as DocumentData & {
+              friends?: string[];
+            };
             dispatch({
               type: 'SET_FRIENDS_LIST',
               payload: data.friends || [],

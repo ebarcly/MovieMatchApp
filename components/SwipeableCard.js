@@ -89,9 +89,18 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
     }
   };
 
-  // Handle users card swipe action
+  // Sprint 2 BUG-1 convention: `direction` carries semantic intent, not
+  // a raw gesture axis. We pass one of:
+  //   'accept' — user wants this title (physical swipe right, Watched
+  //              button, or leftActions panel opened by Swipeable)
+  //   'reject' — user does not want this title (physical swipe left,
+  //              Skip button, or rightActions panel)
+  // The previous code leaked gesture-handler's inverse 'left'/'right'
+  // ("opened which panel?") into business logic and inverted Skip vs
+  // Watched. Keeping semantics at this boundary prevents the
+  // regression.
   const handleSwipe = async (direction, cardIndex) => {
-    const isLikeAction = direction === 'left';
+    const isLikeAction = direction === 'accept';
     const localDispatchActionType = isLikeAction
       ? 'ADD_TO_WATCHLIST'
       : 'DISLIKE_MOVIE';
@@ -208,7 +217,13 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
           ref={swipeableRef}
           renderLeftActions={(dragX) => renderActions(dragX, 'right')}
           renderRightActions={(dragX) => renderActions(dragX, 'left')}
-          onSwipeableOpen={(direction) => handleSwipe(direction, movie.index)}
+          onSwipeableOpen={(direction) =>
+            // Gesture Handler passes 'left' when the left-actions panel
+            // opens (i.e. user dragged card to the RIGHT = accept) and
+            // 'right' when the right-actions panel opens (drag left =
+            // reject). Translate to our semantic intent vocabulary.
+            handleSwipe(direction === 'left' ? 'accept' : 'reject', movie.index)
+          }
           friction={2}
           leftThreshold={60}
           rightThreshold={60}
@@ -236,7 +251,7 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
       <View style={styles.buttonContainer}>
         <TouchableOpacity
           style={styles.button}
-          onPress={() => handleSwipe('right', movie.index)}
+          onPress={() => handleSwipe('reject', movie.index)}
         >
           <MaterialIcons
             name="skip-next"
@@ -248,7 +263,7 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.button}
-          onPress={() => handleSwipe('left', movie.index)}
+          onPress={() => handleSwipe('accept', movie.index)}
         >
           <MaterialIcons
             name="check"

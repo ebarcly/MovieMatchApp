@@ -194,10 +194,6 @@ const styles = StyleSheet.create({
         height: 200,
         backgroundColor: '#000',
     },
-    video: {
-        width: '100%',
-        height: '100%',
-    },
     backdropContainer: {
         width: '100%',
         height: 200,

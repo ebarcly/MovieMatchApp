@@ -8,6 +8,8 @@ import {
   orderBy,
   addDoc,
   setDoc,
+  updateDoc,
+  arrayUnion,
   serverTimestamp,
 } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
@@ -47,13 +49,9 @@ export const recordTitleInteraction = async (
   action
 ) => {
   if (!userId || !titleId || !titleType) {
-    console.error('Invalid data for recordTitleInteraction:', {
-      userId,
-      titleId,
-      titleType,
-      action,
-    });
-    throw error;
+    throw new Error(
+      `Invalid data for recordTitleInteraction: userId=${userId} titleId=${titleId} titleType=${titleType} action=${action}`,
+    );
   }
   try {
     const interactionRef = doc(
@@ -81,9 +79,9 @@ export const recordTitleInteraction = async (
 // Function to add a title to the watchlist
 export const addToWatchlist = async (userId, movieItem) => {
   if (!userId || !movieItem || !movieItem.id) {
-    console.error('Invalid data for addToWatchlist:', { userId, movieItem });
-    throw error;
-    // return [];
+    throw new Error(
+      `Invalid data for addToWatchlist: userId=${userId} movieItemId=${movieItem?.id}`,
+    );
   }
 
   const watchlistItemRef = doc(

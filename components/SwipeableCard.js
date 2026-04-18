@@ -345,14 +345,13 @@ const styles = StyleSheet.create({
   },
   button: {
     backgroundColor: '#19196b',
-    borderRadius: 8,
+    borderRadius: 24,
     paddingVertical: 12,
     paddingHorizontal: 16,
     marginHorizontal: 16,
     alignItems: 'center',
     justifyContent: 'center',
     width: 148,
-    borderRadius: 24,
     flexDirection: 'row',
   },
   buttonText: {

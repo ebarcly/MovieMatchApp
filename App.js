@@ -10,14 +10,18 @@ SplashScreen.preventAutoHideAsync(); // Prevent native splash screen from auto-h
 
 const loadFonts = async () => {
   await Font.loadAsync({
+    'WorkSans-Black': require('./assets/fonts/WorkSans-Black.ttf'),
+    'WorkSans-Bold': require('./assets/fonts/WorkSans-Bold.ttf'),
+    'WorkSans-ExtraLight': require('./assets/fonts/WorkSans-ExtraLight.ttf'),
+    'WorkSans-Italic': require('./assets/fonts/WorkSans-Italic.ttf'),
+    'WorkSans-Light': require('./assets/fonts/WorkSans-Light.ttf'),
     'WorkSans-Medium': require('./assets/fonts/WorkSans-Medium.ttf'),
     'WorkSans-Regular': require('./assets/fonts/WorkSans-Regular.ttf'),
-    'WorkSans-Bold': require('./assets/fonts/WorkSans-Bold.ttf'),
-    'WorkSans-Light': require('./assets/fonts/WorkSans-Light.ttf'),
-    'WorkSans-SemiBold': require('./assets/fonts/WorkSans-Italic.ttf'),
-    'WorkSans-Italic': require('./assets/fonts/WorkSans-Thin.ttf'),
-    'WorkSans-Thin': require('./assets/fonts/WorkSans-ExtraLight.ttf'),
-    // Load other fonts here if necessary
+    'WorkSans-Thin': require('./assets/fonts/WorkSans-Thin.ttf'),
+    // NOTE: 'WorkSans-SemiBold' is referenced in ProfileSetupScreen.js but the
+    // TTF is missing from assets/fonts/. Falls back to platform default until
+    // the file is added. Track as follow-up.
+    'WorkSans-SemiBold': require('./assets/fonts/WorkSans-Bold.ttf'),
   });
 };
 

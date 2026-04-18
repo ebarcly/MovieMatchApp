@@ -44,7 +44,12 @@ const RegisterScreen = () => {
         createdAt: serverTimestamp(),
       });
 
-      navigation.navigate('ProfileSetup');
+      // AppNavigator watches /users/{uid} and auto-routes to the
+      // ProfileSetup stack as soon as the doc exists without a `genres`
+      // array. Direct navigation from here was a leftover from a flatter
+      // nav tree and called a screen name that no longer exists
+      // ('ProfileSetup' — the real screen is 'ProfileSetupInitial' inside
+      // ProfileSetupStackScreen, which AppNavigator renders reactively).
     } catch (err) {
       setError(err.message);
     }
@@ -54,7 +59,7 @@ const RegisterScreen = () => {
     <View style={styles.container}>
       <Text style={styles.title}>Create an account</Text>
       <Text style={styles.subtitle}>
-        Join EventMate and unlock personalized movie recommendations
+        Join MovieMatch and unlock personalized movie recommendations
       </Text>
       <View style={styles.inputContainer}>
         <Text style={styles.label}>Name</Text>

@@ -1,3 +1,5 @@
+import type { TextStyle, ViewStyle } from 'react-native';
+
 /**
  * MovieMatchApp — Design system tokens (Sprint 2, locked 2026-04-18).
  *
@@ -27,41 +29,40 @@
 
 export const colors = {
   // Surface & text scale — cool-undertone ink, not neutral gray.
-  ink: '#0A0A12', // app background; inky with a faint blue cast
-  surface: '#111118', // cards, bottom sheets
-  surfaceRaised: '#1A1A24', // elevated modals, sticky headers
-  borderStrong: '#2A2A38', // divider between cards
-  borderSubtle: '#3D3D4F', // input borders, hairlines
-  iconMuted: '#5F5F74', // disabled icons, low-emphasis
-  textTertiary: '#8A8AA0', // timestamps, metadata
-  textSecondary: '#B4B4CA', // supporting text, labels
-  textBody: '#EAEAF2', // default body text
-  textHigh: '#F5F5FA', // bone-white — headings; NEVER pure #FFFFFF
-  overlay: 'rgba(10, 10, 18, 0.7)', // scrims, modal backdrops
+  ink: '#0A0A12',
+  surface: '#111118',
+  surfaceRaised: '#1A1A24',
+  borderStrong: '#2A2A38',
+  borderSubtle: '#3D3D4F',
+  iconMuted: '#5F5F74',
+  textTertiary: '#8A8AA0',
+  textSecondary: '#B4B4CA',
+  textBody: '#EAEAF2',
+  textHigh: '#F5F5FA',
+  overlay: 'rgba(10, 10, 18, 0.7)',
 
   // Primary accent — laser lemon.
   accent: '#FBEC5D',
   accentHover: '#E5D94A',
   accentMuted: 'rgba(251, 236, 93, 0.15)',
-  accentForeground: '#0A0A12', // MANDATORY pairing
+  accentForeground: '#0A0A12',
 
   // Secondary accent — hot magenta. Social / connection / "new".
   accentSecondary: '#FF3E9E',
   accentSecondaryHover: '#E82F8C',
-  accentSecondaryForeground: '#0A0A12', // MANDATORY pairing (ink, not bone-white)
+  accentSecondaryForeground: '#0A0A12',
 
   // Semantic — electric so they don't compete with the primary accent.
-  success: '#00E090', // electric mint
-  warning: '#FBEC5D', // re-uses accent — yellow IS warning
-  error: '#FF3E6C', // pink-red; harmonizes with magenta
-  info: '#7FB3FF', // soft periwinkle
+  success: '#00E090',
+  warning: '#FBEC5D',
+  error: '#FF3E6C',
+  info: '#7FB3FF',
 
   // Match-badge gradient — tri-stop heat ramp (dim → hot → solar).
-  matchGradient: ['#5F5F74', '#FF3E9E', '#FBEC5D'],
-};
+  matchGradient: ['#5F5F74', '#FF3E9E', '#FBEC5D'] as const,
+} as const;
 
 // --- Spacing ----------------------------------------------------------
-// 4-pt scale with a keyed alias for readability in screens.
 
 export const spacing = {
   0: 0,
@@ -73,7 +74,6 @@ export const spacing = {
   6: 32,
   7: 48,
   8: 64,
-  // Named aliases for ergonomics.
   none: 0,
   xxs: 4,
   xs: 8,
@@ -83,14 +83,11 @@ export const spacing = {
   xl: 32,
   xxl: 48,
   xxxl: 64,
-};
+} as const;
 
 // --- Typography -------------------------------------------------------
-// All presets include fontFamily (from the WorkSans variants loaded in
-// App.js), fontSize, and lineHeight — iOS/Android need an explicit line
-// height or rendering diverges.
 
-export const typography = {
+export const typography: Record<string, TextStyle> = {
   display: {
     fontFamily: 'WorkSans-Black',
     fontSize: 36,
@@ -151,13 +148,11 @@ export const radii = {
   lg: 12,
   xl: 20,
   pill: 999,
-};
+} as const;
 
 // --- Shadows ----------------------------------------------------------
-// iOS uses shadowColor/Offset/Opacity/Radius; Android uses elevation.
-// Keep both in every preset so styles apply cross-platform.
 
-export const shadows = {
+export const shadows: Record<string, ViewStyle> = {
   sm: {
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
@@ -181,6 +176,20 @@ export const shadows = {
   },
 };
 
-const theme = { colors, spacing, typography, radii, shadows };
+export type Colors = typeof colors;
+export type Spacing = typeof spacing;
+export type Typography = typeof typography;
+export type Radii = typeof radii;
+export type Shadows = typeof shadows;
+
+export interface Theme {
+  colors: Colors;
+  spacing: Spacing;
+  typography: Typography;
+  radii: Radii;
+  shadows: Shadows;
+}
+
+const theme: Theme = { colors, spacing, typography, radii, shadows };
 
 export default theme;

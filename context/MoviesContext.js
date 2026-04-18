@@ -4,8 +4,9 @@ import {
   fetchUserWatchlist,
   fetchFriendsList,
 } from '../utils/firebaseOperations';
-import { auth } from '../firebaseConfig';
+import { auth, db } from '../firebaseConfig';
 import { onAuthStateChanged } from 'firebase/auth';
+import { doc, onSnapshot } from 'firebase/firestore';
 
 const initialState = {
   movies: [],
@@ -123,42 +124,94 @@ export const MoviesProvider = ({ children }) => {
       }
     };
 
-    loadConfigAndGenres(); // load config/genres
+    loadConfigAndGenres();
 
-    // --- 2. Set up the listener for authentication state ---
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        // User is logged in
-        console.log('User is logged in:', user.uid);
-        try {
-          const watchlist = await fetchUserWatchlist(user.uid); // This seems to fetch from user doc field, not subcollection
-          dispatch({ type: 'SET_WATCHLIST', payload: watchlist });
+    // --- 2. Gate user-specific fetches behind the /users/{uid} doc
+    // actually existing. Sprint 2 BUG-7: onAuthStateChanged used to
+    // fire user-doc fetches unconditionally, which raced the
+    // /users/{uid} create during fresh register and dispatched empty
+    // arrays before the doc existed. Now we subscribe with onSnapshot
+    // and only dispatch once snapshot.exists() is true. This
+    // simultaneously closes the Sprint 1 "profile-complete signal
+    // gap" that motivated the AppNavigator onSnapshot.
+    let userDocUnsubscribe = null;
 
-          const friendsList = await fetchFriendsList(user.uid);
-          dispatch({ type: 'SET_FRIENDS_LIST', payload: friendsList });
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      // Tear down any previous user's listener first — critical on
+      // sign-out and on A -> B account switches.
+      if (userDocUnsubscribe) {
+        userDocUnsubscribe();
+        userDocUnsubscribe = null;
+      }
 
-          // Reset indices for a new session or fetch user-specific persisted indices
-          dispatch({ type: 'UPDATE_LAST_MOVIE_INDEX', payload: 0 });
-          dispatch({ type: 'UPDATE_LAST_TVSHOW_INDEX', payload: 0 });
-        } catch (error) {
-          console.error('Error fetching user data (watchlist/friends):', error);
-          dispatch({ type: 'SET_ERROR', payload: 'Failed to load user data.' });
-        }
-      } else {
-        // User is logged out
+      if (!user) {
         console.log('User is logged out.');
         dispatch({ type: 'SET_WATCHLIST', payload: [] });
         dispatch({ type: 'SET_FRIENDS_LIST', payload: [] });
-        // Reset indices on logout
         dispatch({ type: 'UPDATE_LAST_MOVIE_INDEX', payload: 0 });
         dispatch({ type: 'UPDATE_LAST_TVSHOW_INDEX', payload: 0 });
+        return;
       }
+
+      console.log('User is logged in:', user.uid);
+      const userDocRef = doc(db, 'users', user.uid);
+
+      // onSnapshot fires once immediately with the current doc state
+      // and then on every subsequent change. We only act once the
+      // doc exists (it may not on the first snapshot during fresh
+      // register, before RegisterScreen's setDoc lands).
+      let hasLoadedSnapshot = false;
+      userDocUnsubscribe = onSnapshot(
+        userDocRef,
+        async (snapshot) => {
+          if (!snapshot.exists()) {
+            // Fresh register: keep waiting. Don't dispatch [].
+            return;
+          }
+          if (hasLoadedSnapshot) {
+            // Subsequent change — re-sync friends from the doc field
+            // so friend-accept flows reflect immediately. Watchlist is
+            // a subcollection and has its own read path per screen.
+            const data = snapshot.data();
+            dispatch({
+              type: 'SET_FRIENDS_LIST',
+              payload: data.friends || [],
+            });
+            return;
+          }
+          hasLoadedSnapshot = true;
+
+          try {
+            const [watchlist, friendsList] = await Promise.all([
+              fetchUserWatchlist(user.uid),
+              fetchFriendsList(user.uid),
+            ]);
+            dispatch({ type: 'SET_WATCHLIST', payload: watchlist });
+            dispatch({ type: 'SET_FRIENDS_LIST', payload: friendsList });
+            dispatch({ type: 'UPDATE_LAST_MOVIE_INDEX', payload: 0 });
+            dispatch({ type: 'UPDATE_LAST_TVSHOW_INDEX', payload: 0 });
+          } catch (error) {
+            console.error(
+              'Error fetching user data (watchlist/friends):',
+              error,
+            );
+            dispatch({
+              type: 'SET_ERROR',
+              payload: 'Failed to load user data.',
+            });
+          }
+        },
+        (error) => {
+          console.error('MoviesContext user-doc snapshot error:', error);
+        },
+      );
     });
 
-    // --- 5. Cleanup function ---
+    // --- 3. Cleanup function ---
     return () => {
-      console.log('Unsubscribing auth listener');
-      unsubscribe();
+      console.log('Unsubscribing auth + user-doc listeners');
+      if (userDocUnsubscribe) userDocUnsubscribe();
+      unsubscribeAuth();
     };
   }, []);
 

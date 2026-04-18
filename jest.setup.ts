@@ -163,6 +163,75 @@ jest.mock('react-native-webview', () => {
   return { WebView: View };
 });
 
+// --- react-native-reanimated ----------------------------------------
+// jest-expo ships a setup mock; requiring it here makes
+// Animated.*/withSpring/etc. behave synchronously in tests.
+jest.mock('react-native-reanimated', () =>
+  require('react-native-reanimated/mock'),
+);
+
+// --- moti ------------------------------------------------------------
+// Minimal mock — MotiView/MotiText render as plain RN counterparts so
+// assertions on children still work, while animate-from/animate-to are
+// ignored. Smoke tests don't exercise animation timings.
+jest.mock('moti', () => {
+  const React = require('react');
+  const { View, Text } = require('react-native');
+  const passthrough = (Base: unknown) => {
+    const Component = React.forwardRef(
+      (props: Record<string, unknown>, ref: unknown) => {
+        const {
+          animate: _a,
+          from: _f,
+          transition: _t,
+          exit: _e,
+          ...rest
+        } = props;
+        return React.createElement(Base as React.ComponentType<unknown>, {
+          ...rest,
+          ref,
+        });
+      },
+    );
+    Component.displayName = 'MotiStub';
+    return Component;
+  };
+  return {
+    __esModule: true,
+    MotiView: passthrough(View),
+    MotiText: passthrough(Text),
+    useAnimationState: jest.fn(() => ({ transitionTo: jest.fn() })),
+    AnimatePresence: ({ children }: { children: React.ReactNode }) => children,
+  };
+});
+
+// --- expo-haptics ----------------------------------------------------
+jest.mock('expo-haptics', () => ({
+  selectionAsync: jest.fn(async () => undefined),
+  impactAsync: jest.fn(async () => undefined),
+  notificationAsync: jest.fn(async () => undefined),
+  NotificationFeedbackType: {
+    Success: 'success',
+    Warning: 'warning',
+    Error: 'error',
+  },
+  ImpactFeedbackStyle: {
+    Light: 'light',
+    Medium: 'medium',
+    Heavy: 'heavy',
+  },
+}));
+
+// --- react-native-youtube-iframe ------------------------------------
+jest.mock('react-native-youtube-iframe', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  const YoutubeStub = (props: Record<string, unknown>) =>
+    React.createElement(View, { accessibilityLabel: 'YouTubeStub', ...props });
+  YoutubeStub.displayName = 'YoutubeStub';
+  return { __esModule: true, default: YoutubeStub };
+});
+
 // Silence expo-splash-screen noise in tests.
 jest.mock('expo-splash-screen', () => ({
   preventAutoHideAsync: jest.fn(async () => undefined),

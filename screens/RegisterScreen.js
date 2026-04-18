@@ -7,8 +7,9 @@ import {
   StyleSheet,
 } from 'react-native';
 import Checkbox from 'expo-checkbox';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../firebaseConfig'; // assuming this path is correct
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { auth, db } from '../firebaseConfig';
 import { useNavigation } from '@react-navigation/native';
 
 const RegisterScreen = () => {
@@ -25,11 +26,26 @@ const RegisterScreen = () => {
       setError("Passwords don't match");
       return;
     }
+    if (!name.trim()) {
+      setError('Name is required');
+      return;
+    }
 
     try {
-      await createUserWithEmailAndPassword(auth, email, password);
-    } catch (error) {
-      setError(error.message);
+      const cred = await createUserWithEmailAndPassword(auth, email, password);
+      await updateProfile(cred.user, { displayName: name.trim() });
+
+      // Create the /users/{uid} doc so downstream screens can updateDoc safely.
+      await setDoc(doc(db, 'users', cred.user.uid), {
+        profileName: name.trim(),
+        email: cred.user.email,
+        friends: [],
+        createdAt: serverTimestamp(),
+      });
+
+      navigation.navigate('ProfileSetup');
+    } catch (err) {
+      setError(err.message);
     }
   };
 

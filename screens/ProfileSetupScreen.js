@@ -11,7 +11,7 @@ import {
   Alert, // Use Alert for feedback
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { updateProfile } from 'firebase/auth'; // Import updateProfile for auth object
 import { auth, db } from '../firebaseConfig';
 import { fetchStreamingServices } from '../services/api';
@@ -131,9 +131,15 @@ const ProfileSetupScreen = ({ route }) => {
     };
 
     try {
-      // 1. Update Firestore document
+      // 1. Upsert Firestore document. setDoc(..., { merge: true }) creates
+      // the doc if it doesn't exist (e.g. users registered before the
+      // register flow seeded the doc) and merges fields otherwise.
       const userDocRef = doc(db, 'users', user.uid);
-      await updateDoc(userDocRef, dataToSave);
+      await setDoc(
+        userDocRef,
+        { ...dataToSave, profileLastUpdated: serverTimestamp() },
+        { merge: true },
+      );
 
       // 2. Update the Firebase Auth user profile (especially displayName)
       // This helps ensure onAuthStateChanged picks up the change faster

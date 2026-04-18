@@ -1,0 +1,170 @@
+/**
+ * Global jest setup.
+ *
+ * Firebase is mocked at the module boundary (firebase/app, firebase/auth,
+ * firebase/firestore) so tests never touch the network or require a
+ * live Firebase config. Individual tests override these mocks per case
+ * with jest.mocked(fn).mockResolvedValue(...) / .mockReturnValue(...).
+ *
+ * expo-constants is mocked because firebaseConfig.ts reads the Firebase
+ * config off Constants.expoConfig.extra.firebase at import time — absent
+ * this shim, importing firebaseConfig from any tested module throws.
+ */
+
+/* eslint-disable @typescript-eslint/no-require-imports */
+
+// --- expo-constants ---------------------------------------------------
+jest.mock('expo-constants', () => ({
+  __esModule: true,
+  default: {
+    expoConfig: {
+      extra: {
+        firebase: {
+          apiKey: 'test-api-key',
+          authDomain: 'test.firebaseapp.com',
+          projectId: 'test-project',
+          storageBucket: 'test.appspot.com',
+          messagingSenderId: '1234',
+          appId: 'test-app-id',
+        },
+        tmdbApiKey: 'test-tmdb-key',
+      },
+    },
+  },
+}));
+
+// --- @react-native-async-storage/async-storage ------------------------
+jest.mock('@react-native-async-storage/async-storage', () => ({
+  __esModule: true,
+  default: {
+    getItem: jest.fn(async () => null),
+    setItem: jest.fn(async () => undefined),
+    removeItem: jest.fn(async () => undefined),
+    clear: jest.fn(async () => undefined),
+  },
+}));
+
+// --- firebase/app -----------------------------------------------------
+jest.mock('firebase/app', () => ({
+  initializeApp: jest.fn(() => ({ name: 'stub' })),
+  getApps: jest.fn(() => []),
+  getApp: jest.fn(() => ({ name: 'stub' })),
+}));
+
+// --- firebase/auth ----------------------------------------------------
+// reason: firebase types' shape is complex, but the mock only needs
+// callable jest.fn() stubs that tests can override.
+const authMock: any = {
+  currentUser: null,
+};
+
+jest.mock('firebase/auth', () => ({
+  getAuth: jest.fn(() => authMock),
+  initializeAuth: jest.fn(() => authMock),
+  getReactNativePersistence: jest.fn(() => ({ type: 'NONE' })),
+  signInWithEmailAndPassword: jest.fn(),
+  createUserWithEmailAndPassword: jest.fn(),
+  sendPasswordResetEmail: jest.fn(),
+  onAuthStateChanged: jest.fn((_auth: unknown, _cb: unknown) => () => {}),
+  updateProfile: jest.fn(async () => undefined),
+  signOut: jest.fn(async () => undefined),
+}));
+
+// --- firebase/firestore ----------------------------------------------
+jest.mock('firebase/firestore', () => ({
+  getFirestore: jest.fn(() => ({})),
+  doc: jest.fn((...args: unknown[]) => ({ __type: 'docRef', args })),
+  collection: jest.fn((...args: unknown[]) => ({ __type: 'collectionRef', args })),
+  query: jest.fn((...args: unknown[]) => ({ __type: 'query', args })),
+  where: jest.fn((...args: unknown[]) => ({ __type: 'where', args })),
+  orderBy: jest.fn((...args: unknown[]) => ({ __type: 'orderBy', args })),
+  limit: jest.fn((n: number) => ({ __type: 'limit', n })),
+  getDoc: jest.fn(async () => ({
+    exists: () => false,
+    data: () => undefined,
+  })),
+  getDocs: jest.fn(async () => ({
+    empty: true,
+    docs: [],
+    forEach: (_cb: unknown) => {},
+  })),
+  setDoc: jest.fn(async () => undefined),
+  updateDoc: jest.fn(async () => undefined),
+  deleteDoc: jest.fn(async () => undefined),
+  addDoc: jest.fn(async () => ({ id: 'new-doc' })),
+  arrayUnion: jest.fn((x: unknown) => ({ __op: 'arrayUnion', x })),
+  serverTimestamp: jest.fn(() => ({ __ts: Date.now() })),
+  onSnapshot: jest.fn((_ref: unknown, _cb: unknown) => () => {}),
+  Timestamp: {
+    now: jest.fn(() => ({ seconds: 0, nanoseconds: 0 })),
+    fromDate: jest.fn((d: Date) => ({ seconds: Math.floor(d.getTime() / 1000), nanoseconds: 0 })),
+  },
+}));
+
+// --- axios (services/api) --------------------------------------------
+// Kept minimal — tests that exercise api.ts mock it per case.
+jest.mock('axios', () => ({
+  __esModule: true,
+  default: {
+    create: jest.fn(() => ({
+      get: jest.fn(async () => ({ data: { results: [], genres: [] } })),
+    })),
+  },
+}));
+
+// --- react-native-gesture-handler -----------------------------------
+// jest-expo ships a partial mock; make sure Swipeable + GestureHandlerRootView
+// are just passthrough views for component tests.
+jest.mock('react-native-gesture-handler', () => {
+  const View = require('react-native').View;
+  return {
+    __esModule: true,
+    GestureHandlerRootView: View,
+    Swipeable: View,
+    Directions: {},
+    State: {},
+    ScrollView: View,
+    PanGestureHandler: View,
+  };
+});
+
+// --- phosphor-react-native ------------------------------------------
+// Icon components render as plain Views/Text to keep trees simple.
+jest.mock('phosphor-react-native', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  const factory = (name: string) => {
+    const IconStub = (props: Record<string, unknown>) =>
+      React.createElement(View, { accessibilityLabel: name, ...props });
+    IconStub.displayName = `PhosphorStub(${name})`;
+    return IconStub;
+  };
+  return {
+    __esModule: true,
+    SkipForward: factory('SkipForward'),
+    Check: factory('Check'),
+    ThumbsUp: factory('ThumbsUp'),
+    ThumbsDown: factory('ThumbsDown'),
+    MagnifyingGlass: factory('MagnifyingGlass'),
+    PlayCircle: factory('PlayCircle'),
+    FilmStrip: factory('FilmStrip'),
+    Clock: factory('Clock'),
+  };
+});
+
+// --- react-native-webview -------------------------------------------
+jest.mock('react-native-webview', () => {
+  const { View } = require('react-native');
+  return { WebView: View };
+});
+
+// Silence expo-splash-screen noise in tests.
+jest.mock('expo-splash-screen', () => ({
+  preventAutoHideAsync: jest.fn(async () => undefined),
+  hideAsync: jest.fn(async () => undefined),
+}));
+
+jest.mock('expo-font', () => ({
+  loadAsync: jest.fn(async () => undefined),
+  isLoaded: jest.fn(() => true),
+}));

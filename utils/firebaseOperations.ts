@@ -185,12 +185,12 @@ export const addToWatched = async (
 // Function to fetch the user's watched list
 export const fetchUserWatched = async (
   userId: string,
-): Promise<Array<number | string>> => {
+): Promise<(number | string)[]> => {
   const userRef = doc(db, 'users', userId);
   try {
     const docSnap = await getDoc(userRef);
     if (docSnap.exists()) {
-      const data = docSnap.data() as { watched?: Array<number | string> };
+      const data = docSnap.data() as { watched?: (number | string)[] };
       return data.watched || [];
     }
     return [];

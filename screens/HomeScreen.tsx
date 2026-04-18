@@ -218,7 +218,6 @@ const HomeScreen = (_props: Props): React.ReactElement => {
     } finally {
       setIsLoadingMore(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoadingMore, selectedCategory, currentPage, content]);
 
   useEffect(() => {

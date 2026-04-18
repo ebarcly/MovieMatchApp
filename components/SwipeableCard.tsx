@@ -57,7 +57,7 @@ const SwipeableCard = ({
 }: SwipeableCardProps): React.ReactElement => {
   const { state, dispatch } = useContext(MoviesContext);
   const swipeableRef = useRef<Swipeable | null>(null);
-  const { poster_path, genre_ids = [], type } = movie;
+  const { poster_path, genre_ids = [] } = movie;
   const navigation = useNavigation<NavProp>();
 
   // Use secure_base_url from configData and choose appropriate size for poster

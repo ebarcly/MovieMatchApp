@@ -6,7 +6,8 @@ import {
   Text,
   StyleSheet,
 } from 'react-native';
-import Checkbox from 'expo-checkbox';
+// reason: alias the default import to ExpoCheckbox to resolve the legacy Sprint-2 ESLint warning on expo-checkbox (named + default collision).
+import ExpoCheckbox from 'expo-checkbox';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../firebaseConfig';
@@ -114,7 +115,7 @@ const RegisterScreen = (): React.ReactElement => {
         <Text style={styles.buttonText}>Sign Up</Text>
       </TouchableOpacity>
       <View style={styles.rememberMeContainer}>
-        <Checkbox
+        <ExpoCheckbox
           style={styles.checkbox}
           value={rememberMe}
           onValueChange={setRememberMe}

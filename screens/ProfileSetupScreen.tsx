@@ -58,9 +58,8 @@ type ProfileSetupNav =
 const ProfileSetupScreen = (): React.ReactElement => {
   const route = useRoute<ProfileSetupRoute>();
   const navigation = useNavigation<ProfileSetupNav>();
-  // reason: route.params shape differs across the two stacks; `any` is the pragmatic escape here and the read is null-safe.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const isEditMode: boolean = (route.params as any)?.isEditing ?? false;
+  // reason: route.params shape differs across the two stacks; `any` is the pragmatic escape and the read is null-safe.
+  const isEditMode: boolean = (route.params as any)?.isEditing ?? false; // reason: route.params union differs across stacks
 
   const [username, setUsername] = useState('');
   const [profileName, setProfileName] = useState('');
@@ -88,7 +87,6 @@ const ProfileSetupScreen = (): React.ReactElement => {
     if (isEditMode) {
       fetchUserProfile();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEditMode]);
 
   const fetchUserProfile = async (): Promise<void> => {

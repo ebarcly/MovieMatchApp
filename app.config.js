@@ -36,6 +36,7 @@ module.exports = () => ({
     web: {
       favicon: './assets/favicon.png',
     },
+    plugins: ['expo-font'],
     extra: {
       tmdbApiKey: process.env.EXPO_PUBLIC_TMDB_API_KEY,
       firebase: {

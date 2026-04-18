@@ -28,12 +28,20 @@ import { fetchInteractedTitleIds } from '../utils/firebaseOperations';
 // sets (edge genres, unusual category combinations).
 const MAX_PAGINATION_RETRIES = 3;
 
+// Sprint 2 BUG-5 (round 2): prefetch the next page when the user is
+// within this many cards of the end of the currently-loaded deck.
+// Kicks the next-page fetch early enough that it usually lands before
+// the user swipes off the last card.
+const PREFETCH_THRESHOLD = 3;
+
 const HomeScreen = ({ navigation }) => {
   const [content, setContent] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('TV Shows');
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const { state, dispatch } = useContext(MoviesContext);
 
   const fetchUserPreferences = async () => {
@@ -89,7 +97,7 @@ const HomeScreen = ({ navigation }) => {
         ? await fetchInteractedTitleIds(auth.currentUser.uid)
         : [];
 
-      // Pagination + dedupe retry loop — BUG-5.
+      // Pagination + dedupe retry loop — BUG-5 (initial load).
       let filteredData = [];
       let page = 1;
       let lastRawLength = 0;
@@ -114,6 +122,8 @@ const HomeScreen = ({ navigation }) => {
         }
         page += 1;
       }
+
+      setCurrentPage(page);
 
       if (filteredData.length === 0) {
         setContent([]);
@@ -145,12 +155,86 @@ const HomeScreen = ({ navigation }) => {
     }
   };
 
+  // Sprint 2 BUG-5 (round 2): fetch the NEXT TMDB page and append
+  // non-duplicate, non-interacted titles to the existing deck. Skips the
+  // trending endpoint ('All'), which returns the same set regardless of
+  // page. Idempotent under concurrent invocation via isLoadingMore guard.
+  const loadMoreContent = useCallback(async () => {
+    if (isLoadingMore || selectedCategory === 'All') return;
+    setIsLoadingMore(true);
+    try {
+      const userPrefs = await fetchUserPreferences();
+      const interactedIds = auth.currentUser
+        ? await fetchInteractedTitleIds(auth.currentUser.uid)
+        : [];
+      const existingIds = new Set(content.map((c) => c.id));
+
+      let appended = 0;
+      let nextPage = currentPage;
+      for (let attempt = 0; attempt < MAX_PAGINATION_RETRIES; attempt += 1) {
+        nextPage += 1;
+        const rawData = await fetchCategoryPage(
+          selectedCategory,
+          userPrefs,
+          nextPage,
+        );
+        const filtered = rawData.filter(
+          (item) =>
+            !interactedIds.includes(item.id) && !existingIds.has(item.id),
+        );
+        console.log(
+          `HOME-APPEND: page=${nextPage} raw=${rawData.length} newFiltered=${filtered.length} (attempt ${attempt + 1}/${MAX_PAGINATION_RETRIES})`,
+        );
+        if (filtered.length > 0) {
+          setContent((prev) => [...prev, ...filtered]);
+          appended = filtered.length;
+          break;
+        }
+      }
+      setCurrentPage(nextPage);
+      if (appended === 0) {
+        console.log(
+          `HOME-APPEND: exhausted ${MAX_PAGINATION_RETRIES} pages without new content for category=${selectedCategory}`,
+        );
+      }
+    } catch (e) {
+      console.error('Failed to load more content:', e);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [isLoadingMore, selectedCategory, currentPage, content]);
+
   useEffect(() => {
+    setCurrentPage(1);
     fetchContentBasedOnCategory(selectedCategory);
   }, [selectedCategory]);
 
+  // Prefetch the next page as soon as the user nears the end of the
+  // currently-loaded deck. Runs off currentCardIndex / content.length
+  // changes so both "user swiped" and "new page appended" ticks trigger
+  // the same check — and the isLoadingMore guard prevents double-fires.
+  useEffect(() => {
+    if (
+      content.length > 0 &&
+      !isLoadingMore &&
+      selectedCategory !== 'All' &&
+      content.length - currentCardIndex <= PREFETCH_THRESHOLD
+    ) {
+      loadMoreContent();
+    }
+  }, [
+    currentCardIndex,
+    content.length,
+    isLoadingMore,
+    selectedCategory,
+    loadMoreContent,
+  ]);
+
   const handleSwipeComplete = useCallback(() => {
-    const newIndex = Math.min(currentCardIndex + 1, content.length - 1);
+    const newIndex = currentCardIndex + 1;
+    // Don't clamp to content.length-1 anymore: the prefetch effect will
+    // append more cards before we run off the end in practice. If it
+    // hasn't caught up, the render branch below shows a spinner.
     setCurrentCardIndex(newIndex);
 
     // Dispatch action to update the index in context
@@ -159,7 +243,7 @@ const HomeScreen = ({ navigation }) => {
         ? 'UPDATE_LAST_MOVIE_INDEX'
         : 'UPDATE_LAST_TVSHOW_INDEX';
     dispatch({ type: actionType, payload: newIndex });
-  }, [currentCardIndex, content.length, selectedCategory, dispatch]);
+  }, [currentCardIndex, selectedCategory, dispatch]);
 
   if (loading) {
     return (
@@ -181,19 +265,32 @@ const HomeScreen = ({ navigation }) => {
     );
   }
 
+  const currentCard = content[currentCardIndex];
+  const deckExhausted = !currentCard;
+
   return (
     <ScrollView style={styles.container}>
       <NavigationBar profileName={auth.currentUser?.profileName} />
       <CategoryTabs onCategorySelect={setSelectedCategory} />
       <View style={styles.cardContainer}>
-        {content.slice(currentCardIndex, currentCardIndex + 1).map((item) => (
+        {currentCard ? (
           <SwipeableCard
-            key={item.id.toString()}
-            movie={item}
+            key={currentCard.id.toString()}
+            movie={currentCard}
             onSwipeComplete={handleSwipeComplete}
             navigation={navigation}
           />
-        ))}
+        ) : isLoadingMore ? (
+          <View style={styles.loadingMoreContainer}>
+            <ActivityIndicator size="large" />
+            <Text style={styles.loadingMoreText}>Loading more titles…</Text>
+          </View>
+        ) : deckExhausted ? (
+          <Text style={styles.errorText}>
+            You&apos;ve reached the end for now. Try another category or
+            check back soon!
+          </Text>
+        ) : null}
       </View>
     </ScrollView>
   );
@@ -220,6 +317,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 100,
+  },
+  loadingMoreContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+  },
+  loadingMoreText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#888',
   },
 });
 

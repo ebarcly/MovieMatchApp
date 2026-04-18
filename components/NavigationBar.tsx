@@ -4,8 +4,8 @@ import SearchIcon from './SearchIcon';
 import { auth, db } from '../firebaseConfig';
 import { doc, onSnapshot } from 'firebase/firestore';
 
-const NavigationBar = () => {
-  const [profileName, setProfileName] = useState('');
+const NavigationBar = (): React.ReactElement => {
+  const [profileName, setProfileName] = useState<string>('');
 
   useEffect(() => {
     // Sprint 2 BUG-3: guard against auth.currentUser being null. This
@@ -20,7 +20,7 @@ const NavigationBar = () => {
     }
 
     const unsubscribe = onSnapshot(doc(db, 'users', user.uid), (snap) => {
-      const data = snap.data();
+      const data = snap.data() as { profileName?: string } | undefined;
       const firstName = data?.profileName?.split(' ')?.[0] ?? '';
       setProfileName(firstName);
     });

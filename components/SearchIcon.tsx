@@ -1,7 +1,7 @@
 import React from 'react';
 import { MagnifyingGlass } from 'phosphor-react-native';
 
-const SearchIcon = () => (
+const SearchIcon = (): React.ReactElement => (
   <MagnifyingGlass size={28} color="#000" weight="regular" />
 );
 

@@ -1,13 +1,20 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
+import { StyleSheet, ScrollView } from 'react-native';
 import CategoryButton from './CategoryButton';
 
-const categories = ['TV Shows', 'Movies', 'All']; // Updated categories list
+const categories = ['TV Shows', 'Movies', 'All'] as const;
+export type Category = (typeof categories)[number];
 
-const CategoryTabs = ({ onCategorySelect }) => {
-  const [activeTab, setActiveTab] = useState(categories[0]);
+interface CategoryTabsProps {
+  onCategorySelect: (category: Category) => void;
+}
 
-  const handleCategorySelect = (category) => {
+const CategoryTabs = ({
+  onCategorySelect,
+}: CategoryTabsProps): React.ReactElement => {
+  const [activeTab, setActiveTab] = useState<Category>(categories[0]);
+
+  const handleCategorySelect = (category: Category): void => {
     setActiveTab(category);
     onCategorySelect(category);
   };

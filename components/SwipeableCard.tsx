@@ -8,49 +8,75 @@ import {
   TouchableOpacity,
   TouchableWithoutFeedback,
   Alert,
+  type ImageSourcePropType,
 } from 'react-native';
 import {
   GestureHandlerRootView,
   Swipeable,
 } from 'react-native-gesture-handler';
-import { SkipForward, Check, ThumbsUp, ThumbsDown } from 'phosphor-react-native';
-import { MoviesContext } from '../context/MoviesContext';
-import { useNavigation } from '@react-navigation/native';
-import { auth, db } from '../firebaseConfig';
 import {
-  collection,
-  query,
-  where,
-  getDocs,
-  addDoc,
-  Timestamp,
-} from 'firebase/firestore';
+  SkipForward,
+  Check,
+  ThumbsUp,
+  ThumbsDown,
+} from 'phosphor-react-native';
+import { MoviesContext, type MovieItem } from '../context/MoviesContext';
+import { useNavigation } from '@react-navigation/native';
+import type { StackNavigationProp } from '@react-navigation/stack';
+import { auth, db } from '../firebaseConfig';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import {
   addToWatchlist,
   createMatchDocument,
   recordTitleInteraction,
+  type TitleType,
+  type WatchlistItem,
 } from '../utils/firebaseOperations';
+import type { HomeStackParamList } from '../navigation/types';
 
-const SwipeableCard = ({ movie, onSwipeComplete }) => {
+export type SwipeDirection = 'accept' | 'reject';
+
+export interface SwipeableCardMovie extends MovieItem {
+  id: number;
+  type: TitleType;
+  poster_path?: string | null;
+  genre_ids?: number[];
+  index?: number;
+}
+
+export interface SwipeableCardProps {
+  movie: SwipeableCardMovie;
+  onSwipeComplete: () => void;
+}
+
+type NavProp = StackNavigationProp<HomeStackParamList, 'Home'>;
+
+const SwipeableCard = ({
+  movie,
+  onSwipeComplete,
+}: SwipeableCardProps): React.ReactElement => {
   const { state, dispatch } = useContext(MoviesContext);
-  const swipeableRef = useRef(null);
+  const swipeableRef = useRef<Swipeable | null>(null);
   const { poster_path, genre_ids = [], type } = movie;
-  const navigation = useNavigation();
+  const navigation = useNavigation<NavProp>();
 
   // Use secure_base_url from configData and choose appropriate size for poster
-  const imageBaseUrl = state.configData.images.secure_base_url;
-  const imageSize = 'w780'; // Choose the appropriate image size
+  const imageBaseUrl = state.configData.images?.secure_base_url ?? '';
+  const imageSize = 'w780';
 
-  // Construct the full URI for the movie poster image
-  const imageUri = poster_path
+  const imageUri: string | ImageSourcePropType = poster_path
     ? `${imageBaseUrl}${imageSize}${poster_path}`
-    : require('../assets/default_image.jpeg');
+    : (require('../assets/default_image.jpeg') as ImageSourcePropType);
 
-  const [swiped, setSwiped] = useState(false); // Update the swiped state
+  const [swiped, setSwiped] = useState(false);
 
   // Function to check for a match and create a match document
-  const checkForMatchAndCreate = async (newWatchlistItem) => {
+  const checkForMatchAndCreate = async (
+    newWatchlistItem: WatchlistItem,
+  ): Promise<void> => {
     const friendsList = state.friends;
+    const currentUser = auth.currentUser;
+    if (!currentUser) return;
     for (const friendId of friendsList) {
       const friendWatchlistRef = collection(db, 'users', friendId, 'watchlist');
       console.log(
@@ -64,12 +90,11 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
       );
       const querySnapshot = await getDocs(q);
       if (!querySnapshot.empty) {
-        // A match is found, create a match document
         console.log(
           "SWIPEABLE_CARD: Friend's watchlist contains the item. About to create match.",
         );
         await createMatchDocument(
-          [auth.currentUser.uid, friendId],
+          [currentUser.uid, friendId],
           newWatchlistItem.id,
           newWatchlistItem.type,
         );
@@ -99,13 +124,22 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
   // ("opened which panel?") into business logic and inverted Skip vs
   // Watched. Keeping semantics at this boundary prevents the
   // regression.
-  const handleSwipe = async (direction, cardIndex) => {
+  const handleSwipe = async (
+    direction: SwipeDirection,
+    cardIndex: number,
+  ): Promise<void> => {
     const isLikeAction = direction === 'accept';
     const localDispatchActionType = isLikeAction
       ? 'ADD_TO_WATCHLIST'
       : 'DISLIKE_MOVIE';
 
-    dispatch({ type: localDispatchActionType, payload: movie });
+    if (isLikeAction) {
+      const watchlistItem: WatchlistItem = { id: movie.id, type: movie.type };
+      dispatch({ type: 'ADD_TO_WATCHLIST', payload: watchlistItem });
+    } else {
+      dispatch({ type: 'DISLIKE_MOVIE', payload: movie });
+    }
+    void localDispatchActionType; // Retain semantic variable for log parity.
 
     const interactionAction = isLikeAction ? 'liked' : 'disliked_or_skipped';
     if (auth.currentUser && movie.id && movie.type) {
@@ -122,7 +156,6 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
     }
 
     if (isLikeAction) {
-      const newWatchlistItem = { id: movie.id, type: movie.type };
       if (!movie.id || !movie.type) {
         console.error(
           'Movie ID or Type is missing in SwipeableCard, cannot process swipe.',
@@ -134,8 +167,15 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
         );
         return;
       }
-      await addToWatchlist(auth.currentUser.uid, newWatchlistItem);
-      await checkForMatchAndCreate(newWatchlistItem);
+      const newWatchlistItem: WatchlistItem = {
+        id: movie.id,
+        type: movie.type,
+      };
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        await addToWatchlist(currentUser.uid, newWatchlistItem);
+        await checkForMatchAndCreate(newWatchlistItem);
+      }
     }
 
     const updateContextIndexActionType =
@@ -144,7 +184,6 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
         : 'UPDATE_LAST_TVSHOW_INDEX';
     dispatch({ type: updateContextIndexActionType, payload: cardIndex });
 
-    // Close the swipeable card
     setTimeout(() => {
       swipeableRef.current?.close();
       setSwiped(true);
@@ -152,7 +191,10 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
     }, 250);
   };
 
-  const renderActions = (dragX, direction) => {
+  const renderActions = (
+    dragX: Animated.AnimatedInterpolation<number>,
+    direction: 'left' | 'right',
+  ): React.ReactElement => {
     const scale = dragX.interpolate({
       inputRange: [-100, 0, 100],
       outputRange: [0.8, 1, 0.8],
@@ -174,30 +216,23 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
         <Animated.View
           style={[styles.actionContent, { transform: [{ scale }, { rotate }] }]}
         >
-          <ActionIcon
-            size={28}
-            color="#fff"
-            weight="fill"
-            style={styles.icon}
-          />
+          <ActionIcon size={28} color="#fff" weight="fill" style={styles.icon} />
           <Text style={styles.actionText}>{actionText}</Text>
         </Animated.View>
       </View>
     );
   };
 
-  const renderGenres = () => {
+  const renderGenres = (): React.ReactNode => {
     if (genre_ids.length > 0 && state.genres.length > 0) {
-      // Map genre IDs to genre names
       const genreNames = genre_ids
         .map((genreId) => {
           const genre = state.genres.find((g) => g.id === genreId);
-          return genre ? genre.name : null; // Return null instead of 'Unknown'
+          return genre ? genre.name : null;
         })
-        .filter(Boolean); // Filter out null values
+        .filter((n): n is string => Boolean(n));
 
       if (genreNames.length > 0) {
-        // Check if there are any available genres
         return genreNames.slice(0, 3).map((name, index) => (
           <Text key={index} style={styles.genreSmall}>
             • {name}
@@ -209,6 +244,8 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
 
     return <Text style={styles.genreSmall}>Genres unavailable</Text>;
   };
+
+  const cardIndex: number = movie.index ?? 0;
 
   return (
     <GestureHandlerRootView style={styles.container}>
@@ -222,14 +259,14 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
             // opens (i.e. user dragged card to the RIGHT = accept) and
             // 'right' when the right-actions panel opens (drag left =
             // reject). Translate to our semantic intent vocabulary.
-            handleSwipe(direction === 'left' ? 'accept' : 'reject', movie.index)
+            handleSwipe(direction === 'left' ? 'accept' : 'reject', cardIndex)
           }
           friction={2}
           leftThreshold={60}
           rightThreshold={60}
-          overshootLeft={false} // Disable overshoot effect on left swipe
-          overshootRight={false} // Disable overshoot effect on right swipe
-          useNativeAnimations={true} // Use native animations for smoother transitions
+          overshootLeft={false}
+          overshootRight={false}
+          useNativeAnimations
         >
           <TouchableWithoutFeedback
             onPress={() =>
@@ -238,9 +275,11 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
           >
             <View style={styles.cardContainer}>
               <Image
-                source={{ uri: imageUri }}
+                source={
+                  typeof imageUri === 'string' ? { uri: imageUri } : imageUri
+                }
                 style={styles.poster}
-                defaultSource={require('../assets/default_image.jpeg')}
+                defaultSource={require('../assets/default_image.jpeg') as number}
                 resizeMode="cover"
               />
               <View style={styles.genreContainer}>{renderGenres()}</View>
@@ -251,26 +290,18 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
       <View style={styles.buttonContainer}>
         <TouchableOpacity
           style={styles.button}
-          onPress={() => handleSwipe('reject', movie.index)}
+          accessibilityLabel="Skip"
+          onPress={() => handleSwipe('reject', cardIndex)}
         >
-          <SkipForward
-            size={22}
-            color="#fff"
-            weight="bold"
-            style={styles.icon}
-          />
+          <SkipForward size={22} color="#fff" weight="bold" style={styles.icon} />
           <Text style={styles.buttonText}>Skip</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.button}
-          onPress={() => handleSwipe('accept', movie.index)}
+          accessibilityLabel="Watched"
+          onPress={() => handleSwipe('accept', cardIndex)}
         >
-          <Check
-            size={22}
-            color="#fff"
-            weight="bold"
-            style={styles.icon}
-          />
+          <Check size={22} color="#fff" weight="bold" style={styles.icon} />
           <Text style={styles.buttonText}>Watched</Text>
         </TouchableOpacity>
       </View>
@@ -278,7 +309,6 @@ const SwipeableCard = ({ movie, onSwipeComplete }) => {
   );
 };
 
-// Styles...
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -330,7 +360,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     marginHorizontal: 4,
     textAlign: 'center',
-    // Add other text style properties
   },
   separator: {
     color: '#fff',

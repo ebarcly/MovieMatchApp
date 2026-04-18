@@ -1,6 +1,12 @@
 import React from 'react';
 import { Text, TouchableOpacity, StyleSheet } from 'react-native';
 
+interface CategoryButtonProps {
+  label: string;
+  isActive: boolean;
+  onPress: () => void;
+}
+
 const styles = StyleSheet.create({
   button: {
     alignItems: 'center',
@@ -26,7 +32,11 @@ const styles = StyleSheet.create({
   },
 });
 
-const CategoryButton = ({ label, isActive, onPress }) => {
+const CategoryButton = ({
+  label,
+  isActive,
+  onPress,
+}: CategoryButtonProps): React.ReactElement => {
   return (
     <TouchableOpacity
       style={[styles.button, isActive && styles.activeButton]}

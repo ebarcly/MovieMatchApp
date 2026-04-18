@@ -11,6 +11,7 @@ import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../firebaseConfig';
 import { useNavigation } from '@react-navigation/native';
+import { colors, spacing, radii, typography } from '../theme';
 
 const RegisterScreen = () => {
   const [name, setName] = useState('');
@@ -59,6 +60,7 @@ const RegisterScreen = () => {
         <Text style={styles.label}>Name</Text>
         <TextInput
           placeholder="Enter your name"
+          placeholderTextColor={colors.textTertiary}
           value={name}
           onChangeText={setName}
           style={styles.input}
@@ -68,6 +70,7 @@ const RegisterScreen = () => {
         <Text style={styles.label}>Email</Text>
         <TextInput
           placeholder="Enter your E-mail"
+          placeholderTextColor={colors.textTertiary}
           value={email}
           onChangeText={setEmail}
           keyboardType="email-address"
@@ -78,6 +81,7 @@ const RegisterScreen = () => {
         <Text style={styles.label}>Password</Text>
         <TextInput
           placeholder="Enter your password"
+          placeholderTextColor={colors.textTertiary}
           value={password}
           onChangeText={setPassword}
           secureTextEntry
@@ -88,6 +92,7 @@ const RegisterScreen = () => {
         <Text style={styles.label}>Confirm Password</Text>
         <TextInput
           placeholder="Confirm Password"
+          placeholderTextColor={colors.textTertiary}
           value={confirmPassword}
           onChangeText={setConfirmPassword}
           secureTextEntry
@@ -103,7 +108,7 @@ const RegisterScreen = () => {
           style={styles.checkbox}
           value={rememberMe}
           onValueChange={setRememberMe}
-          color={rememberMe ? 'blue' : 'grey'}
+          color={rememberMe ? colors.accent : colors.iconMuted}
         />
         <Text style={styles.rememberMeText}>Remember me</Text>
       </View>
@@ -121,80 +126,76 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',
-    padding: 20,
-    backgroundColor: '#19192b', // Assuming the background is black
+    padding: spacing.lg,
+    backgroundColor: colors.ink,
   },
   title: {
-    fontSize: 24,
-    color: '#fff',
-    marginBottom: 5,
+    ...typography.titleLg,
+    color: colors.textHigh,
+    marginBottom: spacing.xxs,
     textAlign: 'center',
-    fontFamily: 'WorkSans-Bold',
   },
   subtitle: {
-    fontSize: 16,
-    color: '#fff',
-    marginBottom: 30,
+    ...typography.body,
+    color: colors.textSecondary,
+    marginBottom: spacing.xl,
     textAlign: 'center',
-    fontFamily: 'WorkSans-Regular',
   },
   inputContainer: {
-    marginBottom: 16,
+    marginBottom: spacing.md,
   },
   label: {
-    color: '#fff',
-    fontSize: 16,
-    marginBottom: 5,
-    fontFamily: 'WorkSans-Regular',
+    ...typography.label,
+    color: colors.textSecondary,
+    marginBottom: spacing.xxs,
   },
   input: {
-    backgroundColor: '#fff',
-    padding: 15,
-    borderRadius: 5,
-    fontSize: 17,
-    fontFamily: 'WorkSans-Regular',
+    ...typography.body,
+    backgroundColor: colors.surfaceRaised,
+    color: colors.textBody,
+    padding: spacing.md,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
   },
   button: {
-    backgroundColor: 'blue', // Replace with the exact color from the image
-    padding: 15,
-    borderRadius: 5,
+    backgroundColor: colors.accent,
+    padding: spacing.md,
+    borderRadius: radii.pill,
     alignItems: 'center',
+    marginTop: spacing.md,
   },
   buttonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontFamily: 'WorkSans-Bold',
+    ...typography.button,
+    color: colors.accentForeground,
   },
   rememberMeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
-    marginLeft: 5,
+    marginBottom: spacing.md,
+    marginTop: spacing.md,
   },
   rememberMeText: {
-    color: '#fff',
-    fontSize: 16,
+    ...typography.body,
+    color: colors.textSecondary,
     alignItems: 'center',
-    marginTop: 16,
-    fontFamily: 'WorkSans-Regular',
   },
   checkbox: {
-    marginTop: 16,
-    marginRight: 8,
+    marginRight: spacing.xs,
   },
   errorText: {
-    color: 'red',
+    ...typography.bodySm,
+    color: colors.error,
     textAlign: 'center',
-    marginBottom: 10,
+    marginBottom: spacing.sm,
   },
   login: {
-    marginTop: 15,
+    marginTop: spacing.md,
   },
   linkText: {
-    color: '#fff', // Replace with the exact color from the image
+    ...typography.bodySm,
+    color: colors.textSecondary,
     textAlign: 'center',
-    fontFamily: 'WorkSans-Light',
-    fontSize: 16,
   },
 });
 

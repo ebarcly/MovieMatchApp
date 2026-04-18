@@ -38,47 +38,54 @@ MovieMatchApp is your go-to platform for discovering and sharing movies and TV s
 
 ### Prerequisites
 
-- Node.js (v14 or higher)
-- npm or yarn
-- Expo CLI
-- iOS/Android Simulator or physical device
+- **Node.js 20** (pinned via `.nvmrc`; Expo SDK 53 officially supports 18/20). On Windows use [nvm-windows](https://github.com/coreybutler/nvm-windows): `nvm install 20 && nvm use 20`.
+- **npm** (ships with Node).
+- **Expo Go** on your phone (iOS App Store / Google Play) — simplest path. Scanning the QR on the Metro console launches the app.
+- **No Expo CLI global install needed** — use `npx expo ...`.
 
 ### Installation
 
-1. Clone the repository
-
 ```bash
-git clone https://github.com/yourusername/MovieMatchApp.git
-```
-
-2. Install dependencies
-
-```bash
+git clone https://github.com/ebarcly/MovieMatchApp.git
 cd MovieMatchApp
 npm install
-```
-
-3. Set up environment variables
-
-```bash
 cp .env.example .env
 ```
 
-Fill in your API keys and configuration values
+Then fill in `.env` with your TMDB key and Firebase web config (see [Environment](#environment) below).
 
-4. Start the development server
+### Running the app
 
 ```bash
-expo start
+npx expo start --tunnel
 ```
 
-5. Open the app on your simulator or physical device using the Expo Go app.
+- Scan the QR code with **Expo Go** on your phone (fastest and works over any network).
+- Press `a` to open in an Android emulator (requires Android Studio).
+- `--tunnel` is useful on Windows when your phone and dev machine are on different Wi-Fi networks; drop it if you're on the same LAN for faster HMR.
 
-- For iOS, press `i` in the terminal to open in the iOS simulator.
-- For Android, press `a` in the terminal to open in the Android emulator.
-- For physical devices, scan the QR code displayed in the terminal using the Expo Go app.
+### Platform notes
 
-6. Follow the on-screen instructions to test the app.
+- **Windows**: no iOS simulator available. Use Expo Go or an Android emulator (Android Studio → Device Manager). Metro works fine on Windows; if you hit Windows Defender slowdowns on `node_modules`, exclude the project directory from real-time scanning.
+- **macOS**: `i` opens the iOS simulator (requires Xcode).
+
+### Environment
+
+All secrets are read from `.env` at build time and exposed via `app.config.js` under `expo.extra`. Variable names use the `EXPO_PUBLIC_*` prefix (see `.env.example`). Never commit `.env`.
+
+- TMDB key: [themoviedb.org/settings/api](https://www.themoviedb.org/settings/api)
+- Firebase web config: Firebase Console → Project Settings → General → Your apps → Web app
+
+### Scripts
+
+| Command                                                        | What it does                                                  |
+| -------------------------------------------------------------- | ------------------------------------------------------------- |
+| `npm start`                                                    | `npx expo start` (alias for Metro + QR)                       |
+| `npx expo start --tunnel`                                      | Metro with ngrok tunnel (easiest on Windows / mixed networks) |
+| `npx eslint .`                                                 | Lint all source                                               |
+| `npx prettier --check .`                                       | Verify formatting                                             |
+| `npx prettier --write .`                                       | Auto-format                                                   |
+| `npx firebase deploy --only firestore:rules,firestore:indexes` | Ship Firestore rules/indexes (requires `firebase login`)      |
 
 ## 🤝 Contributing
 

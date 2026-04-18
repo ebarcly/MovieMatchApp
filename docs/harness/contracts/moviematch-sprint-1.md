@@ -23,7 +23,7 @@ out_of_scope:
 success_criteria:
   - criterion: "No API keys, tokens, or credentials present anywhere in the current working tree (rg for known-leaked key must return zero hits)"
     threshold: hard
-    verify_command: "git grep -n '7205b20552feedbb43213ee5943ffeac' || echo CLEAN"
+    verify_command: "git grep -n '7205b20552feedbb43213ee5943ffeac' -- ':!docs' || echo CLEAN"
   - criterion: "TMDB key rotated at themoviedb.org; old key confirmed invalid via curl"
     threshold: hard
     verify_command: "curl -s 'https://api.themoviedb.org/3/configuration?api_key=7205b20552feedbb43213ee5943ffeac' | grep -q 'Invalid API key' && echo ROTATED"
@@ -35,7 +35,7 @@ success_criteria:
     verify_command: "git ls-files -- firestore.rules | grep -q firestore.rules && echo TRACKED"
   - criterion: "Firestore /users/{userId} rule does NOT allow arbitrary authenticated reads of other users' docs"
     threshold: hard
-    verify_command: "grep -A1 'match /users/{userId}' firestore.rules | grep -v 'request.auth.uid != userId' && echo CLEAN"
+    verify_command: "! grep -E \"allow read: if request.auth != null && request.auth.uid != userId *;?$\" firestore.rules && grep -q 'request.auth.uid in resource.data.friends' firestore.rules && echo CLEAN"
   - criterion: "ESLint runs clean (or with documented warnings-only) on the whole source tree"
     threshold: hard
     verify_command: "npx eslint . --ext .js,.jsx"

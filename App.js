@@ -4,9 +4,10 @@ import * as Font from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { MoviesProvider } from './context/MoviesContext';
 import AppNavigator from './navigation/AppNavigator';
-import { initializeApp } from './firebaseConfig';
+// Import firebaseConfig for its side effect (initializes Firebase app + auth + db).
+import './firebaseConfig';
 
-SplashScreen.preventAutoHideAsync(); // Prevent native splash screen from auto-hiding
+SplashScreen.preventAutoHideAsync();
 
 const loadFonts = async () => {
   await Font.loadAsync({

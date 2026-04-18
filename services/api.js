@@ -1,8 +1,14 @@
 import axios from 'axios';
 import Constants from 'expo-constants';
 
-const API_KEY = Constants.expoConfig.extra.TMDB_API_KEY;
+const API_KEY = Constants.expoConfig?.extra?.tmdbApiKey;
 const BASE_URL = 'https://api.themoviedb.org/3';
+
+if (!API_KEY) {
+  console.warn(
+    '[services/api] TMDB API key missing. Set EXPO_PUBLIC_TMDB_API_KEY in .env.',
+  );
+}
 
 const tmdbApi = axios.create({
     baseURL: BASE_URL,

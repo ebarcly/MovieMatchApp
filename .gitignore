@@ -17,32 +17,33 @@ web-build/
 # Metro
 .metro-health-check*
 
-# debug
+# Debug
 npm-debug.*
 yarn-debug.*
 yarn-error.*
 
-# macOS
+# OS
 .DS_Store
+Thumbs.db
+desktop.ini
 *.pem
 
-# local env files
-.env*.local
+# Local env — never commit real secrets
 .env
+.env.*.local
+.env.local
 
-# typescript
+# TypeScript (future)
 *.tsbuildinfo
 
-# app.json
+# Legacy static Expo config — replaced by app.config.js. Kept ignored so a
+# stray regeneration doesn't re-introduce the old hardcoded TMDB key.
 app.json
 
-# firestore.rules
-firestore.rules
-
-# firestore.indexes.json
-firestore.indexes.json
-
-# firbase
-.firebaserc
-firebase.json
+# AI scratch notes
 GEMINI.md
+CLAUDE.md.local
+
+# IDE
+.idea/
+*.swp

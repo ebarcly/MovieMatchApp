@@ -27,17 +27,20 @@
     "metro-core": "^0.82.3",
     "react": "19.0.0",
     "react-native": "^0.79.5",
-    "react-native-dotenv": "^3.4.9",
     "react-native-gesture-handler": "~2.24.0",
     "react-native-safe-area-context": "5.4.0",
     "react-native-screens": "~4.11.1",
     "react-native-vector-icons": "^10.0.2",
-    "react-native-video": "^5.2.1",
-    "react-native-webview": "13.13.5",
-    "react-native-youtube": "^2.0.2"
+    "react-native-webview": "^13.16.1"
   },
   "devDependencies": {
-    "@babel/core": "^7.25.2"
+    "@babel/core": "^7.25.2",
+    "dotenv": "^17.4.2",
+    "eslint": "^9.39.4",
+    "eslint-config-expo": "^55.0.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.5",
+    "prettier": "^3.8.3"
   },
   "private": true
 }

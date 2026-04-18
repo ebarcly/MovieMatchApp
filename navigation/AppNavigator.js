@@ -9,8 +9,9 @@ import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 import ProfileSetupScreen from '../screens/ProfileSetupScreen'; // Ensure this is imported
-import { auth } from '../firebaseConfig';
+import { auth, db } from '../firebaseConfig';
 import { onAuthStateChanged } from 'firebase/auth';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { ActivityIndicator, View } from 'react-native';
 
 const HomeStackNav = createStackNavigator();
@@ -106,21 +107,43 @@ const AppNavigator = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isProfileSetupComplete, setIsProfileSetupComplete] = useState(false);
 
+  // Auth subscription.
   useEffect(() => {
-    let isMounted = true;
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      if (isMounted) {
-        if (currentUser !== user) {
-          setUser(currentUser);
-          setIsProfileSetupComplete(!!currentUser?.displayName);
-        }
+      setUser(currentUser);
+      if (!currentUser) {
+        setIsProfileSetupComplete(false);
         setIsLoading(false);
       }
+      // If currentUser exists, the profile-doc effect below will flip
+      // isLoading once it reads the /users/{uid} snapshot.
     });
-    return () => {
-      isMounted = false;
-      unsubscribe();
-    };
+    return unsubscribe;
+  }, []);
+
+  // Profile-completion subscription. Firebase Auth's updateProfile does
+  // NOT fire onAuthStateChanged, so we can't rely on displayName. Instead
+  // we watch the Firestore user doc, which is the source of truth.
+  useEffect(() => {
+    if (!user) return undefined;
+    const unsubscribe = onSnapshot(
+      doc(db, 'users', user.uid),
+      (snap) => {
+        const data = snap.data();
+        // Require profileName AND at least one genre selected as the
+        // "profile complete" signal. ProfileSetup sets both.
+        setIsProfileSetupComplete(
+          !!data?.profileName && Array.isArray(data?.genres) && data.genres.length > 0,
+        );
+        setIsLoading(false);
+      },
+      (err) => {
+        console.error('Error watching user doc:', err);
+        setIsProfileSetupComplete(false);
+        setIsLoading(false);
+      },
+    );
+    return unsubscribe;
   }, [user]);
 
   if (isLoading) {

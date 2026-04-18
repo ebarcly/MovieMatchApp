@@ -8,21 +8,29 @@ import MatchesScreen from '../screens/MatchesScreen';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
-import ProfileSetupScreen from '../screens/ProfileSetupScreen'; // Ensure this is imported
+import ProfileSetupScreen from '../screens/ProfileSetupScreen';
 import { auth, db } from '../firebaseConfig';
-import { onAuthStateChanged } from 'firebase/auth';
+import { onAuthStateChanged, type User } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { ActivityIndicator, View } from 'react-native';
+import type {
+  AuthStackParamList,
+  HomeStackParamList,
+  ProfileSetupStackParamList,
+  MyCaveStackParamList,
+  MainTabsParamList,
+} from './types';
 
-const HomeStackNav = createStackNavigator();
-const TabNav = createBottomTabNavigator();
-const AuthStackNav = createStackNavigator();
-const ProfileSetupStackNav = createStackNavigator();
-const MyCaveStackNav = createStackNavigator();
+const HomeStackNav = createStackNavigator<HomeStackParamList>();
+const TabNav = createBottomTabNavigator<MainTabsParamList>();
+const AuthStackNav = createStackNavigator<AuthStackParamList>();
+const ProfileSetupStackNav =
+  createStackNavigator<ProfileSetupStackParamList>();
+const MyCaveStackNav = createStackNavigator<MyCaveStackParamList>();
 
 // --- Navigator Screens ---
 
-function AuthStackScreen() {
+function AuthStackScreen(): React.ReactElement {
   return (
     <AuthStackNav.Navigator screenOptions={{ headerShown: false }}>
       <AuthStackNav.Screen name="Login" component={LoginScreen} />
@@ -35,7 +43,7 @@ function AuthStackScreen() {
   );
 }
 
-function HomeStackScreen() {
+function HomeStackScreen(): React.ReactElement {
   return (
     <HomeStackNav.Navigator>
       <HomeStackNav.Screen
@@ -49,7 +57,7 @@ function HomeStackScreen() {
 }
 
 // Stack for the initial Profile Setup flow
-function ProfileSetupStackScreen() {
+function ProfileSetupStackScreen(): React.ReactElement {
   return (
     <ProfileSetupStackNav.Navigator>
       <ProfileSetupStackNav.Screen
@@ -57,20 +65,13 @@ function ProfileSetupStackScreen() {
         component={ProfileSetupScreen}
         options={{ headerShown: false }}
         initialParams={{ isEditing: false }}
-        initialRouteName="ProfileSetup"
-        screenOptions={{ headerShown: false }}
-        navigationKey="profileSetup"
-        path="profileSetup"
-        mode="modal"
-        headerMode="none"
-        headerShown={false}
       />
     </ProfileSetupStackNav.Navigator>
   );
 }
 
 // Stack used within the My Cave Tab
-function MyCaveStackScreen() {
+function MyCaveStackScreen(): React.ReactElement {
   return (
     <MyCaveStackNav.Navigator>
       <MyCaveStackNav.Screen
@@ -78,7 +79,6 @@ function MyCaveStackScreen() {
         component={MyCaveScreen}
         options={{ headerShown: false }}
       />
-      {/* *** ADD THIS SCREEN FOR EDITING *** */}
       <MyCaveStackNav.Screen
         name="EditProfile"
         component={ProfileSetupScreen}
@@ -89,12 +89,11 @@ function MyCaveStackScreen() {
 }
 
 // Main App Tabs shown after login and profile setup
-function MainAppTabs() {
+function MainAppTabs(): React.ReactElement {
   return (
     <TabNav.Navigator screenOptions={{ headerShown: false }}>
       <TabNav.Screen name="Deck" component={HomeStackScreen} />
       <TabNav.Screen name="Matches" component={MatchesScreen} />
-      {/* The "My Cave" tab now renders the MyCaveStackScreen function */}
       <TabNav.Screen name="My Cave" component={MyCaveStackScreen} />
     </TabNav.Navigator>
   );
@@ -102,8 +101,8 @@ function MainAppTabs() {
 
 // --- App Navigator (Decision Logic) ---
 
-const AppNavigator = () => {
-  const [user, setUser] = useState(null);
+const AppNavigator = (): React.ReactElement => {
+  const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isProfileSetupComplete, setIsProfileSetupComplete] = useState(false);
 
@@ -115,8 +114,6 @@ const AppNavigator = () => {
         setIsProfileSetupComplete(false);
         setIsLoading(false);
       }
-      // If currentUser exists, the profile-doc effect below will flip
-      // isLoading once it reads the /users/{uid} snapshot.
     });
     return unsubscribe;
   }, []);
@@ -129,11 +126,13 @@ const AppNavigator = () => {
     const unsubscribe = onSnapshot(
       doc(db, 'users', user.uid),
       (snap) => {
-        const data = snap.data();
-        // Require profileName AND at least one genre selected as the
-        // "profile complete" signal. ProfileSetup sets both.
+        const data = snap.data() as
+          | { profileName?: string; genres?: string[] }
+          | undefined;
         setIsProfileSetupComplete(
-          !!data?.profileName && Array.isArray(data?.genres) && data.genres.length > 0,
+          !!data?.profileName &&
+            Array.isArray(data?.genres) &&
+            data.genres.length > 0,
         );
         setIsLoading(false);
       },
@@ -162,7 +161,6 @@ const AppNavigator = () => {
     return <ProfileSetupStackScreen />;
   }
 
-  // User logged in AND profile complete
   return <MainAppTabs />;
 };
 

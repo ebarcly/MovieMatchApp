@@ -9,7 +9,7 @@ import './firebaseConfig';
 
 SplashScreen.preventAutoHideAsync();
 
-const loadFonts = async () => {
+const loadFonts = async (): Promise<void> => {
   await Font.loadAsync({
     'WorkSans-Black': require('./assets/fonts/WorkSans-Black.ttf'),
     'WorkSans-Bold': require('./assets/fonts/WorkSans-Bold.ttf'),
@@ -19,26 +19,25 @@ const loadFonts = async () => {
     'WorkSans-Medium': require('./assets/fonts/WorkSans-Medium.ttf'),
     'WorkSans-Regular': require('./assets/fonts/WorkSans-Regular.ttf'),
     'WorkSans-Thin': require('./assets/fonts/WorkSans-Thin.ttf'),
-    // NOTE: 'WorkSans-SemiBold' is referenced in ProfileSetupScreen.js but the
-    // TTF is missing from assets/fonts/. Falls back to platform default until
-    // the file is added. Track as follow-up.
+    // NOTE: 'WorkSans-SemiBold' is referenced in ProfileSetupScreen.tsx but
+    // the TTF is missing from assets/fonts/. Falls back to platform default
+    // until the file is added. Track as follow-up.
     'WorkSans-SemiBold': require('./assets/fonts/WorkSans-Bold.ttf'),
   });
 };
 
-const App = () => {
+const App = (): React.ReactElement | null => {
   const [fontsLoaded, setFontsLoaded] = useState(false);
 
   useEffect(() => {
-    async function prepare() {
+    async function prepare(): Promise<void> {
       try {
-        await loadFonts(); // Load fonts
-        // Load any other resources here if needed
+        await loadFonts();
       } catch (e) {
         console.warn(e);
       } finally {
         setFontsLoaded(true);
-        SplashScreen.hideAsync(); // Hide the splash screen once everything's loaded
+        SplashScreen.hideAsync();
       }
     }
 
@@ -46,7 +45,7 @@ const App = () => {
   }, []);
 
   if (!fontsLoaded) {
-    return null; // Return null or a custom loading component if you prefer
+    return null;
   }
 
   return (

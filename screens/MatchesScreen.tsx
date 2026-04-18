@@ -9,10 +9,7 @@ import {
   Image,
   TouchableOpacity,
 } from 'react-native';
-import {
-  fetchUserMatches,
-  type UserMatch,
-} from '../utils/firebaseOperations';
+import { fetchUserMatches, type UserMatch } from '../utils/firebaseOperations';
 import { auth } from '../firebaseConfig';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { MainTabsParamList } from '../navigation/types';
@@ -82,7 +79,11 @@ const MatchesScreen = ({ navigation }: Props): React.ReactElement => {
     );
   }
 
-  const renderMatchItem = ({ item }: { item: UserMatch }): React.ReactElement => {
+  const renderMatchItem = ({
+    item,
+  }: {
+    item: UserMatch;
+  }): React.ReactElement => {
     const posterPath = item.title.poster_path;
     const imageUrl = posterPath
       ? `https://image.tmdb.org/t/p/w500${posterPath}`

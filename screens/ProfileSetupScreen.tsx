@@ -160,7 +160,9 @@ const ProfileSetupScreen = (): React.ReactElement => {
       }
     } catch (updateError) {
       const msg =
-        updateError instanceof Error ? updateError.message : String(updateError);
+        updateError instanceof Error
+          ? updateError.message
+          : String(updateError);
       console.error('Error updating profile: ', updateError);
       setError(`Failed to update profile: ${msg}`);
       Alert.alert('Error', `Failed to update profile: ${msg}`);

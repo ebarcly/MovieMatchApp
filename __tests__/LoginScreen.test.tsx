@@ -13,28 +13,29 @@ import * as firebaseAuth from 'firebase/auth';
 
 const mockedSignIn = firebaseAuth.signInWithEmailAndPassword as jest.Mock;
 
-const makeNav = () => ({
-  navigate: jest.fn(),
-  dispatch: jest.fn(),
-  goBack: jest.fn(),
-  addListener: jest.fn(() => () => {}),
-  removeListener: jest.fn(),
-  setParams: jest.fn(),
-  setOptions: jest.fn(),
-  isFocused: jest.fn(() => true),
-  canGoBack: jest.fn(() => false),
-  getParent: jest.fn(),
-  getState: jest.fn(),
-  getId: jest.fn(),
-  reset: jest.fn(),
-  // reason: loose nav stub — screen never touches untested nav methods.
-}) as unknown as import('@react-navigation/stack').StackNavigationProp<
-  import('../navigation/types').AuthStackParamList,
-  'Login'
->;
+const makeNav = () =>
+  ({
+    navigate: jest.fn(),
+    dispatch: jest.fn(),
+    goBack: jest.fn(),
+    addListener: jest.fn(() => () => {}),
+    removeListener: jest.fn(),
+    setParams: jest.fn(),
+    setOptions: jest.fn(),
+    isFocused: jest.fn(() => true),
+    canGoBack: jest.fn(() => false),
+    getParent: jest.fn(),
+    getState: jest.fn(),
+    getId: jest.fn(),
+    reset: jest.fn(),
+    // reason: loose nav stub — screen never touches untested nav methods.
+  }) as unknown as import('@react-navigation/stack').StackNavigationProp<
+    import('../navigation/types').AuthStackParamList,
+    'Login'
+  >;
 
 const makeRoute = () =>
-  ({ key: 'Login', name: 'Login', params: undefined } as never);
+  ({ key: 'Login', name: 'Login', params: undefined }) as never;
 
 describe('LoginScreen', () => {
   beforeEach(() => {

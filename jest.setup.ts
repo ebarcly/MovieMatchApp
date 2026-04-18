@@ -52,8 +52,7 @@ jest.mock('firebase/app', () => ({
 }));
 
 // --- firebase/auth ----------------------------------------------------
-// reason: firebase types' shape is complex, but the mock only needs
-// callable jest.fn() stubs that tests can override.
+// reason: firebase types are complex; the mock only needs callable jest.fn() stubs that individual tests override.
 const authMock: any = {
   currentUser: null,
 };
@@ -74,7 +73,10 @@ jest.mock('firebase/auth', () => ({
 jest.mock('firebase/firestore', () => ({
   getFirestore: jest.fn(() => ({})),
   doc: jest.fn((...args: unknown[]) => ({ __type: 'docRef', args })),
-  collection: jest.fn((...args: unknown[]) => ({ __type: 'collectionRef', args })),
+  collection: jest.fn((...args: unknown[]) => ({
+    __type: 'collectionRef',
+    args,
+  })),
   query: jest.fn((...args: unknown[]) => ({ __type: 'query', args })),
   where: jest.fn((...args: unknown[]) => ({ __type: 'where', args })),
   orderBy: jest.fn((...args: unknown[]) => ({ __type: 'orderBy', args })),
@@ -97,7 +99,10 @@ jest.mock('firebase/firestore', () => ({
   onSnapshot: jest.fn((_ref: unknown, _cb: unknown) => () => {}),
   Timestamp: {
     now: jest.fn(() => ({ seconds: 0, nanoseconds: 0 })),
-    fromDate: jest.fn((d: Date) => ({ seconds: Math.floor(d.getTime() / 1000), nanoseconds: 0 })),
+    fromDate: jest.fn((d: Date) => ({
+      seconds: Math.floor(d.getTime() / 1000),
+      nanoseconds: 0,
+    })),
   },
 }));
 

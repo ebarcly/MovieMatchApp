@@ -5,7 +5,8 @@ const path = require('path');
 const walk = (d) => {
   let r = [];
   for (const e of fs.readdirSync(d, { withFileTypes: true })) {
-    if (['node_modules', '.expo', 'docs', '.git', 'coverage'].includes(e.name)) continue;
+    if (['node_modules', '.expo', 'docs', '.git', 'coverage'].includes(e.name))
+      continue;
     const p = path.join(d, e.name);
     if (e.isDirectory()) r = r.concat(walk(p));
     else if (/\.(ts|tsx)$/.test(e.name)) r.push(p);
@@ -24,7 +25,8 @@ for (const f of files) {
   lines.forEach((line, i) => {
     const hits = (line.match(re) || []).length;
     if (!hits) return;
-    const isAnnot = /:\s*any\b|as\s+any\b|<any>|Array<any>|Record<[^,]+,\s*any>/.test(line);
+    const isAnnot =
+      /:\s*any\b|as\s+any\b|<any>|Array<any>|Record<[^,]+,\s*any>/.test(line);
     if (!isAnnot) return;
     const prev = lines[i - 1] || '';
     const just = /\/\/\s*reason:/i.test(line) || /\/\/\s*reason:/i.test(prev);
@@ -36,7 +38,10 @@ for (const f of files) {
 }
 
 if (backbone > 0) {
-  console.error('FAIL: backbone has unjustified any in utils/ or services/:', backbone);
+  console.error(
+    'FAIL: backbone has unjustified any in utils/ or services/:',
+    backbone,
+  );
   process.exit(1);
 }
 if (total > 10) {

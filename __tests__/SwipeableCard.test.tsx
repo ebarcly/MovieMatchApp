@@ -35,9 +35,9 @@ const addToWatchlist = firebaseOps.addToWatchlist as jest.Mock;
 // Pretend there is a signed-in user so the interaction path runs.
 // reason: firebase auth is mocked globally; we pin .currentUser here so the
 // SwipeableCard's auth.currentUser reads see a "signed in" user.
-(firebaseAuth as unknown as { getAuth: () => { currentUser: unknown } }).getAuth = jest.fn(
-  () => ({ currentUser: { uid: 'test-user' } }),
-);
+(
+  firebaseAuth as unknown as { getAuth: () => { currentUser: unknown } }
+).getAuth = jest.fn(() => ({ currentUser: { uid: 'test-user' } }));
 
 // The SwipeableCard component reads auth.currentUser off firebaseConfig.auth.
 // firebaseConfig imports firebase/auth's initializeAuth (mocked). Patch the
@@ -61,7 +61,10 @@ const makeCtx = () => {
       lastMovieIndex: 0,
       lastTVShowIndex: 0,
       configData: {
-        images: { base_url: 'http://img.tmdb/', secure_base_url: 'https://img.tmdb/' },
+        images: {
+          base_url: 'http://img.tmdb/',
+          secure_base_url: 'https://img.tmdb/',
+        },
       },
       genres: [],
       error: null,

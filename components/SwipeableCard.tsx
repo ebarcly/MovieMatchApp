@@ -216,7 +216,12 @@ const SwipeableCard = ({
         <Animated.View
           style={[styles.actionContent, { transform: [{ scale }, { rotate }] }]}
         >
-          <ActionIcon size={28} color="#fff" weight="fill" style={styles.icon} />
+          <ActionIcon
+            size={28}
+            color="#fff"
+            weight="fill"
+            style={styles.icon}
+          />
           <Text style={styles.actionText}>{actionText}</Text>
         </Animated.View>
       </View>
@@ -279,7 +284,9 @@ const SwipeableCard = ({
                   typeof imageUri === 'string' ? { uri: imageUri } : imageUri
                 }
                 style={styles.poster}
-                defaultSource={require('../assets/default_image.jpeg') as number}
+                defaultSource={
+                  require('../assets/default_image.jpeg') as number
+                }
                 resizeMode="cover"
               />
               <View style={styles.genreContainer}>{renderGenres()}</View>
@@ -293,7 +300,12 @@ const SwipeableCard = ({
           accessibilityLabel="Skip"
           onPress={() => handleSwipe('reject', cardIndex)}
         >
-          <SkipForward size={22} color="#fff" weight="bold" style={styles.icon} />
+          <SkipForward
+            size={22}
+            color="#fff"
+            weight="bold"
+            style={styles.icon}
+          />
           <Text style={styles.buttonText}>Skip</Text>
         </TouchableOpacity>
         <TouchableOpacity

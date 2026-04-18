@@ -38,13 +38,7 @@ describe('HomeScreen — pagination (BUG-5 regression)', () => {
   // executable assertion, not just a keyword in source.
 
   it('appends next-page titles to the deck when approaching end (simulated)', () => {
-    const deck = [
-      { id: 1 },
-      { id: 2 },
-      { id: 3 },
-      { id: 4 },
-      { id: 5 },
-    ];
+    const deck = [{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }, { id: 5 }];
 
     // User has swiped to card index 2 → 3 cards remain → threshold hit.
     const currentCardIndex = 2;

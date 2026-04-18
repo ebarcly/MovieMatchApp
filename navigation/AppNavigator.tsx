@@ -24,8 +24,7 @@ import type {
 const HomeStackNav = createStackNavigator<HomeStackParamList>();
 const TabNav = createBottomTabNavigator<MainTabsParamList>();
 const AuthStackNav = createStackNavigator<AuthStackParamList>();
-const ProfileSetupStackNav =
-  createStackNavigator<ProfileSetupStackParamList>();
+const ProfileSetupStackNav = createStackNavigator<ProfileSetupStackParamList>();
 const MyCaveStackNav = createStackNavigator<MyCaveStackParamList>();
 
 // --- Navigator Screens ---

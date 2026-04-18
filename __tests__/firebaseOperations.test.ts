@@ -46,12 +46,7 @@ describe('firebaseOperations', () => {
     it('throws when required arguments are missing', async () => {
       await expect(
         // Force invalid state through a double-cast; we specifically test the runtime guard.
-        recordTitleInteraction(
-          '',
-          0 as unknown as number,
-          'movie',
-          'liked',
-        ),
+        recordTitleInteraction('', 0 as unknown as number, 'movie', 'liked'),
       ).rejects.toThrow(/Invalid data for recordTitleInteraction/);
     });
   });
@@ -76,9 +71,9 @@ describe('firebaseOperations', () => {
 
     it('throws when userId or movieItem.id is missing', async () => {
       // reason: intentionally pass an invalid empty userId to exercise the runtime guard.
-      await expect(addToWatchlist('', { id: 1, type: 'movie' })).rejects.toThrow(
-        /Invalid data for addToWatchlist/,
-      );
+      await expect(
+        addToWatchlist('', { id: 1, type: 'movie' }),
+      ).rejects.toThrow(/Invalid data for addToWatchlist/);
     });
   });
 

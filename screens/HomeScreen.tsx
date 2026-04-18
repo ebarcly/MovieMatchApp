@@ -48,7 +48,8 @@ const HomeScreen = (_props: Props): React.ReactElement => {
   const [content, setContent] = useState<TmdbMedia[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<Category>('TV Shows');
+  const [selectedCategory, setSelectedCategory] =
+    useState<Category>('TV Shows');
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoadingMore, setIsLoadingMore] = useState(false);

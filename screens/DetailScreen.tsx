@@ -153,7 +153,9 @@ const DetailScreen = ({ route }: Props): React.ReactElement => {
           )
         </Text>
         {detailData.certification ? (
-          <Text style={styles.certificationBox}>{detailData.certification}</Text>
+          <Text style={styles.certificationBox}>
+            {detailData.certification}
+          </Text>
         ) : null}
         {availableProviders.length > 0 ? (
           <View style={styles.providersContainer}>

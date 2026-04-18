@@ -14,14 +14,17 @@ import type { NavigatorScreenParams } from '@react-navigation/native';
 
 export type TitleType = 'movie' | 'tv';
 
+// Shared params shape for the two routes that render ProfileSetupScreen
+// (ProfileSetupInitial in the setup stack, EditProfile in the MyCave
+// stack). Both pass a single `isEditing` boolean, so sharing the type
+// lets the screen read `route.params.isEditing` without union-narrowing.
+export type SharedProfileParams = { isEditing: boolean };
+
 // --- Auth stack -------------------------------------------------------
 export type AuthStackParamList = {
   Login: undefined;
   Register: undefined;
   ForgotPassword: undefined;
-  // "Forgot Password" with a space appears in some navigation.navigate
-  // callsites; we accept both so forgot-password screen linking is safe.
-  'Forgot Password': undefined;
 };
 
 // --- Home / Deck stack ------------------------------------------------
@@ -33,13 +36,13 @@ export type HomeStackParamList = {
 // --- My Cave stack ----------------------------------------------------
 export type MyCaveStackParamList = {
   MyCaveProfile: undefined;
-  EditProfile: { isEditing: boolean };
+  EditProfile: SharedProfileParams;
   Detail: { id: number | string; type: TitleType };
 };
 
 // --- Profile Setup stack ----------------------------------------------
 export type ProfileSetupStackParamList = {
-  ProfileSetupInitial: { isEditing: boolean };
+  ProfileSetupInitial: SharedProfileParams;
 };
 
 // --- Main tabs --------------------------------------------------------

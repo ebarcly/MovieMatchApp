@@ -76,7 +76,7 @@ const LoginScreen = ({ navigation }: Props): React.ReactElement => {
         )}
       </TouchableOpacity>
       <TouchableOpacity
-        onPress={() => navigation.navigate('Forgot Password')}
+        onPress={() => navigation.navigate('ForgotPassword')}
         style={styles.forgotPassword}
         disabled={isSubmitting}
       >

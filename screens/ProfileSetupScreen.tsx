@@ -20,6 +20,7 @@ import { fetchStreamingServices, type TmdbProvider } from '../services/api';
 import type {
   ProfileSetupStackParamList,
   MyCaveStackParamList,
+  SharedProfileParams,
 } from '../navigation/types';
 
 // Dummy data for genres (Consider fetching from a config or API if dynamic)
@@ -46,7 +47,8 @@ interface UserProfileDocData {
 }
 
 // Route can be either ProfileSetupInitial (initial flow) or EditProfile
-// (from MyCave). Accept either.
+// (from MyCave). Both use SharedProfileParams, so `route.params.isEditing`
+// is type-safe across both parent stacks.
 type ProfileSetupRoute =
   | RouteProp<ProfileSetupStackParamList, 'ProfileSetupInitial'>
   | RouteProp<MyCaveStackParamList, 'EditProfile'>;
@@ -58,8 +60,8 @@ type ProfileSetupNav =
 const ProfileSetupScreen = (): React.ReactElement => {
   const route = useRoute<ProfileSetupRoute>();
   const navigation = useNavigation<ProfileSetupNav>();
-  // reason: route.params shape differs across the two stacks; `any` is the pragmatic escape and the read is null-safe.
-  const isEditMode: boolean = (route.params as any)?.isEditing ?? false; // reason: route.params union differs across stacks
+  const params: SharedProfileParams | undefined = route.params;
+  const isEditMode: boolean = params?.isEditing ?? false;
 
   const [username, setUsername] = useState('');
   const [profileName, setProfileName] = useState('');

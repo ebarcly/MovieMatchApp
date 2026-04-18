@@ -14,21 +14,62 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import { fetchDetailsById } from '../services/api';
+import type { TitleDetails } from '../services/api';
+
+/// --- Types ------------------------------------------------------------
+
+export type TitleType = 'movie' | 'tv';
+export type InteractionAction =
+  | 'liked'
+  | 'disliked_or_skipped'
+  | 'watched'
+  | 'unwatched';
+
+export interface WatchlistItem {
+  id: number;
+  type: TitleType;
+  title?: string;
+  name?: string;
+  poster_path?: string | null;
+  [key: string]: unknown;
+}
+
+export interface MatchFriend {
+  id: string;
+  name: string;
+  profileImage: string | null;
+}
+
+export interface UserMatch {
+  id: string;
+  userIds: string[];
+  titleId: number;
+  titleType: TitleType;
+  timestamp: unknown;
+  status: string;
+  friend: MatchFriend;
+  title: Partial<TitleDetails>;
+}
 
 /// --- USER DATA MANAGEMENT --- ///
 
-export const fetchInteractedTitleIds = async (userId) => {
+export const fetchInteractedTitleIds = async (
+  userId: string | null | undefined,
+): Promise<number[]> => {
   if (!userId) {
     console.log('No user ID provided to fetchInteractedTitleIds');
-    return []; // Return an empty set or array
+    return [];
   }
   try {
     const interactionsRef = collection(db, 'users', userId, 'interactedTitles');
     const q = query(interactionsRef);
     const querySnapshot = await getDocs(q);
-    const ids = new Set();
-    querySnapshot.forEach((doc) => {
-      ids.add(doc.data().id);
+    const ids = new Set<number>();
+    querySnapshot.forEach((d) => {
+      const data = d.data() as { id?: number };
+      if (typeof data.id === 'number') {
+        ids.add(data.id);
+      }
     });
     console.log(`User ${userId} has interacted with ${ids.size} titles.`);
     return Array.from(ids);
@@ -43,11 +84,11 @@ export const fetchInteractedTitleIds = async (userId) => {
 };
 
 export const recordTitleInteraction = async (
-  userId,
-  titleId,
-  titleType,
-  action,
-) => {
+  userId: string,
+  titleId: number | string,
+  titleType: TitleType,
+  action: InteractionAction,
+): Promise<void> => {
   if (!userId || !titleId || !titleType) {
     throw new Error(
       `Invalid data for recordTitleInteraction: userId=${userId} titleId=${titleId} titleType=${titleType} action=${action}`,
@@ -60,11 +101,11 @@ export const recordTitleInteraction = async (
       userId,
       'interactedTitles',
       String(titleId),
-    ); // REVIEW TYPE CASTING!!!
+    );
     await setDoc(interactionRef, {
       id: titleId,
       type: titleType,
-      action: action,
+      action,
       interactedAt: serverTimestamp(),
     });
     console.log(
@@ -72,12 +113,14 @@ export const recordTitleInteraction = async (
     );
   } catch (error) {
     console.error('Error recording title interaction:', error);
-    // possibly need to handle this diff
   }
 };
 
 // Function to add a title to the watchlist
-export const addToWatchlist = async (userId, movieItem) => {
+export const addToWatchlist = async (
+  userId: string,
+  movieItem: WatchlistItem,
+): Promise<void> => {
   if (!userId || !movieItem || !movieItem.id) {
     throw new Error(
       `Invalid data for addToWatchlist: userId=${userId} movieItemId=${movieItem?.id}`,
@@ -108,14 +151,16 @@ export const addToWatchlist = async (userId, movieItem) => {
 // never contained anything after the subcollection switch (split-brain).
 // Now reads from the subcollection so MoviesContext + MyCave see what
 // SwipeableCard actually wrote.
-export const fetchUserWatchlist = async (userId) => {
+export const fetchUserWatchlist = async (
+  userId: string | null | undefined,
+): Promise<WatchlistItem[]> => {
   if (!userId) {
     return [];
   }
   try {
     const watchlistRef = collection(db, 'users', userId, 'watchlist');
     const querySnapshot = await getDocs(watchlistRef);
-    return querySnapshot.docs.map((d) => d.data());
+    return querySnapshot.docs.map((d) => d.data() as WatchlistItem);
   } catch (error) {
     console.error('Error fetching watchlist subcollection:', error);
     return [];
@@ -123,7 +168,10 @@ export const fetchUserWatchlist = async (userId) => {
 };
 
 // Function to add a title to the watched list
-export const addToWatched = async (userId, movieId) => {
+export const addToWatched = async (
+  userId: string,
+  movieId: number | string,
+): Promise<void> => {
   const userRef = doc(db, 'users', userId);
   try {
     await updateDoc(userRef, {
@@ -135,30 +183,33 @@ export const addToWatched = async (userId, movieId) => {
 };
 
 // Function to fetch the user's watched list
-export const fetchUserWatched = async (userId) => {
+export const fetchUserWatched = async (
+  userId: string,
+): Promise<Array<number | string>> => {
   const userRef = doc(db, 'users', userId);
   try {
     const docSnap = await getDoc(userRef);
     if (docSnap.exists()) {
-      return docSnap.data().watched || [];
-    } else {
-      return [];
+      const data = docSnap.data() as { watched?: Array<number | string> };
+      return data.watched || [];
     }
+    return [];
   } catch (error) {
     console.error('Error fetching watched:', error);
     return [];
   }
 };
+
 // Function to fetch the user's friends list
-export const fetchFriendsList = async (userId) => {
+export const fetchFriendsList = async (userId: string): Promise<string[]> => {
   const userRef = doc(db, 'users', userId);
   try {
     const docSnap = await getDoc(userRef);
     if (docSnap.exists()) {
-      return docSnap.data().friends || [];
-    } else {
-      return [];
+      const data = docSnap.data() as { friends?: string[] };
+      return data.friends || [];
     }
+    return [];
   } catch (error) {
     console.error('Error fetching friends list:', error);
     return [];
@@ -168,7 +219,9 @@ export const fetchFriendsList = async (userId) => {
 /// --- MATCHING LOGIC --- ///
 
 // New function to fetch matches for a user
-export const fetchUserMatches = async (userId) => {
+export const fetchUserMatches = async (
+  userId: string | null | undefined,
+): Promise<UserMatch[]> => {
   if (!userId) {
     console.error('User ID is undefined, cannot fetch matches.');
     return [];
@@ -183,7 +236,13 @@ export const fetchUserMatches = async (userId) => {
 
     const querySnapshot = await getDocs(q);
     const matchesPromises = querySnapshot.docs.map(async (matchDoc) => {
-      const matchData = matchDoc.data();
+      const matchData = matchDoc.data() as {
+        userIds: string[];
+        titleId: number;
+        titleType: TitleType;
+        timestamp: unknown;
+        status: string;
+      };
       const otherUserId = matchData.userIds.find((uid) => uid !== userId);
 
       if (!otherUserId) {
@@ -194,7 +253,12 @@ export const fetchUserMatches = async (userId) => {
       // Fetch friend's data
       const userDocRef = doc(db, 'users', otherUserId);
       const userDocSnap = await getDoc(userDocRef);
-      const friendData = userDocSnap.exists() ? userDocSnap.data() : {};
+      const friendData = userDocSnap.exists()
+        ? (userDocSnap.data() as {
+            profileName?: string;
+            profileImage?: string | null;
+          })
+        : {};
 
       // Fetch title details
       const titleDetails = await fetchDetailsById(
@@ -202,23 +266,27 @@ export const fetchUserMatches = async (userId) => {
         matchData.titleType,
       );
 
-      return {
+      const match: UserMatch = {
         id: matchDoc.id,
-        ...matchData,
+        userIds: matchData.userIds,
+        titleId: matchData.titleId,
+        titleType: matchData.titleType,
+        timestamp: matchData.timestamp,
+        status: matchData.status,
         friend: {
           id: otherUserId,
           name: friendData.profileName || 'Unknown User',
-          profileImage: friendData.profileImage || null,
+          profileImage: friendData.profileImage ?? null,
         },
-        title: {
-          ...titleDetails,
-        },
+        title: { ...titleDetails },
       };
+      return match;
     });
 
     const resolvedMatches = await Promise.all(matchesPromises);
-    // Filter out any null results from promises that failed
-    return resolvedMatches.filter((match) => match !== null);
+    return resolvedMatches.filter(
+      (match): match is UserMatch => match !== null,
+    );
   } catch (error) {
     console.error('Error fetching user matches:', error);
     throw error;
@@ -226,7 +294,11 @@ export const fetchUserMatches = async (userId) => {
 };
 
 // Function to create a match document
-export const createMatchDocument = async (userIds, titleId, titleType) => {
+export const createMatchDocument = async (
+  userIds: string[],
+  titleId: number | string,
+  titleType: TitleType,
+): Promise<void> => {
   console.log('CREATE_MATCH_DOCUMENT: Called with (initial params):', {
     userIds,
     titleId,
@@ -245,7 +317,6 @@ export const createMatchDocument = async (userIds, titleId, titleType) => {
   try {
     const querySnapshot = await getDocs(q);
     if (!querySnapshot.empty) {
-      // a match already exists
       console.log(
         'MATCH_PREVENTION: Match already exists for users',
         sortedUserIds,
@@ -253,16 +324,16 @@ export const createMatchDocument = async (userIds, titleId, titleType) => {
         titleId,
         '- Not creating duplicate.',
       );
-      querySnapshot.forEach((doc) => {
-        console.log('Existing match doc ID:', doc.id, 'Data:', doc.data());
+      querySnapshot.forEach((d) => {
+        console.log('Existing match doc ID:', d.id, 'Data:', d.data());
       });
       return;
     }
 
     const dataToWrite = {
-      userIds: userIds,
-      titleId: titleId,
-      titleType: titleType,
+      userIds,
+      titleId,
+      titleType,
       timestamp: serverTimestamp(),
       status: 'new',
     };

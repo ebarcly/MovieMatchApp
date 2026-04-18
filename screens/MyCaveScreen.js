@@ -15,12 +15,13 @@ import { auth, db } from '../firebaseConfig';
 import {
   collection,
   doc,
+  deleteDoc,
   getDocs,
   getDoc,
-  updateDoc,
 } from 'firebase/firestore';
 import { MoviesContext } from '../context/MoviesContext';
 import { fetchDetailsById } from '../services/api';
+import { colors, spacing, radii, typography } from '../theme';
 
 const MyCaveScreen = () => {
   const navigation = useNavigation();
@@ -36,7 +37,7 @@ const MyCaveScreen = () => {
   const [loading, setLoading] = useState(true);
 
   const navigateToProfileEdit = () => {
-    navigation.navigate('EditProfile', { isEditing: true }); // Pass a flag to indicate editing mode
+    navigation.navigate('EditProfile', { isEditing: true });
   };
 
   useEffect(() => {
@@ -45,7 +46,7 @@ const MyCaveScreen = () => {
       const user = auth.currentUser;
       if (user) {
         try {
-          const docRef = doc(db, 'users', user.uid); // Reference to the user's document
+          const docRef = doc(db, 'users', user.uid);
           const docSnapshot = await getDoc(docRef);
           if (docSnapshot.exists()) {
             setUserData(docSnapshot.data());
@@ -74,7 +75,7 @@ const MyCaveScreen = () => {
             `Error fetching details for ${item.type} ${item.id}:`,
             error,
           );
-          return null; // Return null for failed requests
+          return null;
         }
       });
 
@@ -94,7 +95,7 @@ const MyCaveScreen = () => {
           const querySnapshot = await getDocs(
             collection(db, 'users', user.uid, 'watchlist'),
           );
-          const watchlist = querySnapshot.docs.map((doc) => doc.data());
+          const watchlist = querySnapshot.docs.map((d) => d.data());
           dispatch({ type: 'SET_WATCHLIST', payload: watchlist });
         } catch (error) {
           console.error('Error fetching watchlist: ', error);
@@ -115,26 +116,19 @@ const MyCaveScreen = () => {
     fetchData();
   }, []);
 
-  //  Remove the item from the watchlist and update the state and database
+  // Remove the item from the watchlist.
+  // Sprint 2 BUG-4 follow-through: the previous implementation read a
+  // `watchlist` array field from the parent user doc and updateDoc'd
+  // it back — the split-brain pattern we just closed. Now: delete the
+  // single subcollection doc, then dispatch the local removal.
   const handleRemoveFromWatchlist = async (item) => {
     const user = auth.currentUser;
-    if (user) {
-      try {
-        const userDocRef = doc(db, 'users', user.uid);
-        const docSnap = await getDoc(userDocRef);
-        if (docSnap.exists()) {
-          const watchlist = docSnap.data().watchlist;
-          const updatedWatchlist = watchlist.filter(
-            (watchlistItem) => watchlistItem.id !== item.id,
-          );
-          await updateDoc(userDocRef, {
-            watchlist: updatedWatchlist,
-          });
-          dispatch({ type: 'REMOVE_FROM_WATCHLIST', payload: item });
-        }
-      } catch (error) {
-        console.error('Error removing item from watchlist: ', error);
-      }
+    if (!user || !item?.id) return;
+    try {
+      await deleteDoc(doc(db, 'users', user.uid, 'watchlist', String(item.id)));
+      dispatch({ type: 'REMOVE_FROM_WATCHLIST', payload: item });
+    } catch (error) {
+      console.error('Error removing item from watchlist: ', error);
     }
   };
 
@@ -218,7 +212,6 @@ const MyCaveScreen = () => {
                 }}
                 style={styles.watchlistItemImage}
               />
-              {/* Add remove button */}
               <TouchableOpacity
                 onPress={() => handleRemoveFromWatchlist(item)}
                 style={styles.watchlistEditButton}
@@ -229,7 +222,6 @@ const MyCaveScreen = () => {
           )}
         />
       </Section>
-      {/* Watched Section */}
       {/* Friends Activity Section - Needs dynamic data */}
       <Section title="Friends Activity">
         {friendsActivity.map((activity) => (
@@ -265,142 +257,136 @@ const Section = ({ title, children }) => (
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#19192b', // The background color from the mockup
+    backgroundColor: colors.ink,
   },
   headerImage: {
     width: '100%',
-    height: 300, // Adjust according to the mockup
-    resizeMode: 'cover', // Make sure the image covers the area without stretching
+    height: 300,
+    resizeMode: 'cover',
   },
   profileSection: {
     alignItems: 'center',
-    marginTop: -64, // Adjust as necessary to overlay on the header image
+    marginTop: -spacing.xxxl,
   },
   profileImage: {
-    width: 120, // Match the size from the mockup
+    width: 120,
     height: 120,
-    borderRadius: 60, // This should be half the width/height to make the image round
+    borderRadius: radii.pill,
     borderWidth: 4,
-    borderColor: '#fff', // White border for profile image
+    borderColor: colors.ink,
   },
   name: {
-    fontSize: 24,
-    color: '#fff',
-    fontFamily: 'WorkSans-Bold',
-    marginVertical: 8,
+    ...typography.titleLg,
+    color: colors.textHigh,
+    marginVertical: spacing.xs,
   },
   description: {
-    fontSize: 16,
-    color: '#fff',
-    fontFamily: 'WorkSans-Regular',
-    marginBottom: 20,
+    ...typography.body,
+    color: colors.textSecondary,
+    marginBottom: spacing.lg,
   },
   genreContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginBottom: 20,
+    marginBottom: spacing.lg,
   },
   genreText: {
-    color: '#fff',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    marginHorizontal: 4,
-    backgroundColor: '#445', // Update the background color
-    borderRadius: 20,
-    fontSize: 14,
+    ...typography.bodySm,
+    color: colors.textBody,
+    paddingVertical: spacing.xxs,
+    paddingHorizontal: spacing.sm,
+    marginHorizontal: spacing.xxs,
+    backgroundColor: colors.surfaceRaised,
+    borderRadius: radii.pill,
     overflow: 'hidden',
-    fontFamily: 'WorkSans-Regular',
     borderWidth: 1,
-    borderColor: '#fff',
+    borderColor: colors.borderSubtle,
   },
   editProfileButton: {
-    backgroundColor: '#445',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 20,
-    marginVertical: 20,
+    backgroundColor: colors.surfaceRaised,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radii.pill,
+    marginVertical: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
   },
   editProfileText: {
-    color: '#fff',
-    fontSize: 16,
-    fontFamily: 'WorkSans-Bold',
+    ...typography.button,
+    color: colors.textHigh,
   },
   logoutButton: {
-    backgroundColor: 'red',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 20,
-    alignSelf: 'center', // Center the logout button
-    marginBottom: 20,
+    backgroundColor: colors.error,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radii.pill,
+    alignSelf: 'center',
+    marginBottom: spacing.lg,
   },
   logoutButtonText: {
-    color: '#fff',
-    fontSize: 16,
+    ...typography.button,
+    color: colors.textHigh,
   },
   section: {
-    marginTop: 10,
-    marginBottom: 20,
+    marginTop: spacing.xs,
+    marginBottom: spacing.lg,
   },
   sectionTitle: {
-    fontSize: 18,
-    color: '#fff',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    fontFamily: 'WorkSans-Bold',
+    ...typography.titleSm,
+    color: colors.textHigh,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
   },
   watchlistItemContainer: {
-    alignItems: 'center', // Center items vertically
-    marginRight: 20,
+    alignItems: 'center',
+    marginRight: spacing.lg,
   },
   watchlistItemImage: {
-    width: 100, // Match the size from the mockup
+    width: 100,
     height: 150,
-    borderRadius: 8,
-    marginBottom: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
+    borderRadius: radii.md,
+    marginBottom: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xxs,
   },
   watchlistEditButton: {
-    backgroundColor: '#333', // Darker background for the button
-    padding: 5,
-    borderRadius: 5,
+    backgroundColor: colors.surface,
+    padding: spacing.xxs,
+    borderRadius: radii.sm,
   },
   watchlistEditText: {
-    color: '#fff',
-    fontSize: 14,
-    fontFamily: 'WorkSans-Bold',
+    ...typography.bodySm,
+    color: colors.textBody,
   },
   activityItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#333', // Each activity item has a dark background
-    borderRadius: 10,
-    padding: 10,
-    marginHorizontal: 20,
-    marginVertical: 5,
+    backgroundColor: colors.surface,
+    borderRadius: radii.lg,
+    padding: spacing.sm,
+    marginHorizontal: spacing.lg,
+    marginVertical: spacing.xxs,
   },
   activityUserImage: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    marginRight: 10,
+    borderRadius: radii.pill,
+    marginRight: spacing.sm,
   },
   activityContent: {
     flex: 1,
   },
   activityText: {
-    color: '#fff',
-    fontSize: 14,
-    fontFamily: 'WorkSans-Regular',
+    ...typography.bodySm,
+    color: colors.textBody,
   },
   activityTime: {
-    color: '#aaa', // Grey color for timestamps
-    fontSize: 12,
-    marginTop: 4,
-    fontFamily: 'WorkSans-Regular',
+    ...typography.caption,
+    color: colors.textTertiary,
+    marginTop: spacing.xxs,
   },
   loadingIndicator: {
-    marginTop: 20,
+    marginTop: spacing.lg,
   },
 });
 

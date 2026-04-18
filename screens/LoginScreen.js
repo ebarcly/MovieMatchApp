@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import {
+  ActivityIndicator,
   View,
   TextInput,
   TouchableOpacity,
@@ -8,18 +9,27 @@ import {
 } from 'react-native';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../firebaseConfig';
+import { colors, spacing, radii, typography } from '../theme';
 
 const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  // Sprint 2 BUG-8: loading / disabled state so a double-tap on the
+  // Log In button can't submit the form twice.
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleLogin = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    setError('');
     try {
       await signInWithEmailAndPassword(auth, email, password);
       // Navigate to Home or Profile Setup screen
-    } catch (error) {
-      setError(error.message);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -32,7 +42,9 @@ const LoginScreen = ({ navigation }) => {
         onChangeText={(text) => setEmail(text.toLowerCase())}
         value={email}
         placeholder="Enter your E-mail"
+        placeholderTextColor={colors.textTertiary}
         keyboardType="email-address"
+        editable={!isSubmitting}
       />
       <Text style={styles.label}>Password</Text>
       <TextInput
@@ -40,23 +52,38 @@ const LoginScreen = ({ navigation }) => {
         onChangeText={setPassword}
         value={password}
         placeholder="Enter your password"
+        placeholderTextColor={colors.textTertiary}
         secureTextEntry
+        editable={!isSubmitting}
       />
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
-      <TouchableOpacity onPress={handleLogin} style={styles.button}>
-        <Text style={styles.buttonText}>Log In</Text>
+      <TouchableOpacity
+        onPress={handleLogin}
+        style={[styles.button, isSubmitting && styles.buttonDisabled]}
+        disabled={isSubmitting}
+        accessibilityState={{ disabled: isSubmitting, busy: isSubmitting }}
+      >
+        {isSubmitting ? (
+          <ActivityIndicator color={colors.accentForeground} />
+        ) : (
+          <Text style={styles.buttonText}>Log In</Text>
+        )}
       </TouchableOpacity>
       <TouchableOpacity
         onPress={() => navigation.navigate('Forgot Password')}
         style={styles.forgotPassword}
+        disabled={isSubmitting}
       >
         <Text style={styles.linkText}>Forgot your password?</Text>
       </TouchableOpacity>
       <TouchableOpacity
         onPress={() => navigation.navigate('Register')}
         style={styles.signup}
+        disabled={isSubmitting}
       >
-        <Text style={styles.linkText}>Don't have an account? Register</Text>
+        <Text style={styles.linkText}>
+          Don&apos;t have an account? Register
+        </Text>
       </TouchableOpacity>
     </View>
   );
@@ -66,59 +93,65 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',
-    padding: 20,
-    backgroundColor: '#19192b', // Assuming the background is black
+    padding: spacing.lg,
+    backgroundColor: colors.ink,
   },
   title: {
-    fontSize: 24,
-    color: '#fff',
-    marginBottom: 20,
+    ...typography.titleLg,
+    color: colors.textHigh,
+    marginBottom: spacing.lg,
     textAlign: 'center',
-    fontFamily: 'WorkSans-Bold',
   },
   label: {
-    color: '#fff',
-    fontSize: 16,
-    marginBottom: 8,
-    fontFamily: 'WorkSans-Regular',
+    ...typography.label,
+    color: colors.textSecondary,
+    marginBottom: spacing.xs,
   },
   input: {
-    backgroundColor: '#fff',
-    marginBottom: 15,
-    padding: 15,
-    borderRadius: 5,
-    fontSize: 17,
-    fontFamily: 'WorkSans-Regular',
+    ...typography.body,
+    backgroundColor: colors.surfaceRaised,
+    color: colors.textBody,
+    marginBottom: spacing.md,
+    padding: spacing.md,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
   },
   button: {
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 24,
+    backgroundColor: colors.accent,
+    padding: spacing.md,
+    borderRadius: radii.pill,
     alignItems: 'center',
-    marginTop: 20,
+    justifyContent: 'center',
+    marginTop: spacing.lg,
+    minHeight: 52,
+  },
+  buttonDisabled: {
+    backgroundColor: colors.accentHover,
+    opacity: 0.7,
   },
   buttonText: {
-    color: '#19192b',
-    fontSize: 18,
-    fontFamily: 'WorkSans-Bold',
+    ...typography.button,
+    color: colors.accentForeground,
   },
   linkText: {
-    color: '#fff',
-    marginTop: 15,
+    ...typography.bodySm,
+    color: colors.textSecondary,
+    marginTop: spacing.md,
     textAlign: 'center',
-    fontFamily: 'WorkSans-Regular',
   },
   errorText: {
-    color: 'red',
+    ...typography.bodySm,
+    color: colors.error,
     textAlign: 'center',
-    marginTop: 10,
-    marginBottom: 10,
+    marginTop: spacing.sm,
+    marginBottom: spacing.sm,
   },
   forgotPassword: {
-    marginTop: 15,
+    marginTop: spacing.md,
   },
   signup: {
-    marginTop: 15,
+    marginTop: spacing.md,
   },
 });
 

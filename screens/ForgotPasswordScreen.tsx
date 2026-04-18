@@ -8,19 +8,24 @@ import {
 } from 'react-native';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../firebaseConfig';
+import type { StackScreenProps } from '@react-navigation/stack';
+import type { AuthStackParamList } from '../navigation/types';
 
-const ForgotPasswordScreen = ({ navigation }) => {
+type Props = StackScreenProps<AuthStackParamList, 'ForgotPassword'>;
+
+const ForgotPasswordScreen = ({ navigation }: Props): React.ReactElement => {
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  const handlePasswordReset = async () => {
+  const handlePasswordReset = async (): Promise<void> => {
     try {
       await sendPasswordResetEmail(auth, email);
       setSuccess('Password reset email sent. Please check your email.');
       setError('');
-    } catch (error) {
-      setError(error.message);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(msg);
       setSuccess('');
     }
   };

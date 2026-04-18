@@ -10,8 +10,12 @@ import {
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../firebaseConfig';
 import { colors, spacing, radii, typography } from '../theme';
+import type { StackScreenProps } from '@react-navigation/stack';
+import type { AuthStackParamList } from '../navigation/types';
 
-const LoginScreen = ({ navigation }) => {
+type Props = StackScreenProps<AuthStackParamList, 'Login'>;
+
+const LoginScreen = ({ navigation }: Props): React.ReactElement => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -19,15 +23,15 @@ const LoginScreen = ({ navigation }) => {
   // Log In button can't submit the form twice.
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleLogin = async () => {
+  const handleLogin = async (): Promise<void> => {
     if (isSubmitting) return;
     setIsSubmitting(true);
     setError('');
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      // Navigate to Home or Profile Setup screen
     } catch (err) {
-      setError(err.message);
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -61,6 +65,8 @@ const LoginScreen = ({ navigation }) => {
         onPress={handleLogin}
         style={[styles.button, isSubmitting && styles.buttonDisabled]}
         disabled={isSubmitting}
+        accessibilityRole="button"
+        accessibilityLabel="Log In"
         accessibilityState={{ disabled: isSubmitting, busy: isSubmitting }}
       >
         {isSubmitting ? (

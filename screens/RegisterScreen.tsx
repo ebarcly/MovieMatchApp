@@ -11,18 +11,22 @@ import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../firebaseConfig';
 import { useNavigation } from '@react-navigation/native';
+import type { StackNavigationProp } from '@react-navigation/stack';
+import type { AuthStackParamList } from '../navigation/types';
 import { colors, spacing, radii, typography } from '../theme';
 
-const RegisterScreen = () => {
+type NavProp = StackNavigationProp<AuthStackParamList, 'Register'>;
+
+const RegisterScreen = (): React.ReactElement => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
-  const navigation = useNavigation();
+  const navigation = useNavigation<NavProp>();
 
-  const handleRegister = async () => {
+  const handleRegister = async (): Promise<void> => {
     if (password !== confirmPassword) {
       setError("Passwords don't match");
       return;
@@ -51,7 +55,8 @@ const RegisterScreen = () => {
       // ('ProfileSetup' — the real screen is 'ProfileSetupInitial' inside
       // ProfileSetupStackScreen, which AppNavigator renders reactively).
     } catch (err) {
-      setError(err.message);
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(msg);
     }
   };
 

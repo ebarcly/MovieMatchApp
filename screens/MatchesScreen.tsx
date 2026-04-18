@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,23 +9,28 @@ import {
   Image,
   TouchableOpacity,
 } from 'react-native';
-import { fetchUserMatches } from '../utils/firebaseOperations';
+import {
+  fetchUserMatches,
+  type UserMatch,
+} from '../utils/firebaseOperations';
 import { auth } from '../firebaseConfig';
-// import { MoviesContext } from '../context/MoviesContext'; // for context data (if we need)
+import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import type { MainTabsParamList } from '../navigation/types';
 
-const MatchesScreen = ({ navigation }) => {
-  const [matchesList, setMatchesList] = useState([]);
+type Props = BottomTabScreenProps<MainTabsParamList, 'Matches'>;
+
+const MatchesScreen = ({ navigation }: Props): React.ReactElement => {
+  const [matchesList, setMatchesList] = useState<UserMatch[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
 
-  // Placeholder function for chat functionality
-  const handleChatPress = (match) => {
+  const handleChatPress = (match: UserMatch): void => {
     // TODO: Implement chat functionality
     Alert.alert('Chat', `Chat with ${match.friend.name} coming soon!`);
   };
 
   useEffect(() => {
-    const loadMatches = async () => {
+    const loadMatches = async (): Promise<void> => {
       const currentUser = auth.currentUser;
       if (currentUser) {
         try {
@@ -47,9 +52,9 @@ const MatchesScreen = ({ navigation }) => {
     };
 
     loadMatches();
-    // Add a listener for screen focus to refresh matches if user navigate away and back
     const unsubscribe = navigation.addListener('focus', loadMatches);
     return unsubscribe;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (loading) {
@@ -77,14 +82,19 @@ const MatchesScreen = ({ navigation }) => {
     );
   }
 
-  const renderMatchItem = ({ item }) => {
-    const imageUrl = item.title.poster_path
-      ? `https://image.tmdb.org/t/p/w500${item.title.poster_path}`
-      : null;
+  const renderMatchItem = ({ item }: { item: UserMatch }): React.ReactElement => {
+    const posterPath = item.title.poster_path;
+    const imageUrl = posterPath
+      ? `https://image.tmdb.org/t/p/w500${posterPath}`
+      : undefined;
 
     return (
       <View style={styles.matchItem}>
-        <Image source={{ uri: imageUrl }} style={styles.matchImage} />
+        {imageUrl ? (
+          <Image source={{ uri: imageUrl }} style={styles.matchImage} />
+        ) : (
+          <View style={[styles.matchImage, styles.matchImagePlaceholder]} />
+        )}
         <View style={styles.matchDetails}>
           <Text style={styles.matchTitle}>
             {item.title.title || item.title.name}
@@ -148,6 +158,9 @@ const styles = StyleSheet.create({
     width: 100,
     height: 150,
     borderRadius: 8,
+  },
+  matchImagePlaceholder: {
+    backgroundColor: '#e0e0e0',
   },
   matchDetails: {
     flex: 1,

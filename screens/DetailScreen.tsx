@@ -9,20 +9,29 @@ import {
   FlatList,
   TouchableOpacity,
 } from 'react-native';
-import { fetchDetailsById } from '../services/api';
+import {
+  fetchDetailsById,
+  type TitleDetails,
+  type TmdbProvider,
+  type TmdbCastMember,
+} from '../services/api';
 import { PlayCircle, FilmStrip, Clock } from 'phosphor-react-native';
 import { WebView } from 'react-native-webview';
+import type { StackScreenProps } from '@react-navigation/stack';
+import type { HomeStackParamList } from '../navigation/types';
 
-const DetailScreen = ({ route }) => {
+type Props = StackScreenProps<HomeStackParamList, 'Detail'>;
+
+const DetailScreen = ({ route }: Props): React.ReactElement => {
   const { id, type } = route.params;
-  const [detailData, setDetailData] = useState(null);
+  const [detailData, setDetailData] = useState<TitleDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [trailerUrl, setTrailerUrl] = useState(null);
+  const [trailerUrl, setTrailerUrl] = useState<string | null>(null);
   const [showTrailer, setShowTrailer] = useState(false);
 
   useEffect(() => {
-    const fetchDetails = async () => {
+    const fetchDetails = async (): Promise<void> => {
       try {
         const data = await fetchDetailsById(id, type);
         setDetailData(data);
@@ -46,11 +55,11 @@ const DetailScreen = ({ route }) => {
     fetchDetails();
   }, [id, type]);
 
-  const handlePlayTrailerClick = () => {
+  const handlePlayTrailerClick = (): void => {
     setShowTrailer(true);
   };
 
-  const renderTrailer = () => {
+  const renderTrailer = (): React.ReactElement => {
     if (trailerUrl && showTrailer) {
       return (
         <View style={styles.videoPlayer}>
@@ -60,12 +69,14 @@ const DetailScreen = ({ route }) => {
     } else if (trailerUrl) {
       return (
         <View style={styles.backdropContainer}>
-          <Image
-            source={{
-              uri: `https://image.tmdb.org/t/p/w500${detailData.backdrop_path}`,
-            }}
-            style={styles.backdropImage}
-          />
+          {detailData?.backdrop_path ? (
+            <Image
+              source={{
+                uri: `https://image.tmdb.org/t/p/w500${detailData.backdrop_path}`,
+              }}
+              style={styles.backdropImage}
+            />
+          ) : null}
           <TouchableOpacity
             onPress={handlePlayTrailerClick}
             style={styles.playButton}
@@ -74,13 +85,12 @@ const DetailScreen = ({ route }) => {
           </TouchableOpacity>
         </View>
       );
-    } else {
-      return (
-        <View style={styles.videoPlayer}>
-          <Text style={styles.noTrailerText}>No trailer available</Text>
-        </View>
-      );
     }
+    return (
+      <View style={styles.videoPlayer}>
+        <Text style={styles.noTrailerText}>No trailer available</Text>
+      </View>
+    );
   };
 
   if (loading) {
@@ -91,22 +101,28 @@ const DetailScreen = ({ route }) => {
     return <Text style={styles.errorText}>{error}</Text>;
   }
 
+  if (!detailData) {
+    return <Text style={styles.errorText}>No details available.</Text>;
+  }
+
   // Display season count for TV shows or running time for movies
-  const displayTimeOrSeasons = () => {
+  const displayTimeOrSeasons = (): string => {
     if (type === 'tv') {
-      return `${detailData.number_of_seasons} ${detailData.number_of_seasons === 1 ? 'Season' : 'Seasons'}`;
-    } else {
-      const hours = Math.floor(detailData.runtime / 60);
-      const minutes = detailData.runtime % 60;
-      return `${hours}hr ${minutes}m`;
+      const n = detailData.number_of_seasons ?? 0;
+      return `${n} ${n === 1 ? 'Season' : 'Seasons'}`;
     }
+    const runtime = detailData.runtime ?? 0;
+    const hours = Math.floor(runtime / 60);
+    const minutes = runtime % 60;
+    return `${hours}hr ${minutes}m`;
   };
 
   // Find all available providers
-  const availableProviders = [];
-  ['flatrate'].forEach((category) => {
-    if (detailData.providers && detailData.providers[category]) {
-      detailData.providers[category].forEach((provider) => {
+  const availableProviders: TmdbProvider[] = [];
+  (['flatrate'] as const).forEach((category) => {
+    const list = detailData.providers?.[category];
+    if (list) {
+      list.forEach((provider) => {
         if (
           !availableProviders.some(
             (p) => p.provider_id === provider.provider_id,
@@ -126,92 +142,80 @@ const DetailScreen = ({ route }) => {
   return (
     <ScrollView style={styles.container}>
       {renderTrailer()}
-      {detailData && (
-        <>
-          {/* Movie or TV Show Information */}
-          <View style={styles.movieInfoContainer}>
-            <Text style={styles.movieTitle}>
-              {detailData.title || detailData.name} (
-              {type === 'tv'
-                ? detailData.first_air_date &&
-                  detailData.first_air_date.substring(0, 4)
-                : detailData.release_date &&
-                  detailData.release_date.substring(0, 4)}
-              )
-            </Text>
-            {detailData.certification && (
-              <Text style={styles.certificationBox}>
-                {detailData.certification}
-              </Text>
-            )}
-            {availableProviders.length > 0 ? (
-              <View style={styles.providersContainer}>
-                <Text style={styles.providerCategoryTitle}>Where to watch</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  {availableProviders.map((provider) => (
-                    <View
-                      style={styles.providerText}
-                      key={provider.provider_id}
-                    >
-                      {provider.logo_path && (
-                        <Image
-                          source={{
-                            uri: `https://image.tmdb.org/t/p/w500${provider.logo_path}`,
-                          }}
-                          style={styles.providerLogo}
-                        />
-                      )}
-                    </View>
-                  ))}
-                </ScrollView>
-              </View>
-            ) : (
-              <Text style={styles.providerCategoryTitle}>Not streaming.</Text>
-            )}
-
-            <Text style={styles.movieTagline}>{detailData.tagline}</Text>
-            <Text style={styles.movieOverview}>{detailData.overview}</Text>
-            <View style={styles.metaInfo}>
-              <View style={styles.metaItem}>
-                <FilmStrip size={20} color="#FFF" weight="regular" />
-                <Text style={styles.metaText}>
-                  {detailData.genres.map((genre) => genre.name).join(' • ')}
-                </Text>
-              </View>
-              <View style={styles.metaItem}>
-                <Clock size={20} color="#FFF" weight="regular" />
-                <Text style={styles.metaText}>{displayTimeOrSeasons()}</Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Cast Carousel */}
-          {detailData.credits && detailData.credits.cast && (
-            <FlatList
-              data={detailData.credits.cast}
-              horizontal
-              renderItem={({ item }) => (
-                <View style={styles.castMemberContainer}>
-                  <Image
-                    source={{
-                      uri: `https://image.tmdb.org/t/p/w500${item.profile_path}`,
-                    }}
-                    style={styles.castImage}
-                  />
-                  <Text style={styles.castName}>{item.name}</Text>
-                  <Text style={styles.castCharacter}>{item.character}</Text>
+      <View style={styles.movieInfoContainer}>
+        <Text style={styles.movieTitle}>
+          {detailData.title || detailData.name} (
+          {type === 'tv'
+            ? detailData.first_air_date &&
+              detailData.first_air_date.substring(0, 4)
+            : detailData.release_date &&
+              detailData.release_date.substring(0, 4)}
+          )
+        </Text>
+        {detailData.certification ? (
+          <Text style={styles.certificationBox}>{detailData.certification}</Text>
+        ) : null}
+        {availableProviders.length > 0 ? (
+          <View style={styles.providersContainer}>
+            <Text style={styles.providerCategoryTitle}>Where to watch</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {availableProviders.map((provider) => (
+                <View style={styles.providerText} key={provider.provider_id}>
+                  {provider.logo_path ? (
+                    <Image
+                      source={{
+                        uri: `https://image.tmdb.org/t/p/w500${provider.logo_path}`,
+                      }}
+                      style={styles.providerLogo}
+                    />
+                  ) : null}
                 </View>
-              )}
-              keyExtractor={(item) => item.id.toString()}
-            />
+              ))}
+            </ScrollView>
+          </View>
+        ) : (
+          <Text style={styles.providerCategoryTitle}>Not streaming.</Text>
+        )}
+
+        <Text style={styles.movieTagline}>{detailData.tagline}</Text>
+        <Text style={styles.movieOverview}>{detailData.overview}</Text>
+        <View style={styles.metaInfo}>
+          <View style={styles.metaItem}>
+            <FilmStrip size={20} color="#FFF" weight="regular" />
+            <Text style={styles.metaText}>
+              {(detailData.genres || []).map((g) => g.name).join(' • ')}
+            </Text>
+          </View>
+          <View style={styles.metaItem}>
+            <Clock size={20} color="#FFF" weight="regular" />
+            <Text style={styles.metaText}>{displayTimeOrSeasons()}</Text>
+          </View>
+        </View>
+      </View>
+
+      {detailData.credits && detailData.credits.cast ? (
+        <FlatList
+          data={detailData.credits.cast}
+          horizontal
+          renderItem={({ item }: { item: TmdbCastMember }) => (
+            <View style={styles.castMemberContainer}>
+              <Image
+                source={{
+                  uri: `https://image.tmdb.org/t/p/w500${item.profile_path}`,
+                }}
+                style={styles.castImage}
+              />
+              <Text style={styles.castName}>{item.name}</Text>
+              <Text style={styles.castCharacter}>{item.character}</Text>
+            </View>
           )}
-        </>
-      )}
+          keyExtractor={(item: TmdbCastMember) => item.id.toString()}
+        />
+      ) : null}
     </ScrollView>
   );
 };
 
-// Define your styles here
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -296,12 +300,6 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     textTransform: 'uppercase',
   },
-  movieH1: {
-    fontSize: 17,
-    fontFamily: 'WorkSans-Bold',
-    color: '#FFF',
-    marginBottom: 10,
-  },
   movieOverview: {
     fontSize: 16,
     lineHeight: 24,
@@ -370,7 +368,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 20,
   },
-  // Add other styles as necessary
 });
 
 export default DetailScreen;

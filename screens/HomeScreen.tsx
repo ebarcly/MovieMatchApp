@@ -9,7 +9,7 @@ import {
 import { doc, getDoc } from 'firebase/firestore';
 import SwipeableCard from '../components/SwipeableCard';
 import NavigationBar from '../components/NavigationBar';
-import CategoryTabs from '../components/CategoryTabs';
+import CategoryTabs, { type Category } from '../components/CategoryTabs';
 import {
   fetchPopularMovies,
   fetchPopularTVShows,
@@ -17,42 +17,53 @@ import {
   fetchTVShowsByServices,
   fetchTrendingContent,
   mapServiceNamesToIds,
+  type TmdbMedia,
 } from '../services/api';
 import { auth, db } from '../firebaseConfig';
 import { MoviesContext } from '../context/MoviesContext';
 import { fetchInteractedTitleIds } from '../utils/firebaseOperations';
+import type { StackScreenProps } from '@react-navigation/stack';
+import type { HomeStackParamList } from '../navigation/types';
 
 // Sprint 2 BUG-5: when every fetched title has already been interacted
 // with, retry the next TMDB page up to this many times before giving
 // up. Caps at 3 to avoid infinite loops on extremely thin TMDB result
 // sets (edge genres, unusual category combinations).
-const MAX_PAGINATION_RETRIES = 3;
+export const MAX_PAGINATION_RETRIES = 3;
 
 // Sprint 2 BUG-5 (round 2): prefetch the next page when the user is
 // within this many cards of the end of the currently-loaded deck.
 // Kicks the next-page fetch early enough that it usually lands before
 // the user swipes off the last card.
-const PREFETCH_THRESHOLD = 3;
+export const PREFETCH_THRESHOLD = 3;
 
-const HomeScreen = ({ navigation }) => {
-  const [content, setContent] = useState([]);
+type Props = StackScreenProps<HomeStackParamList, 'Home'>;
+
+interface UserPreferences {
+  streamingServices?: string[];
+  fullCatalogAccess?: boolean;
+}
+
+const HomeScreen = (_props: Props): React.ReactElement => {
+  const [content, setContent] = useState<TmdbMedia[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('TV Shows');
+  const [selectedCategory, setSelectedCategory] = useState<Category>('TV Shows');
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const { state, dispatch } = useContext(MoviesContext);
 
-  const fetchUserPreferences = async () => {
+  const fetchUserPreferences = async (): Promise<UserPreferences | null> => {
     try {
       const user = auth.currentUser;
       if (!user) return null;
       const docRef = doc(db, 'users', user.uid);
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
-        return docSnap.data();
+        return docSnap.data() as UserPreferences;
       }
+      return null;
     } catch (err) {
       console.error('Error fetching user preferences:', err);
       setError(
@@ -64,7 +75,11 @@ const HomeScreen = ({ navigation }) => {
 
   // Sprint 2 BUG-5: request a single TMDB page for the active category.
   // Split out so the retry loop can ask for page N cleanly.
-  const fetchCategoryPage = async (category, userPrefs, page) => {
+  const fetchCategoryPage = async (
+    category: Category,
+    userPrefs: UserPreferences | null,
+    page: number,
+  ): Promise<TmdbMedia[]> => {
     const { streamingServices, fullCatalogAccess } = userPrefs || {};
     if (category === 'All') {
       // Trending endpoint is un-paginated for our purposes; page is
@@ -88,7 +103,9 @@ const HomeScreen = ({ navigation }) => {
       : fetchPopularTVShows(page);
   };
 
-  const fetchContentBasedOnCategory = async (category) => {
+  const fetchContentBasedOnCategory = async (
+    category: Category,
+  ): Promise<void> => {
     setLoading(true);
     setError('');
     try {
@@ -98,7 +115,7 @@ const HomeScreen = ({ navigation }) => {
         : [];
 
       // Pagination + dedupe retry loop — BUG-5 (initial load).
-      let filteredData = [];
+      let filteredData: TmdbMedia[] = [];
       let page = 1;
       let lastRawLength = 0;
       for (let attempt = 0; attempt < MAX_PAGINATION_RETRIES; attempt += 1) {
@@ -127,7 +144,6 @@ const HomeScreen = ({ navigation }) => {
 
       if (filteredData.length === 0) {
         setContent([]);
-        // Only now, after exhausting retries, show the empty state.
         setError(
           lastRawLength === 0
             ? 'No content available right now. Try a different category.'
@@ -138,7 +154,6 @@ const HomeScreen = ({ navigation }) => {
       }
 
       // Reset card index when category changes or new content is loaded.
-      // persist index per category per user, this logic needs to be more advanced
       const initialIndexForCategory =
         category === 'Movies' ? state.lastMovieIndex : state.lastTVShowIndex;
       setCurrentCardIndex(
@@ -147,8 +162,9 @@ const HomeScreen = ({ navigation }) => {
           : 0,
       );
     } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
       console.error(`Failed to fetch ${category.toLowerCase()}:`, e);
-      setError(`Failed to fetch ${category.toLowerCase()}: ${e.message}`);
+      setError(`Failed to fetch ${category.toLowerCase()}: ${msg}`);
       setContent([]);
     } finally {
       setLoading(false);
@@ -159,7 +175,7 @@ const HomeScreen = ({ navigation }) => {
   // non-duplicate, non-interacted titles to the existing deck. Skips the
   // trending endpoint ('All'), which returns the same set regardless of
   // page. Idempotent under concurrent invocation via isLoadingMore guard.
-  const loadMoreContent = useCallback(async () => {
+  const loadMoreContent = useCallback(async (): Promise<void> => {
     if (isLoadingMore || selectedCategory === 'All') return;
     setIsLoadingMore(true);
     try {
@@ -202,11 +218,13 @@ const HomeScreen = ({ navigation }) => {
     } finally {
       setIsLoadingMore(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoadingMore, selectedCategory, currentPage, content]);
 
   useEffect(() => {
     setCurrentPage(1);
     fetchContentBasedOnCategory(selectedCategory);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCategory]);
 
   // Prefetch the next page as soon as the user nears the end of the
@@ -230,14 +248,10 @@ const HomeScreen = ({ navigation }) => {
     loadMoreContent,
   ]);
 
-  const handleSwipeComplete = useCallback(() => {
+  const handleSwipeComplete = useCallback((): void => {
     const newIndex = currentCardIndex + 1;
-    // Don't clamp to content.length-1 anymore: the prefetch effect will
-    // append more cards before we run off the end in practice. If it
-    // hasn't caught up, the render branch below shows a spinner.
     setCurrentCardIndex(newIndex);
 
-    // Dispatch action to update the index in context
     const actionType =
       selectedCategory === 'Movies'
         ? 'UPDATE_LAST_MOVIE_INDEX'
@@ -270,15 +284,20 @@ const HomeScreen = ({ navigation }) => {
 
   return (
     <ScrollView style={styles.container}>
-      <NavigationBar profileName={auth.currentUser?.profileName} />
+      <NavigationBar />
       <CategoryTabs onCategorySelect={setSelectedCategory} />
       <View style={styles.cardContainer}>
         {currentCard ? (
           <SwipeableCard
             key={currentCard.id.toString()}
-            movie={currentCard}
+            movie={{
+              id: currentCard.id,
+              type: currentCard.type,
+              poster_path: currentCard.poster_path ?? null,
+              genre_ids: currentCard.genre_ids ?? [],
+              index: currentCardIndex,
+            }}
             onSwipeComplete={handleSwipeComplete}
-            navigation={navigation}
           />
         ) : isLoadingMore ? (
           <View style={styles.loadingMoreContainer}>
@@ -287,8 +306,8 @@ const HomeScreen = ({ navigation }) => {
           </View>
         ) : deckExhausted ? (
           <Text style={styles.errorText}>
-            You&apos;ve reached the end for now. Try another category or
-            check back soon!
+            You&apos;ve reached the end for now. Try another category or check
+            back soon!
           </Text>
         ) : null}
       </View>

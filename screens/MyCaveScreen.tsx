@@ -8,8 +8,11 @@ import {
   StyleSheet,
   FlatList,
   ActivityIndicator,
+  Alert,
+  type ImageSourcePropType,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import type { StackNavigationProp } from '@react-navigation/stack';
 import * as ImagePicker from 'expo-image-picker';
 import { auth, db } from '../firebaseConfig';
 import {
@@ -22,34 +25,48 @@ import {
 import { MoviesContext } from '../context/MoviesContext';
 import { fetchDetailsById } from '../services/api';
 import { colors, spacing, radii, typography } from '../theme';
+import type { MyCaveStackParamList } from '../navigation/types';
+import type { WatchlistItem } from '../utils/firebaseOperations';
 
-const MyCaveScreen = () => {
-  const navigation = useNavigation();
+interface UserProfileData {
+  profileName?: string;
+  bio?: string;
+  genres?: string[];
+}
+
+interface FriendActivity {
+  id: string;
+  message: string;
+}
+
+type NavProp = StackNavigationProp<MyCaveStackParamList, 'MyCaveProfile'>;
+
+const MyCaveScreen = (): React.ReactElement => {
+  const navigation = useNavigation<NavProp>();
   const { state, dispatch } = useContext(MoviesContext);
-  const [profileImage, setProfileImage] = useState(
-    require('../assets/profile_default.jpg'),
+  const [profileImage, setProfileImage] = useState<ImageSourcePropType>(
+    require('../assets/profile_default.jpg') as ImageSourcePropType,
   );
-  const [headerImage, setHeaderImage] = useState(
-    require('../assets/header_default.png'),
+  const [headerImage, setHeaderImage] = useState<ImageSourcePropType>(
+    require('../assets/header_default.png') as ImageSourcePropType,
   );
-  const [friendsActivity] = useState([]);
-  const [userData, setUserData] = useState({});
+  const [friendsActivity] = useState<FriendActivity[]>([]);
+  const [userData, setUserData] = useState<UserProfileData>({});
   const [loading, setLoading] = useState(true);
 
-  const navigateToProfileEdit = () => {
+  const navigateToProfileEdit = (): void => {
     navigation.navigate('EditProfile', { isEditing: true });
   };
 
   useEffect(() => {
-    // Fetch user profile data
-    const fetchUserProfile = async () => {
+    const fetchUserProfile = async (): Promise<void> => {
       const user = auth.currentUser;
       if (user) {
         try {
           const docRef = doc(db, 'users', user.uid);
           const docSnapshot = await getDoc(docRef);
           if (docSnapshot.exists()) {
-            setUserData(docSnapshot.data());
+            setUserData(docSnapshot.data() as UserProfileData);
           } else {
             console.log('No such document!');
           }
@@ -59,17 +76,17 @@ const MyCaveScreen = () => {
       }
     };
 
-    // Fetch movie details for the watchlist
-    const fetchWatchlistDetails = async () => {
+    const fetchWatchlistDetails = async (): Promise<void> => {
       const detailsPromises = state.watchlist.map(async (item) => {
         try {
           const details = await fetchDetailsById(item.id, item.type);
-          return {
+          const enriched: WatchlistItem = {
             id: item.id,
-            title: details.title || details.name,
-            poster_path: details.poster_path,
             type: item.type,
+            title: details.title || details.name,
+            poster_path: details.poster_path ?? null,
           };
+          return enriched;
         } catch (error) {
           console.error(
             `Error fetching details for ${item.type} ${item.id}:`,
@@ -79,8 +96,9 @@ const MyCaveScreen = () => {
         }
       });
 
-      const watchlistWithDetails = (await Promise.all(detailsPromises)).filter(
-        Boolean,
+      const resolved = await Promise.all(detailsPromises);
+      const watchlistWithDetails: WatchlistItem[] = resolved.filter(
+        (r): r is WatchlistItem => r !== null,
       );
       dispatch({
         type: 'SET_WATCHLIST_DETAILS',
@@ -88,14 +106,16 @@ const MyCaveScreen = () => {
       });
     };
 
-    const fetchWatchlist = async () => {
+    const fetchWatchlist = async (): Promise<void> => {
       const user = auth.currentUser;
       if (user) {
         try {
           const querySnapshot = await getDocs(
             collection(db, 'users', user.uid, 'watchlist'),
           );
-          const watchlist = querySnapshot.docs.map((d) => d.data());
+          const watchlist = querySnapshot.docs.map(
+            (d) => d.data() as WatchlistItem,
+          );
           dispatch({ type: 'SET_WATCHLIST', payload: watchlist });
         } catch (error) {
           console.error('Error fetching watchlist: ', error);
@@ -103,7 +123,7 @@ const MyCaveScreen = () => {
       }
     };
 
-    const fetchData = async () => {
+    const fetchData = async (): Promise<void> => {
       setLoading(true);
       await Promise.all([
         fetchUserProfile(),
@@ -114,6 +134,7 @@ const MyCaveScreen = () => {
     };
 
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Remove the item from the watchlist.
@@ -121,63 +142,62 @@ const MyCaveScreen = () => {
   // `watchlist` array field from the parent user doc and updateDoc'd
   // it back — the split-brain pattern we just closed. Now: delete the
   // single subcollection doc, then dispatch the local removal.
-  const handleRemoveFromWatchlist = async (item) => {
+  const handleRemoveFromWatchlist = async (
+    item: WatchlistItem,
+  ): Promise<void> => {
     const user = auth.currentUser;
     if (!user || !item?.id) return;
     try {
       await deleteDoc(doc(db, 'users', user.uid, 'watchlist', String(item.id)));
-      dispatch({ type: 'REMOVE_FROM_WATCHLIST', payload: item });
+      dispatch({ type: 'REMOVE_FROM_WATCHLIST', payload: { id: item.id } });
     } catch (error) {
       console.error('Error removing item from watchlist: ', error);
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = (): void => {
     auth.signOut();
   };
 
-  const handleProfileImageChange = async () => {
+  const handleProfileImageChange = async (): Promise<void> => {
     const permissionResult =
       await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (permissionResult.granted === false) {
-      alert('Permission to access camera roll is required!');
+    if (!permissionResult.granted) {
+      Alert.alert('Permission to access camera roll is required!');
       return;
     }
 
     const pickerResult = await ImagePicker.launchImageLibraryAsync();
-    if (!pickerResult.canceled) {
-      setProfileImage({ uri: pickerResult.uri });
+    if (!pickerResult.canceled && pickerResult.assets?.[0]?.uri) {
+      setProfileImage({ uri: pickerResult.assets[0].uri });
     }
   };
 
-  const handleHeaderImageChange = async () => {
+  const handleHeaderImageChange = async (): Promise<void> => {
     const permissionResult =
       await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (permissionResult.granted === false) {
-      alert('Permission to access camera roll is required!');
+    if (!permissionResult.granted) {
+      Alert.alert('Permission to access camera roll is required!');
       return;
     }
 
     const pickerResult = await ImagePicker.launchImageLibraryAsync();
-    if (!pickerResult.canceled) {
-      setHeaderImage({ uri: pickerResult.uri });
+    if (!pickerResult.canceled && pickerResult.assets?.[0]?.uri) {
+      setHeaderImage({ uri: pickerResult.assets[0].uri });
     }
   };
 
   return (
     <ScrollView style={styles.container}>
-      {/* Header Image */}
       <TouchableOpacity onPress={handleHeaderImageChange}>
         <Image source={headerImage} style={styles.headerImage} />
       </TouchableOpacity>
-      {/* Profile Section */}
       <View style={styles.profileSection}>
         <TouchableOpacity onPress={handleProfileImageChange}>
           <Image source={profileImage} style={styles.profileImage} />
         </TouchableOpacity>
         <Text style={styles.name}>{userData.profileName || 'Enrique'}</Text>
         <Text style={styles.description}>{userData.bio || 'Your Bio'}</Text>
-        {/* Genre tags based on user data */}
         <View style={styles.genreContainer}>
           {userData.genres?.map((genre, index) => (
             <Text key={index} style={styles.genreText}>
@@ -192,14 +212,13 @@ const MyCaveScreen = () => {
           <Text style={styles.editProfileText}>Edit profile</Text>
         </TouchableOpacity>
       </View>
-      {/* Watchlist Section */}
       <Section title="Watchlist">
         <FlatList
           data={state.watchlist}
           horizontal
           showsHorizontalScrollIndicator={false}
-          keyExtractor={(item) => item?.id?.toString()}
-          renderItem={({ item }) => (
+          keyExtractor={(item) => String(item?.id ?? '')}
+          renderItem={({ item }: { item: WatchlistItem }) => (
             <TouchableOpacity
               onPress={() =>
                 navigation.navigate('Detail', { id: item.id, type: item.type })
@@ -222,12 +241,13 @@ const MyCaveScreen = () => {
           )}
         />
       </Section>
-      {/* Friends Activity Section - Needs dynamic data */}
       <Section title="Friends Activity">
         {friendsActivity.map((activity) => (
           <View key={activity.id} style={styles.activityItem}>
             <Image
-              source={require('../assets/profile_default.jpg')}
+              source={
+                require('../assets/profile_default.jpg') as ImageSourcePropType
+              }
               style={styles.activityUserImage}
             />
             <View style={styles.activityContent}>
@@ -237,17 +257,20 @@ const MyCaveScreen = () => {
           </View>
         ))}
       </Section>
-      {/* Logout Button */}
       <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
         <Text style={styles.logoutButtonText}>Logout</Text>
       </TouchableOpacity>
-      {/* Loading Indicator */}
       {loading && <ActivityIndicator style={styles.loadingIndicator} />}
     </ScrollView>
   );
 };
 
-const Section = ({ title, children }) => (
+interface SectionProps {
+  title: string;
+  children: React.ReactNode;
+}
+
+const Section = ({ title, children }: SectionProps): React.ReactElement => (
   <View style={styles.section}>
     <Text style={styles.sectionTitle}>{title}</Text>
     {children}

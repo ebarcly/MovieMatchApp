@@ -134,7 +134,11 @@ const SwipeableCard = ({
       : 'DISLIKE_MOVIE';
 
     if (isLikeAction) {
-      const watchlistItem: WatchlistItem = { id: movie.id, type: movie.type };
+      const watchlistItem: WatchlistItem = {
+        id: movie.id,
+        type: movie.type,
+        poster_path: movie.poster_path ?? null,
+      };
       dispatch({ type: 'ADD_TO_WATCHLIST', payload: watchlistItem });
     } else {
       dispatch({ type: 'DISLIKE_MOVIE', payload: movie });
@@ -170,6 +174,7 @@ const SwipeableCard = ({
       const newWatchlistItem: WatchlistItem = {
         id: movie.id,
         type: movie.type,
+        poster_path: movie.poster_path ?? null,
       };
       const currentUser = auth.currentUser;
       if (currentUser) {

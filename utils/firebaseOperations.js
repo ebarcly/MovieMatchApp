@@ -101,18 +101,23 @@ export const addToWatchlist = async (userId, movieItem) => {
   }
 };
 
-// Function to fetch the user's watchlist
+// Function to fetch the user's watchlist.
+// Sprint 2 BUG-4: watchlist subcollection is the source of truth.
+// addToWatchlist writes to /users/{uid}/watchlist/{titleId}; the old
+// reader dereffed a `watchlist` field on the parent user doc, which
+// never contained anything after the subcollection switch (split-brain).
+// Now reads from the subcollection so MoviesContext + MyCave see what
+// SwipeableCard actually wrote.
 export const fetchUserWatchlist = async (userId) => {
-  const userRef = doc(db, 'users', userId);
+  if (!userId) {
+    return [];
+  }
   try {
-    const docSnap = await getDoc(userRef);
-    if (docSnap.exists()) {
-      return docSnap.data().watchlist || [];
-    } else {
-      return [];
-    }
+    const watchlistRef = collection(db, 'users', userId, 'watchlist');
+    const querySnapshot = await getDocs(watchlistRef);
+    return querySnapshot.docs.map((d) => d.data());
   } catch (error) {
-    console.error('Error fetching watchlist:', error);
+    console.error('Error fetching watchlist subcollection:', error);
     return [];
   }
 };

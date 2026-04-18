@@ -22,6 +22,12 @@ import { auth, db } from '../firebaseConfig';
 import { MoviesContext } from '../context/MoviesContext';
 import { fetchInteractedTitleIds } from '../utils/firebaseOperations';
 
+// Sprint 2 BUG-5: when every fetched title has already been interacted
+// with, retry the next TMDB page up to this many times before giving
+// up. Caps at 3 to avoid infinite loops on extremely thin TMDB result
+// sets (edge genres, unusual category combinations).
+const MAX_PAGINATION_RETRIES = 3;
+
 const HomeScreen = ({ navigation }) => {
   const [content, setContent] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -39,8 +45,8 @@ const HomeScreen = ({ navigation }) => {
       if (docSnap.exists()) {
         return docSnap.data();
       }
-    } catch (error) {
-      console.error('Error fetching user preferences:', error);
+    } catch (err) {
+      console.error('Error fetching user preferences:', err);
       setError(
         'Failed to load user preferences. Please check your internet connection.',
       );
@@ -48,72 +54,83 @@ const HomeScreen = ({ navigation }) => {
     }
   };
 
+  // Sprint 2 BUG-5: request a single TMDB page for the active category.
+  // Split out so the retry loop can ask for page N cleanly.
+  const fetchCategoryPage = async (category, userPrefs, page) => {
+    const { streamingServices, fullCatalogAccess } = userPrefs || {};
+    if (category === 'All') {
+      // Trending endpoint is un-paginated for our purposes; page is
+      // accepted but TMDB returns the same trending set regardless, so
+      // retries on 'All' exit early in the caller when page > 1.
+      return fetchTrendingContent('all', 'day');
+    }
+    if (fullCatalogAccess) {
+      return category === 'Movies'
+        ? fetchPopularMovies(page)
+        : fetchPopularTVShows(page);
+    }
+    if (streamingServices && streamingServices.length > 0) {
+      const serviceIds = await mapServiceNamesToIds(streamingServices);
+      return category === 'Movies'
+        ? fetchMoviesByServices(serviceIds, page)
+        : fetchTVShowsByServices(serviceIds, page);
+    }
+    return category === 'Movies'
+      ? fetchPopularMovies(page)
+      : fetchPopularTVShows(page);
+  };
+
   const fetchContentBasedOnCategory = async (category) => {
     setLoading(true);
-    setError(''); // Just to clear prev errors
+    setError('');
     try {
       const userPrefs = await fetchUserPreferences();
-      const { streamingServices, fullCatalogAccess } = userPrefs || {};
+      const interactedIds = auth.currentUser
+        ? await fetchInteractedTitleIds(auth.currentUser.uid)
+        : [];
 
-      let rawData = [];
-      if (category === 'All') {
-        rawData = await fetchTrendingContent('all', 'day');
-      } else if (fullCatalogAccess) {
-        rawData =
-          category === 'Movies'
-            ? await fetchPopularMovies()
-            : await fetchPopularTVShows();
-      } else if (streamingServices && streamingServices.length > 0) {
-        const serviceIds = await mapServiceNamesToIds(streamingServices);
-        rawData =
-          category === 'Movies'
-            ? await fetchMoviesByServices(serviceIds)
-            : await fetchTVShowsByServices(serviceIds);
-      } else {
-        rawData =
-          category === 'Movies'
-            ? await fetchPopularMovies()
-            : await fetchPopularTVShows();
-      }
-
-      let filteredData = [...rawData];
-
-      if (auth.currentUser && rawData.length > 0) {
-        const interactedIds = await fetchInteractedTitleIds(
-          auth.currentUser.uid,
-        );
-        if (interactedIds.length > 0) {
-          filteredData = rawData.filter(
-            (item) => !interactedIds.includes(item.id),
-          );
-          console.log(
-            `Filtered deck: ${rawData.length} raw -> ${filteredData.length} after removing interacted.`,
-          );
-        }
-      }
-
-      // what to do if ALL items are filtered out? Fetch more? Show a message? --- needs research
-      if (filteredData.length === 0 && rawData.length > 0) {
+      // Pagination + dedupe retry loop — BUG-5.
+      let filteredData = [];
+      let page = 1;
+      let lastRawLength = 0;
+      for (let attempt = 0; attempt < MAX_PAGINATION_RETRIES; attempt += 1) {
+        const rawData = await fetchCategoryPage(category, userPrefs, page);
+        lastRawLength = rawData.length;
+        const filtered =
+          interactedIds.length > 0
+            ? rawData.filter((item) => !interactedIds.includes(item.id))
+            : rawData;
         console.log(
-          'All fetched items were previously interacted with. Consider fetching more or showing a message.',
+          `HOME: category=${category} page=${page} raw=${rawData.length} filtered=${filtered.length} (attempt ${attempt + 1}/${MAX_PAGINATION_RETRIES})`,
         );
-        // maybe fetch the next "page" from TMDB and repeat filtering?
-        // Or just show a message: "No new content based on your filters and interactions."
-        // maybe show the raw data to avoid getting stuck:
-        // setContent(rawData);
-        setContent([]); // for now, "no new content" if all filtered
+        if (filtered.length > 0) {
+          filteredData = filtered;
+          break;
+        }
+        // Trending endpoint doesn't paginate usefully — bail early so
+        // we don't burn retries fetching the same set 3x.
+        if (category === 'All') {
+          break;
+        }
+        page += 1;
+      }
+
+      if (filteredData.length === 0) {
+        setContent([]);
+        // Only now, after exhausting retries, show the empty state.
         setError(
-          'No new content to show. Try changing categories or come back later!',
+          lastRawLength === 0
+            ? 'No content available right now. Try a different category.'
+            : "You've swiped through everything we have for this category. Check back soon!",
         );
       } else {
         setContent(filteredData);
       }
 
-      // Reset card index when category changes or new content is loaded
+      // Reset card index when category changes or new content is loaded.
       // persist index per category per user, this logic needs to be more advanced
       const initialIndexForCategory =
         category === 'Movies' ? state.lastMovieIndex : state.lastTVShowIndex;
-      // If filteredData has fewer items than the stored index, reset to 0
       setCurrentCardIndex(
         filteredData.length > 0 && initialIndexForCategory < filteredData.length
           ? initialIndexForCategory
@@ -122,7 +139,7 @@ const HomeScreen = ({ navigation }) => {
     } catch (e) {
       console.error(`Failed to fetch ${category.toLowerCase()}:`, e);
       setError(`Failed to fetch ${category.toLowerCase()}: ${e.message}`);
-      setContent([]); // Clear content on error
+      setContent([]);
     } finally {
       setLoading(false);
     }

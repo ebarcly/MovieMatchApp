@@ -20,8 +20,6 @@ const DetailScreen = ({ route }) => {
   const [error, setError] = useState('');
   const [trailerUrl, setTrailerUrl] = useState(null);
   const [showTrailer, setShowTrailer] = useState(false);
-  const [likes, setLikes] = useState(0); // likes state from user's friends
-  const [watchedCount, setWatchedCount] = useState(0); // watchedCount state from user's friends
 
   useEffect(() => {
     const fetchDetails = async () => {
@@ -29,8 +27,9 @@ const DetailScreen = ({ route }) => {
         const data = await fetchDetailsById(id, type);
         setDetailData(data);
 
-        // Find the trailer video if available
-        const trailer = data.videos.results.find(
+        // Sprint 2 BUG-6: guard against undefined data.videos /
+        // data.videos.results. TMDB returns titles with no videos key.
+        const trailer = data.videos?.results?.find(
           (video) => video.type === 'Trailer' && video.site === 'YouTube',
         );
         if (trailer) {
@@ -119,13 +118,10 @@ const DetailScreen = ({ route }) => {
     }
   });
 
-  const handleLike = () => {
-    setLikes(likes + 1);
-  };
-
-  const handleWatched = () => {
-    setWatchedCount(watchedCount + 1);
-  };
+  // Sprint 2 BUG-2: like / watched-count handlers were local-only stubs
+  // (they only incremented component state and never persisted).
+  // Removed along with their UI entry points until Sprint 4/5 wires
+  // real like/watched persistence against Firestore.
 
   return (
     <ScrollView style={styles.container}>
@@ -185,24 +181,6 @@ const DetailScreen = ({ route }) => {
               <View style={styles.metaItem}>
                 <Icon name="schedule" size={20} color="#FFF" />
                 <Text style={styles.metaText}>{displayTimeOrSeasons()}</Text>
-              </View>
-              <View style={styles.metaItem}>
-                <Icon
-                  name="favorite"
-                  size={20}
-                  color="#FF0000"
-                  onPress={handleLike}
-                />
-                <Text style={styles.metaText}>{likes}</Text>
-              </View>
-              <View style={styles.metaItem}>
-                <Icon
-                  name="visibility"
-                  size={20}
-                  color="#FFF"
-                  onPress={handleWatched}
-                />
-                <Text style={styles.metaText}>{watchedCount}</Text>
               </View>
             </View>
           </View>

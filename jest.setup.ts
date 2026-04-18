@@ -164,11 +164,63 @@ jest.mock('react-native-webview', () => {
 });
 
 // --- react-native-reanimated ----------------------------------------
-// jest-expo ships a setup mock; requiring it here makes
-// Animated.*/withSpring/etc. behave synchronously in tests.
-jest.mock('react-native-reanimated', () =>
-  require('react-native-reanimated/mock'),
-);
+// A full reanimated mock needs the UI-thread bridge, which jest can't
+// load. Inline stubs are enough for smoke tests — they return the
+// minimum surface DotLoader/Skeleton/Toast touch: Easing primitives,
+// withSpring/withTiming pass-through, useSharedValue/useAnimatedStyle,
+// and a passthrough Animated.View.
+jest.mock('react-native-reanimated', () => {
+  const React = require('react');
+  const { View, Text, ScrollView } = require('react-native');
+  const Easing = {
+    linear: (t: number) => t,
+    ease: (t: number) => t,
+    quad: (t: number) => t * t,
+    cubic: (t: number) => t * t * t,
+    in: (fn: (t: number) => number) => fn,
+    out: (fn: (t: number) => number) => fn,
+    inOut: (fn: (t: number) => number) => fn,
+    bezier: () => (t: number) => t,
+  };
+  const passthrough = (Base: unknown) => {
+    const Component = React.forwardRef(
+      (props: Record<string, unknown>, ref: unknown) =>
+        React.createElement(Base as React.ComponentType<unknown>, {
+          ...props,
+          ref,
+        }),
+    );
+    Component.displayName = 'ReanimatedStub';
+    return Component;
+  };
+  const Animated = {
+    View: passthrough(View),
+    Text: passthrough(Text),
+    ScrollView: passthrough(ScrollView),
+    createAnimatedComponent: (Comp: unknown) => passthrough(Comp),
+  };
+  return {
+    __esModule: true,
+    default: Animated,
+    Easing,
+    View: Animated.View,
+    Text: Animated.Text,
+    ScrollView: Animated.ScrollView,
+    createAnimatedComponent: Animated.createAnimatedComponent,
+    useSharedValue: (v: unknown) => ({ value: v }),
+    useAnimatedStyle: (fn: () => Record<string, unknown>) => fn(),
+    useDerivedValue: (fn: () => unknown) => ({ value: fn() }),
+    withSpring: (v: unknown) => v,
+    withTiming: (v: unknown) => v,
+    withDelay: (_d: unknown, v: unknown) => v,
+    withSequence: (...v: unknown[]) => v[v.length - 1],
+    withRepeat: (v: unknown) => v,
+    runOnJS: (fn: (...args: unknown[]) => unknown) => fn,
+    interpolate: (n: number) => n,
+    Extrapolate: { CLAMP: 'clamp', EXTEND: 'extend', IDENTITY: 'identity' },
+    cancelAnimation: jest.fn(),
+  };
+});
 
 // --- moti ------------------------------------------------------------
 // Minimal mock — MotiView/MotiText render as plain RN counterparts so

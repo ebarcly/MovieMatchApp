@@ -1,23 +1,23 @@
-# Handoff: MovieMatchApp — Sprint 5a CLOSED (auto-verified), 5b drafting is next
+# Handoff: MovieMatchApp — Sprint 5a CLOSED (all criteria + manual smoke), 5b drafting is next
 
 ## TL;DR for next session
 
 **First action**: read this file, then the AI brief at
-`docs/research/sprint-5-ai-surfaces.md`, then decide whether to draft
-the Sprint 5b contract (happy path) or to pause for the 10-step manual
-iPhone smoke at the end of this handoff.
+`docs/research/sprint-5-ai-surfaces.md`, then draft the Sprint 5b
+contract and dispatch the 4 parallel stream generators.
 
-**State**: Sprint 5a is closed on automated criteria. All 15 hard
-thresholds green; both HARD_FAILed design criteria (Craft 6→7+,
-Functionality 6→8+) cleared by a surgical refinement commit. Jest 123
-passing (up from Sprint 4's 64). Manual iPhone smoke is the user's
-responsibility.
+**State**: Sprint 5a is FULLY closed. All 15 hard thresholds green,
+all 4 design criteria cleared (including Craft 6→7+ and Functionality
+6→8+ via surgical refinements), and the 10-step manual iPhone smoke
+PASSED on 2026-04-19 with 2 additional smoke-surfaced bugs fixed
+(MyCave photo sync + CategoryTabs double-tap). Jest 123 passing.
 
 ## State of the repo
 
-- **Branch**: `main`, 20 commits ahead of `origin/main` (not pushed).
-- **HEAD**: `e3df641 fix(sprint-5a): evaluator refinements — clear Craft + Functionality HARD_FAILs`.
-- **Sprint 5a commit range**: `b4f80be..e3df641` (9 commits: 8 generator + 1 refinement).
+- **Branch**: `main`, 24 commits ahead of `origin/main` (not pushed).
+- **HEAD**: `4bf9ff1 chore: gitignore expo-smoke.log — accidental commit in d2ca2f3`.
+- **Sprint 5a commit range**: `b4f80be..4bf9ff1` (12 commits: 8 generator + 1 evaluator refinement + 2 smoke-pass fixes + 1 gitignore cleanup).
+- **Smoke-pass commits**: `7a5386c` (register storage.rules in firebase.json — plus user also upgraded Firebase to Blaze + deployed rules live), `d2ca2f3` (MyCave photo sync via onSnapshot + Avatar 'xl' preset; CategoryTabs controlled), `4bf9ff1` (gitignore expo-smoke.log).
 - **App builds in Expo Go SDK 54**. `npx expo start --tunnel` still works.
 - **expo-doctor**: 17/17.
 - **TypeScript strict**: `npx tsc --noEmit` clean.
@@ -133,7 +133,24 @@ lands:
 6. Consider parallelism: dispatch Streams A + B + C + D as 4 parallel generators via `superpowers:dispatching-parallel-agents`. Stream E dispatches after A lands.
 7. Evaluator via `feature-dev:code-reviewer` per stream when each generator completes.
 
-## Manual iPhone smoke (user task — 10 steps)
+## Manual iPhone smoke — PASSED 2026-04-19
+
+User walked through the smoke on iPhone Expo Go SDK 54. Verified:
+
+- ✅ Step 6 (migration + public profile) — Firestore console screenshot shows `/users/{uid}/public/profile` with `contactHashes` + `displayName` + `photoURL` + `tasteLabels{common: 'breakneck', rare: 'epic'}` + `updatedAt`.
+- ✅ Step 7 (photo upload) — images saved to Firebase Storage (`profileImages/{uid}/...`).
+- ✅ Step 8 (contact onboarding) — "awaiting-index" state with share-invite fallback works.
+- ✅ Step 10 (rules deployed) — Firestore rules + Storage rules both live on `moviematch-6367e`; Storage required Blaze upgrade (user completed; $10/mo budget alert recommended if not set).
+- ⏭️ Step 9 (friend graph UI round-trip) — skipped intentionally; 5a shipped backbone ops without UI (that's 5b Stream A/D). Jest has deterministic + order-invariance + 5 op tests.
+- ✅ Steps 1–5 (Sprint 4 regression) — user reported "other things are working."
+
+**2 bugs surfaced in smoke, fixed same-session:**
+1. **MyCave photo didn't sync** from ProfilePhotoScreen uploads. MyCave was still using pre-5a local image state + raw Image, never read photoURL from public/profile, and its own change-photo did setState locally with no Storage upload. Refactored to use the Avatar primitive + `onSnapshot` on public/profile + real `uploadProfileImage` call. Avatar got an `'xl' = 120` size preset to match the existing 120px hero.
+2. **CategoryTabs double-tap** — child owned its own `activeTab` state while HomeScreen owned `selectedCategory`. Made CategoryTabs a controlled component (single source of truth in parent). Highlight + content now update on first tap.
+
+Both fixes in `d2ca2f3`; smoke re-passed after reload. Sprint 5a is formally closed.
+
+## Manual iPhone smoke checklist (for reference)
 
 Run `npx expo start --tunnel`, scan QR on iPhone Expo Go SDK 54:
 

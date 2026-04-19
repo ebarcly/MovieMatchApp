@@ -41,18 +41,29 @@ export type MyCaveStackParamList = {
 };
 
 // --- Profile Setup stack ----------------------------------------------
-// Sprint 4 adds TasteQuiz to the onboarding flow — ProfileSetup →
-// TasteQuiz → Main (if tasteProfile absent) / ProfileSetup → Main
-// (if tasteProfile present). Idempotent on re-entry.
+// Sprint 4 adds TasteQuiz; Sprint 5a adds ProfilePhoto (skippable) —
+// ProfileSetup → TasteQuiz → ProfilePhoto → Main when any of those
+// fields are missing. Idempotent on re-entry.
 export type ProfileSetupStackParamList = {
   ProfileSetupInitial: SharedProfileParams;
   TasteQuiz: undefined;
+  ProfilePhoto: undefined;
+};
+
+// --- Matches stack (Sprint 5a) ----------------------------------------
+// Sprint 5a introduces the ContactOnboarding screen, reachable from the
+// Matches-tab empty state's "Find friends" CTA. MatchesHome itself is
+// the prior MatchesScreen; the stack is the host so the CTA can push
+// onto it without reaching across tabs.
+export type MatchesStackParamList = {
+  MatchesHome: undefined;
+  ContactOnboarding: undefined;
 };
 
 // --- Main tabs --------------------------------------------------------
 export type MainTabsParamList = {
   Deck: NavigatorScreenParams<HomeStackParamList>;
-  Matches: undefined;
+  Matches: NavigatorScreenParams<MatchesStackParamList>;
   'My Cave': NavigatorScreenParams<MyCaveStackParamList>;
 };
 

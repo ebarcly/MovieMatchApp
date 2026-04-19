@@ -10,10 +10,13 @@ import RegisterScreen from '../screens/RegisterScreen';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 import ProfileSetupScreen from '../screens/ProfileSetupScreen';
 import TasteQuizScreen from '../screens/TasteQuizScreen';
+import ProfilePhotoScreen from '../screens/ProfilePhotoScreen';
+import ContactOnboardingScreen from '../screens/ContactOnboardingScreen';
 import DotLoader from '../components/DotLoader';
 import { auth, db } from '../firebaseConfig';
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
+import { runUserDocSplitMigration } from '../utils/migrations/2026-04-userDocSplit';
 import { View, StyleSheet } from 'react-native';
 import { FilmSlate, Heart, User as UserIcon } from 'phosphor-react-native';
 import { colors } from '../theme';
@@ -23,6 +26,7 @@ import type {
   ProfileSetupStackParamList,
   MyCaveStackParamList,
   MainTabsParamList,
+  MatchesStackParamList,
 } from './types';
 
 const HomeStackNav = createStackNavigator<HomeStackParamList>();
@@ -30,6 +34,7 @@ const TabNav = createBottomTabNavigator<MainTabsParamList>();
 const AuthStackNav = createStackNavigator<AuthStackParamList>();
 const ProfileSetupStackNav = createStackNavigator<ProfileSetupStackParamList>();
 const MyCaveStackNav = createStackNavigator<MyCaveStackParamList>();
+const MatchesStackNav = createStackNavigator<MatchesStackParamList>();
 
 // --- Navigator Screens ---
 
@@ -71,10 +76,20 @@ function HomeStackScreen(): React.ReactElement {
   );
 }
 
-// Stack for the initial Profile Setup flow + onboarding TasteQuiz.
-function ProfileSetupStackScreen(): React.ReactElement {
+// Stack for the initial Profile Setup flow + onboarding TasteQuiz +
+// Sprint 5a ProfilePhotoScreen. AppNavigator routes the user to the
+// correct initial screen on mount via `initialRouteName`, so each
+// screen only needs to handle "what happens after I'm done."
+function ProfileSetupStackScreen({
+  initialRoute,
+}: {
+  initialRoute: keyof ProfileSetupStackParamList;
+}): React.ReactElement {
   return (
-    <ProfileSetupStackNav.Navigator screenOptions={{ headerShown: false }}>
+    <ProfileSetupStackNav.Navigator
+      screenOptions={{ headerShown: false }}
+      initialRouteName={initialRoute}
+    >
       <ProfileSetupStackNav.Screen
         name="ProfileSetupInitial"
         component={ProfileSetupScreen}
@@ -83,6 +98,10 @@ function ProfileSetupStackScreen(): React.ReactElement {
       <ProfileSetupStackNav.Screen
         name="TasteQuiz"
         component={TasteQuizScreen}
+      />
+      <ProfileSetupStackNav.Screen
+        name="ProfilePhoto"
+        component={ProfilePhotoScreen}
       />
     </ProfileSetupStackNav.Navigator>
   );
@@ -139,9 +158,28 @@ function MainAppTabs(): React.ReactElement {
       })}
     >
       <TabNav.Screen name="Deck" component={HomeStackScreen} />
-      <TabNav.Screen name="Matches" component={MatchesScreen} />
+      <TabNav.Screen name="Matches" component={MatchesStackScreen} />
       <TabNav.Screen name="My Cave" component={MyCaveStackScreen} />
     </TabNav.Navigator>
+  );
+}
+
+// Matches tab stack — hosts MatchesScreen + ContactOnboardingScreen
+// (reachable from the Matches empty-state "Find friends" CTA).
+function MatchesStackScreen(): React.ReactElement {
+  return (
+    <MatchesStackNav.Navigator screenOptions={themedStackHeader}>
+      <MatchesStackNav.Screen
+        name="MatchesHome"
+        component={MatchesScreen}
+        options={{ headerShown: false }}
+      />
+      <MatchesStackNav.Screen
+        name="ContactOnboarding"
+        component={ContactOnboardingScreen}
+        options={{ title: 'Find friends' }}
+      />
+    </MatchesStackNav.Navigator>
   );
 }
 
@@ -152,6 +190,14 @@ const AppNavigator = (): React.ReactElement => {
   const [isLoading, setIsLoading] = useState(true);
   const [isProfileSetupComplete, setIsProfileSetupComplete] = useState(false);
   const [hasTasteProfile, setHasTasteProfile] = useState(false);
+  const [hasPhotoURL, setHasPhotoURL] = useState(false);
+  // Skip for now — allows the user to defer the photo upload screen and
+  // still reach Main. Resets on sign-out so a new account still sees it.
+  const [photoSkipped, setPhotoSkipped] = useState(false);
+  // Tracks whether the one-shot user-doc split migration (Sprint 5a)
+  // has completed for the current user this session. We run it once
+  // per auth handshake; it's internally idempotent.
+  const [migrationDone, setMigrationDone] = useState(false);
 
   // Auth subscription.
   useEffect(() => {
@@ -160,21 +206,44 @@ const AppNavigator = (): React.ReactElement => {
       if (!currentUser) {
         setIsProfileSetupComplete(false);
         setHasTasteProfile(false);
+        setHasPhotoURL(false);
+        setPhotoSkipped(false);
+        setMigrationDone(false);
         setIsLoading(false);
       }
     });
     return unsubscribe;
   }, []);
 
-  // Profile + tasteProfile subscription. Firebase Auth's updateProfile
-  // does NOT fire onAuthStateChanged, so we can't rely on displayName.
-  // Instead we watch the Firestore user doc, which is the source of
-  // truth. Sprint 4 additionally gates Main on the presence of a
-  // tasteProfile field — first-time users land in ProfileSetup →
-  // TasteQuiz before Main.
+  // Sprint 5a: run the userDocSplit migration on first sign-in per
+  // session. Idempotent — on a second run the function is a no-op.
+  // Runs BEFORE any friend-graph / match% surface renders so the
+  // /users/{uid}/public/profile subcollection always exists first.
   useEffect(() => {
-    if (!user) return undefined;
-    const unsubscribe = onSnapshot(
+    if (!user) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        await runUserDocSplitMigration(user.uid);
+      } catch (err) {
+        console.error('userDocSplit migration failed:', err);
+      }
+      if (!cancelled) setMigrationDone(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
+  // Profile + tasteProfile + photoURL subscription. Firebase Auth's
+  // updateProfile does NOT fire onAuthStateChanged, so we can't rely
+  // on displayName. Instead we watch the Firestore user doc, which is
+  // the source of truth. Sprint 5a extends the gate with photoURL
+  // (skippable) — the hasPhotoURL flag reads from the PUBLIC subdoc
+  // which the migration populates on first run.
+  useEffect(() => {
+    if (!user || !migrationDone) return undefined;
+    const privateUnsubscribe = onSnapshot(
       doc(db, 'users', user.uid),
       (snap) => {
         const data = snap.data() as
@@ -199,8 +268,22 @@ const AppNavigator = (): React.ReactElement => {
         setIsLoading(false);
       },
     );
-    return unsubscribe;
-  }, [user]);
+    const publicUnsubscribe = onSnapshot(
+      doc(db, 'users', user.uid, 'public', 'profile'),
+      (snap) => {
+        const data = snap.data() as { photoURL?: string | null } | undefined;
+        setHasPhotoURL(Boolean(data?.photoURL));
+      },
+      (err) => {
+        console.warn('Error watching public profile:', err);
+        setHasPhotoURL(false);
+      },
+    );
+    return () => {
+      privateUnsubscribe();
+      publicUnsubscribe();
+    };
+  }, [user, migrationDone]);
 
   if (isLoading) {
     return (
@@ -221,11 +304,56 @@ const AppNavigator = (): React.ReactElement => {
     return <AuthStackScreen />;
   }
 
-  if (user && (!isProfileSetupComplete || !hasTasteProfile)) {
-    return <ProfileSetupStackScreen />;
+  // Sprint 5a gate order:
+  //   auth → userDocSplit migration → tasteProfile → photoURL (skippable)
+  //   → Main.
+  //
+  // ProfileSetupInitial collects displayName + genres (baseline profile),
+  // TasteQuiz writes tasteProfile, ProfilePhoto is the optional avatar
+  // step and exposes a "Skip for now" path via handlePhotoSkip.
+  const handlePhotoSkip = (): void => {
+    setPhotoSkipped(true);
+  };
+
+  if (!isProfileSetupComplete) {
+    return <ProfileSetupStackScreen initialRoute="ProfileSetupInitial" />;
+  }
+
+  if (!hasTasteProfile) {
+    return <ProfileSetupStackScreen initialRoute="TasteQuiz" />;
+  }
+
+  if (!hasPhotoURL && !photoSkipped) {
+    return <ProfilePhotoGate onSkip={handlePhotoSkip} userId={user.uid} />;
   }
 
   return <MainAppTabs />;
 };
+
+// Lightweight wrapper so ProfilePhotoScreen can be rendered outside of
+// a stack navigator during the onboarding gate without plumbing params
+// through React Navigation. onSkip flips the skipped flag and falls
+// through to Main.
+function ProfilePhotoGate({
+  onSkip,
+  userId,
+}: {
+  onSkip: () => void;
+  userId: string;
+}): React.ReactElement {
+  return (
+    <ProfileSetupStackNav.Navigator screenOptions={{ headerShown: false }}>
+      <ProfileSetupStackNav.Screen name="ProfilePhoto">
+        {(props): React.ReactElement => (
+          <ProfilePhotoScreen
+            {...props}
+            onSkip={onSkip}
+            userIdOverride={userId}
+          />
+        )}
+      </ProfileSetupStackNav.Screen>
+    </ProfileSetupStackNav.Navigator>
+  );
+}
 
 export default AppNavigator;

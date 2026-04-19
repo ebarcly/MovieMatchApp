@@ -14,10 +14,10 @@ import DotLoader from '../components/DotLoader';
 import ActivityFeed from '../components/ActivityFeed';
 import { useToast } from '../components/Toast';
 import { colors, spacing, radii, typography } from '../theme';
-import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
-import type { MainTabsParamList } from '../navigation/types';
+import type { StackScreenProps } from '@react-navigation/stack';
+import type { MatchesStackParamList } from '../navigation/types';
 
-type Props = BottomTabScreenProps<MainTabsParamList, 'Matches'>;
+type Props = StackScreenProps<MatchesStackParamList, 'MatchesHome'>;
 
 const MatchesScreen = ({ navigation }: Props): React.ReactElement => {
   const [matchesList, setMatchesList] = useState<UserMatch[]>([]);

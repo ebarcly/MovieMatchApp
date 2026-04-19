@@ -12,6 +12,9 @@ import {
   recordTitleInteraction,
   addToWatchlist,
   fetchUserWatchlist,
+  writeTasteProfile,
+  fetchTasteProfile,
+  type TasteProfile,
 } from '../utils/firebaseOperations';
 import * as firestore from 'firebase/firestore';
 
@@ -74,6 +77,65 @@ describe('firebaseOperations', () => {
       await expect(
         addToWatchlist('', { id: 1, type: 'movie' }),
       ).rejects.toThrow(/Invalid data for addToWatchlist/);
+    });
+  });
+
+  describe('writeTasteProfile (Sprint 4)', () => {
+    const sampleProfile: TasteProfile = {
+      axes: {
+        pacing: -0.5,
+        era: 0.1,
+        mood: 0.4,
+        stakes: -0.2,
+        tone: 0.0,
+        genreFluency: 0.3,
+        realism: 0.6,
+        runtime: -0.1,
+      },
+      labels: { common: 'late-night', rare: 'slow cinema' },
+    };
+
+    it('writes the tasteProfile into /users/{uid} (merge-safe)', async () => {
+      await writeTasteProfile('user-42', sampleProfile);
+
+      expect(mocked(firestore.doc)).toHaveBeenCalledWith(
+        expect.anything(),
+        'users',
+        'user-42',
+      );
+      expect(mocked(firestore.setDoc)).toHaveBeenCalledTimes(1);
+      const call = mocked(firestore.setDoc).mock.calls[0];
+      expect(call[1]).toMatchObject({
+        tasteProfile: {
+          axes: sampleProfile.axes,
+          labels: sampleProfile.labels,
+        },
+      });
+      expect(call[2]).toEqual({ merge: true });
+    });
+
+    it('throws on empty userId', async () => {
+      await expect(writeTasteProfile('', sampleProfile)).rejects.toThrow(
+        /Invalid data for writeTasteProfile/,
+      );
+    });
+
+    it('fetchTasteProfile returns the stored shape', async () => {
+      mocked(firestore.getDoc).mockResolvedValueOnce({
+        exists: () => true,
+        data: () => ({ tasteProfile: sampleProfile }),
+      });
+      const result = await fetchTasteProfile('user-42');
+      expect(result).toEqual(sampleProfile);
+    });
+
+    it('fetchTasteProfile returns null for a missing user doc', async () => {
+      mocked(firestore.getDoc).mockResolvedValueOnce({
+        exists: () => false,
+        data: () => undefined,
+      });
+      const result = await fetchTasteProfile('user-nobody');
+      expect(result).toBeNull();
     });
   });
 

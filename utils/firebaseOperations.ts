@@ -51,6 +51,34 @@ export interface UserMatch {
   title: Partial<TitleDetails>;
 }
 
+// Sprint 4: onboarding taste quiz writes this shape to the user doc.
+export type TasteAxis =
+  | 'pacing'
+  | 'era'
+  | 'mood'
+  | 'stakes'
+  | 'tone'
+  | 'genreFluency'
+  | 'realism'
+  | 'runtime';
+
+export interface TasteLabels {
+  /** Tribal-belonging label. */
+  common: string;
+  /** Optimal-distinctiveness label. */
+  rare: string;
+}
+
+export interface TasteProfile {
+  axes: Record<TasteAxis, number>;
+  labels: TasteLabels;
+}
+
+// What we actually write to Firestore (serverTimestamp is a sentinel).
+export interface TasteProfileDoc extends TasteProfile {
+  completedAt: unknown;
+}
+
 /// --- USER DATA MANAGEMENT --- ///
 
 export const fetchInteractedTitleIds = async (
@@ -113,6 +141,51 @@ export const recordTitleInteraction = async (
     );
   } catch (error) {
     console.error('Error recording title interaction:', error);
+  }
+};
+
+// Sprint 4: onboarding taste quiz persistence. Writes the 8-axis
+// tasteProfile + dual identity labels + serverTimestamp-fed completedAt
+// into the nested `tasteProfile` field on /users/{uid}. Merge-safe so a
+// re-entry doesn't wipe other profile fields.
+export const writeTasteProfile = async (
+  userId: string,
+  profile: TasteProfile,
+): Promise<void> => {
+  if (!userId) {
+    throw new Error('Invalid data for writeTasteProfile: empty userId');
+  }
+  if (!profile?.axes || !profile?.labels) {
+    throw new Error(
+      'Invalid data for writeTasteProfile: axes or labels missing',
+    );
+  }
+  try {
+    const userRef = doc(db, 'users', userId);
+    const docPayload: TasteProfileDoc = {
+      ...profile,
+      completedAt: serverTimestamp(),
+    };
+    await setDoc(userRef, { tasteProfile: docPayload }, { merge: true });
+  } catch (error) {
+    console.error('Error writing tasteProfile:', error);
+    throw error;
+  }
+};
+
+export const fetchTasteProfile = async (
+  userId: string | null | undefined,
+): Promise<TasteProfile | null> => {
+  if (!userId) return null;
+  try {
+    const userRef = doc(db, 'users', userId);
+    const snap = await getDoc(userRef);
+    if (!snap.exists()) return null;
+    const data = snap.data() as { tasteProfile?: TasteProfile } | undefined;
+    return data?.tasteProfile ?? null;
+  } catch (error) {
+    console.error('Error fetching tasteProfile:', error);
+    return null;
   }
 };
 

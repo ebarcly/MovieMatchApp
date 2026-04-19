@@ -8,8 +8,7 @@
  *     {displayLabel} substituted to the real friend's displayName
  *   - Top 3 shared titles (sharedTitleIds from computeMatchScore)
  *   - "Send rec" CTA (tertiary) → RecCardCompose w/ preselected friendUid
- *
- * Stream E (Pass 6) appends a "Share match card" CTA on this screen.
+ *   - "Share match card" CTA (tertiary, Stream E) → shareMatchCard
  *
  * Data-locality rule: reads ONLY from `/users/{uid}/public/profile`. The
  * viewer's taste context (interactedTitleIds / genres / streamingServices)
@@ -51,6 +50,7 @@ import type {
 import { fetchDetailsById, type TitleDetails } from '../services/api';
 import { useWhyYouMatch } from '../hooks/useWhyYouMatch';
 import { getDefaultLLMClient } from '../utils/ai/impl/AnthropicLLMClient';
+import { shareMatchCard } from '../utils/shareMatchCard';
 import type { MatchesStackParamList } from '../navigation/types';
 import { colors, spacing, radii, typography } from '../theme';
 
@@ -260,6 +260,15 @@ const FriendDetailScreen = (): React.ReactElement => {
     });
   };
 
+  const handleShareMatchCard = async (): Promise<void> => {
+    if (!userUid || !friendUid) return;
+    try {
+      await shareMatchCard(userUid, friendUid);
+    } catch (err) {
+      console.warn('[FriendDetail] shareMatchCard failed:', err);
+    }
+  };
+
   if (loading || !matchResult) {
     return (
       <View style={styles.loading}>
@@ -345,6 +354,17 @@ const FriendDetailScreen = (): React.ReactElement => {
           accessibilityLabel="Send a rec to this friend"
         >
           <Text style={styles.tertiaryBtnText}>Send rec</Text>
+        </Pressable>
+        <Pressable
+          style={({ pressed }) => [
+            styles.tertiaryBtn,
+            pressed ? styles.tertiaryBtnPressed : null,
+          ]}
+          onPress={handleShareMatchCard}
+          accessibilityRole="button"
+          accessibilityLabel="Share match card"
+        >
+          <Text style={styles.tertiaryBtnText}>Share match card</Text>
         </Pressable>
       </View>
     </ScrollView>

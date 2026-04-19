@@ -1,0 +1,5 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`MatchCard — structural snapshot renders the Getting There tier for a low score 1`] = `null`;
+
+exports[`MatchCard — structural snapshot renders the Soulmates tier for score 0.82 with both avatars + watermark 1`] = `null`;

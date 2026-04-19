@@ -4,6 +4,7 @@ import * as Font from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { MoviesProvider } from './context/MoviesContext';
 import AppNavigator from './navigation/AppNavigator';
+import { ToastProvider } from './components/Toast';
 // Import firebaseConfig for its side effect (initializes Firebase app + auth + db).
 import './firebaseConfig';
 
@@ -51,7 +52,9 @@ const App = (): React.ReactElement | null => {
   return (
     <NavigationContainer>
       <MoviesProvider>
-        <AppNavigator />
+        <ToastProvider>
+          <AppNavigator />
+        </ToastProvider>
       </MoviesProvider>
     </NavigationContainer>
   );

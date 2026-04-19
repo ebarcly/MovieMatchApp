@@ -90,6 +90,58 @@ service cloud.firestore {
                      && request.auth.uid in resource.data.participants;
     }
 
+    // --- /queues (Sprint 5b Stream D) ---
+    // Shared watch queue. 2-5 participants co-author an ordered list of
+    // titleIds with 1-tap reactions + round-robin "your turn to pick"
+    // rotation. Shape:
+    //   { participants: string[] (2-5 uids, lex-sorted),
+    //     orderedTitleIds: number[],
+    //     reactions: { "{titleId}_{uid}": '👍'|'🔥'|'😴'|'⏭️' },
+    //     nextPickUid: uid, createdAt, name? }
+    //
+    // Participants ONLY read/write. Add-title is open to any participant
+    // (rule below). Mark-watched requires `nextPickUid == auth.uid`.
+    // Activity log lives in /queues/{queueId}/activity.
+    match /queues/{queueId} {
+      allow read: if request.auth != null
+                   && request.auth.uid in resource.data.participants;
+
+      allow create: if request.auth != null
+                     && request.auth.uid in request.resource.data.participants
+                     && request.resource.data.participants is list
+                     && request.resource.data.participants.size() >= 2
+                     && request.resource.data.participants.size() <= 5
+                     && request.resource.data.orderedTitleIds is list
+                     && request.resource.data.nextPickUid is string
+                     && request.resource.data.nextPickUid in request.resource.data.participants;
+
+      // Update: participants only; participants list immutable. The
+      // mark-watched transition additionally requires that the OLD
+      // nextPickUid equals the caller's uid — enforced by checking the
+      // transition between resource.data (pre-update) and request.resource.data.
+      allow update: if request.auth != null
+                     && request.auth.uid in resource.data.participants
+                     && request.resource.data.participants == resource.data.participants
+                     && (
+                       // Add title / react — nextPickUid unchanged.
+                       request.resource.data.nextPickUid == resource.data.nextPickUid
+                       // OR mark watched — only current picker may rotate.
+                       || resource.data.nextPickUid == request.auth.uid
+                     );
+
+      allow delete: if false;
+
+      // Activity subcollection — append-only, participant-only.
+      match /activity/{activityId} {
+        allow read: if request.auth != null
+                     && request.auth.uid in get(/databases/$(database)/documents/queues/$(queueId)).data.participants;
+        allow create: if request.auth != null
+                       && request.auth.uid == request.resource.data.actor
+                       && request.auth.uid in get(/databases/$(database)/documents/queues/$(queueId)).data.participants;
+        allow update, delete: if false;
+      }
+    }
+
     // --- /recs (Sprint 5b Stream B) ---
     // Rec card document — a personalized recommendation sent from one
     // signed-in user (`from`) to a friend (`to`). Shape:

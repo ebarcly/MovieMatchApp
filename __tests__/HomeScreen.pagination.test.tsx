@@ -45,6 +45,8 @@ jest.mock('../services/api', () => ({
 
 jest.mock('../utils/firebaseOperations', () => ({
   fetchInteractedTitleIds: jest.fn(async () => []),
+  listQueuesForUid: jest.fn(async () => []),
+  queueReactionKey: jest.fn((titleId: number, uid: string) => `${titleId}_${uid}`),
 }));
 
 jest.mock('../firebaseConfig', () => ({
@@ -61,6 +63,18 @@ jest.mock('../components/NavigationBar', () => {
 });
 
 jest.mock('../components/CategoryTabs', () => {
+  const R = require('react');
+  const { View } = require('react-native');
+  return { __esModule: true, default: () => R.createElement(View) };
+});
+
+jest.mock('../components/StoriesStrip', () => {
+  const R = require('react');
+  const { View } = require('react-native');
+  return { __esModule: true, default: () => R.createElement(View) };
+});
+
+jest.mock('../components/QueueStrip', () => {
   const R = require('react');
   const { View } = require('react-native');
   return { __esModule: true, default: () => R.createElement(View) };

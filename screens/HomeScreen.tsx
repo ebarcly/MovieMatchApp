@@ -6,6 +6,7 @@ import NavigationBar from '../components/NavigationBar';
 import CategoryTabs, { type Category } from '../components/CategoryTabs';
 import DotLoader from '../components/DotLoader';
 import StoriesStrip from '../components/StoriesStrip';
+import QueueStrip from '../components/QueueStrip';
 import { FilmStrip } from 'phosphor-react-native';
 import {
   fetchPopularMovies,
@@ -274,6 +275,7 @@ const HomeScreen = (_props: Props): React.ReactElement => {
   return (
     <View style={styles.screen}>
       <NavigationBar />
+      <QueueStrip />
       <StoriesStrip />
       <CategoryTabs
         selected={selectedCategory}

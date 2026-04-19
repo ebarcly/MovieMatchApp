@@ -159,6 +159,11 @@ jest.mock('phosphor-react-native', () => {
     UserCircle: factory('UserCircle'),
     User: factory('User'),
     Users: factory('Users'),
+    Camera: factory('Camera'),
+    AddressBook: factory('AddressBook'),
+    ShareNetwork: factory('ShareNetwork'),
+    UserPlus: factory('UserPlus'),
+    X: factory('X'),
   };
 });
 

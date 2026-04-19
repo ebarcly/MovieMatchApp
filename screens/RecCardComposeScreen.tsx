@@ -49,6 +49,7 @@ import {
   REC_NOTE_MIN_LEN,
   RecNoteLengthError,
   type FriendshipDoc,
+  type TasteLabels,
 } from '../utils/firebaseOperations';
 import { fetchDetailsById, type TitleDetails } from '../services/api';
 import type { HomeStackParamList } from '../navigation/types';
@@ -64,7 +65,15 @@ interface FriendRow {
   uid: string;
   displayName: string | null;
   photoURL: string | null;
+  tasteLabels: TasteLabels | null;
 }
+
+// Sentinel placeholder when a user's onboarding hasn't set tasteLabels.
+// Preferred over the Sprint 5b placeholder `{common:'texture',rare:'signal'}`
+// which was too generic — every friend pair got the exact same input, so
+// Haiku generated similar variants that often tripped the no-duplicate-
+// first-word validator and forced the deterministic fallback.
+const EMPTY_LABELS: TasteLabels = { common: 'open', rare: 'curious' };
 
 const RecCardComposeScreen = (): React.ReactElement => {
   const route = useRoute<RecCardComposeRouteProp>();
@@ -74,6 +83,7 @@ const RecCardComposeScreen = (): React.ReactElement => {
 
   const [titleDetails, setTitleDetails] = useState<TitleDetails | null>(null);
   const [friends, setFriends] = useState<FriendRow[]>([]);
+  const [viewerLabels, setViewerLabels] = useState<TasteLabels | null>(null);
   const [selectedFriend, setSelectedFriend] = useState<string | null>(
     preselectedFriend ?? null,
   );
@@ -117,6 +127,8 @@ const RecCardComposeScreen = (): React.ReactElement => {
         }
         // Each public profile is an onSnapshot subscription; for simplicity
         // on the compose flow we do one-shot reads at the subdoc path.
+        // Include tasteLabels so the Stream C recCopy hook gets real
+        // high-signal input per user pair — not placeholder strings.
         const rows: FriendRow[] = await Promise.all(
           otherUids.map(async (uid) => {
             return new Promise<FriendRow>((resolve) => {
@@ -125,17 +137,27 @@ const RecCardComposeScreen = (): React.ReactElement => {
                 (snap) => {
                   unsub();
                   const data = snap.data() as
-                    | { displayName?: string; photoURL?: string | null }
+                    | {
+                        displayName?: string;
+                        photoURL?: string | null;
+                        tasteLabels?: TasteLabels | null;
+                      }
                     | undefined;
                   resolve({
                     uid,
                     displayName: data?.displayName ?? null,
                     photoURL: data?.photoURL ?? null,
+                    tasteLabels: data?.tasteLabels ?? null,
                   });
                 },
                 () => {
                   unsub();
-                  resolve({ uid, displayName: null, photoURL: null });
+                  resolve({
+                    uid,
+                    displayName: null,
+                    photoURL: null,
+                    tasteLabels: null,
+                  });
                 },
               );
             });
@@ -152,8 +174,29 @@ const RecCardComposeScreen = (): React.ReactElement => {
     };
   }, [userUid]);
 
+  // Viewer's own tasteLabels from their public profile (owner-readable).
+  // Used with the selected friend's tasteLabels to build a high-signal
+  // recCopy prompt so Haiku produces genuinely-different variants.
+  useEffect(() => {
+    if (!userUid) return;
+    const unsub = onSnapshot(
+      doc(db, 'users', userUid, 'public', 'profile'),
+      (snap) => {
+        const data = snap.data() as
+          | { tasteLabels?: TasteLabels | null }
+          | undefined;
+        setViewerLabels(data?.tasteLabels ?? null);
+      },
+    );
+    return () => unsub();
+  }, [userUid]);
+
   // Wire the Stream C AI suggestions hook.
   const client = useMemo(() => getDefaultLLMClient(), []);
+  const selectedFriendRow = useMemo(
+    () => friends.find((f) => f.uid === selectedFriend) ?? null,
+    [friends, selectedFriend],
+  );
   const recInput = useMemo(
     () => ({
       title: {
@@ -172,14 +215,14 @@ const RecCardComposeScreen = (): React.ReactElement => {
         runtime: titleDetails?.runtime,
       },
       sender: {
-        tasteLabels: { common: 'texture', rare: 'signal' },
+        tasteLabels: viewerLabels ?? EMPTY_LABELS,
       },
       recipient: {
-        tasteLabels: { common: 'texture', rare: 'signal' },
+        tasteLabels: selectedFriendRow?.tasteLabels ?? EMPTY_LABELS,
       },
       relationshipDepth: 2 as const,
     }),
-    [titleId, titleDetails],
+    [titleId, titleDetails, viewerLabels, selectedFriendRow],
   );
   const recCopy = useRecCopy({ client, input: recInput });
 

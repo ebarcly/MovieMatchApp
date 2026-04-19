@@ -13,7 +13,7 @@ import {
   arrayUnion,
   serverTimestamp,
 } from 'firebase/firestore';
-import { db } from '../firebaseConfig';
+import { auth, db } from '../firebaseConfig';
 import { fetchDetailsById } from '../services/api';
 import type { TitleDetails } from '../services/api';
 
@@ -589,6 +589,306 @@ export async function listPendingRequests(
     } else if (direction === 'outgoing' && data.initiatedBy === uid) {
       out.push({ id: d.id, ...data });
     }
+  });
+  return out;
+}
+
+// --- Stream D: queues ------------------------------------------------
+//
+// Sprint 5b Stream D — shared watch queues. 2-5 participants co-author
+// an ordered list of title ids with 1-tap reactions and a round-robin
+// "your turn to pick" rotation. Activity writes live in a subcollection
+// at /queues/{queueId}/activity and are optional (best-effort logging —
+// a failed activity write never blocks the primary op).
+//
+// The rule file at firestore.rules enforces participant-only reads/writes
+// and the `nextPickUid == auth.uid` gate on markTitleWatched. The op
+// layer enforces the same invariants client-side so a misuse surfaces as
+// a clear thrown error, not a cryptic PERMISSION_DENIED.
+
+/** The 4 allowed one-tap reactions per (title, user). */
+export type QueueReaction = '👍' | '🔥' | '😴' | '⏭️';
+
+const ALLOWED_QUEUE_REACTIONS: readonly QueueReaction[] = [
+  '👍',
+  '🔥',
+  '😴',
+  '⏭️',
+];
+
+/** Verb tags used in /queues/{queueId}/activity. */
+export type QueueActivityVerb =
+  | 'created'
+  | 'addedTitle'
+  | 'reacted'
+  | 'markedWatched';
+
+export interface QueueDoc {
+  id: string;
+  participants: string[];
+  orderedTitleIds: number[];
+  reactions: Record<string, QueueReaction>;
+  nextPickUid: string;
+  createdAt: unknown;
+  name?: string;
+}
+
+export interface QueueActivityDoc {
+  id: string;
+  actor: string;
+  verb: QueueActivityVerb;
+  titleId?: number;
+  at: unknown;
+}
+
+/** Composite reaction-map key: `${titleId}_${uid}`. Exported for tests. */
+export function queueReactionKey(titleId: number, uid: string): string {
+  if (!uid) {
+    throw new Error('queueReactionKey: empty uid');
+  }
+  if (!Number.isFinite(titleId)) {
+    throw new Error('queueReactionKey: non-finite titleId');
+  }
+  return `${titleId}_${uid}`;
+}
+
+function sortParticipants(participants: readonly string[]): string[] {
+  // Lexicographic sort — matches the /friendships deterministic-pair
+  // convention. Stable across locales because all uids are ASCII.
+  return [...participants].sort();
+}
+
+function assertValidParticipantRange(participants: readonly string[]): void {
+  if (!Array.isArray(participants)) {
+    throw new Error('createQueue: participants must be an array');
+  }
+  if (participants.length < 2 || participants.length > 5) {
+    throw new Error(
+      `createQueue: participants range 2-5 (got ${participants.length})`,
+    );
+  }
+  const uniq = new Set(participants);
+  if (uniq.size !== participants.length) {
+    throw new Error('createQueue: duplicate participant uids');
+  }
+  for (const uid of participants) {
+    if (!uid || typeof uid !== 'string') {
+      throw new Error('createQueue: empty/non-string participant uid');
+    }
+  }
+}
+
+/**
+ * Rotate `nextPickUid` to the participant after `currentPicker` in the
+ * lex-sorted participants list. If `currentPicker` is not in the list
+ * (shouldn't happen — rules reject it), return the first participant as
+ * a safe fallback.
+ */
+export function nextPickerAfter(
+  participants: readonly string[],
+  currentPicker: string,
+): string {
+  if (participants.length === 0) {
+    throw new Error('nextPickerAfter: empty participants');
+  }
+  const idx = participants.indexOf(currentPicker);
+  if (idx === -1) {
+    return participants[0];
+  }
+  return participants[(idx + 1) % participants.length];
+}
+
+/**
+ * Create a new queue with 2-5 participants. The creator (first
+ * participant after lex-sort, which is unconditionally set as the
+ * initial `nextPickUid`) need not be one of the participants at the
+ * op-layer check — the rule enforces that. Returns the new queueId +
+ * the normalized participants list.
+ *
+ * Auto-ID (not deterministic) — two friend groups with identical
+ * participants can have multiple queues.
+ */
+export async function createQueue(
+  participants: readonly string[],
+  name?: string,
+): Promise<QueueDoc> {
+  assertValidParticipantRange(participants);
+  const sorted = sortParticipants(participants);
+  const payload: Omit<QueueDoc, 'id'> & { name?: string } = {
+    participants: sorted,
+    orderedTitleIds: [],
+    reactions: {},
+    // Round-robin starts with the first participant in lex order; the
+    // very first `markTitleWatched` call will rotate to the second.
+    nextPickUid: sorted[0],
+    createdAt: serverTimestamp(),
+  };
+  if (name !== undefined) {
+    payload.name = name;
+  }
+  const ref = await addDoc(collection(db, 'queues'), payload);
+  // Best-effort activity log — never fails the primary create path.
+  try {
+    await addDoc(collection(db, 'queues', ref.id, 'activity'), {
+      actor: sorted[0],
+      verb: 'created' satisfies QueueActivityVerb,
+      at: serverTimestamp(),
+    });
+  } catch (err) {
+    console.warn('createQueue: activity log failed (non-fatal):', err);
+  }
+  return { id: ref.id, ...payload };
+}
+
+/**
+ * Append a titleId to the queue's orderedTitleIds. Idempotent — if the
+ * same titleId is already in the queue, this is a no-op (no extra write,
+ * no activity row, no thrown error).
+ *
+ * The rule layer allows any participant to add. The auth uid is read
+ * off `auth.currentUser` for the activity log actor.
+ */
+export async function addTitleToQueue(
+  queueId: string,
+  titleId: number,
+): Promise<void> {
+  if (!queueId) {
+    throw new Error('addTitleToQueue: empty queueId');
+  }
+  if (!Number.isFinite(titleId)) {
+    throw new Error('addTitleToQueue: non-finite titleId');
+  }
+  const ref = doc(db, 'queues', queueId);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) {
+    throw new Error(`addTitleToQueue: queue ${queueId} not found`);
+  }
+  const data = snap.data() as Omit<QueueDoc, 'id'>;
+  if (data.orderedTitleIds.includes(titleId)) {
+    // Idempotent — same title twice is a no-op.
+    return;
+  }
+  await updateDoc(ref, {
+    orderedTitleIds: [...data.orderedTitleIds, titleId],
+  });
+  // Best-effort activity log.
+  try {
+    const actor = auth.currentUser?.uid ?? 'unknown';
+    await addDoc(collection(db, 'queues', queueId, 'activity'), {
+      actor,
+      verb: 'addedTitle' satisfies QueueActivityVerb,
+      titleId,
+      at: serverTimestamp(),
+    });
+  } catch (err) {
+    console.warn('addTitleToQueue: activity log failed (non-fatal):', err);
+  }
+}
+
+/**
+ * Upsert a reaction for (titleId, uid) in the queue's reactions map.
+ * If the user already reacted to this title, the new reaction replaces
+ * the old one (same `${titleId}_${uid}` key). Any of the 4 allowed
+ * emoji are accepted.
+ */
+export async function reactToQueueTitle(
+  queueId: string,
+  titleId: number,
+  reaction: QueueReaction,
+): Promise<void> {
+  if (!queueId) {
+    throw new Error('reactToQueueTitle: empty queueId');
+  }
+  if (!Number.isFinite(titleId)) {
+    throw new Error('reactToQueueTitle: non-finite titleId');
+  }
+  if (!ALLOWED_QUEUE_REACTIONS.includes(reaction)) {
+    throw new Error(`reactToQueueTitle: invalid reaction "${reaction}"`);
+  }
+  const uid = auth.currentUser?.uid;
+  if (!uid) {
+    throw new Error('reactToQueueTitle: not signed in');
+  }
+  const ref = doc(db, 'queues', queueId);
+  const key = queueReactionKey(titleId, uid);
+  await updateDoc(ref, {
+    [`reactions.${key}`]: reaction,
+  });
+  try {
+    await addDoc(collection(db, 'queues', queueId, 'activity'), {
+      actor: uid,
+      verb: 'reacted' satisfies QueueActivityVerb,
+      titleId,
+      at: serverTimestamp(),
+    });
+  } catch (err) {
+    console.warn('reactToQueueTitle: activity log failed (non-fatal):', err);
+  }
+}
+
+/**
+ * Mark the given title as watched by the current `nextPickUid` (the
+ * rule layer enforces this). Advances `nextPickUid` round-robin to the
+ * next participant in lex order. The watched title stays in
+ * orderedTitleIds (so the queue is an ordered history).
+ *
+ * Throws a clear error client-side if the caller is not currently the
+ * picker, so a Firestore PERMISSION_DENIED is never surfaced as an
+ * ambiguous "something went wrong."
+ */
+export async function markTitleWatched(
+  queueId: string,
+  titleId: number,
+): Promise<void> {
+  if (!queueId) {
+    throw new Error('markTitleWatched: empty queueId');
+  }
+  if (!Number.isFinite(titleId)) {
+    throw new Error('markTitleWatched: non-finite titleId');
+  }
+  const uid = auth.currentUser?.uid;
+  if (!uid) {
+    throw new Error('markTitleWatched: not signed in');
+  }
+  const ref = doc(db, 'queues', queueId);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) {
+    throw new Error(`markTitleWatched: queue ${queueId} not found`);
+  }
+  const data = snap.data() as Omit<QueueDoc, 'id'>;
+  if (data.nextPickUid !== uid) {
+    throw new Error(
+      `markTitleWatched: caller ${uid} is not the current picker ${data.nextPickUid}`,
+    );
+  }
+  const nextPickUid = nextPickerAfter(data.participants, uid);
+  await updateDoc(ref, { nextPickUid });
+  try {
+    await addDoc(collection(db, 'queues', queueId, 'activity'), {
+      actor: uid,
+      verb: 'markedWatched' satisfies QueueActivityVerb,
+      titleId,
+      at: serverTimestamp(),
+    });
+  } catch (err) {
+    console.warn('markTitleWatched: activity log failed (non-fatal):', err);
+  }
+}
+
+/**
+ * List queues the user participates in. Query uses
+ * `array-contains auth.uid` which satisfies both get + list per the
+ * participant-gated rule.
+ */
+export async function listQueuesForUid(uid: string): Promise<QueueDoc[]> {
+  if (!uid) return [];
+  const ref = collection(db, 'queues');
+  const q = query(ref, where('participants', 'array-contains', uid));
+  const snap = await getDocs(q);
+  const out: QueueDoc[] = [];
+  snap.forEach((d) => {
+    const data = d.data() as Omit<QueueDoc, 'id'>;
+    out.push({ id: d.id, ...data });
   });
   return out;
 }

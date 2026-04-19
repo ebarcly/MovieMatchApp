@@ -528,7 +528,8 @@ export async function blockUser(fromUid: string, toUid: string): Promise<void> {
   const ref = doc(db, 'friendships', id);
   const existing = await getDoc(ref);
   if (existing.exists()) {
-    await updateDoc(ref, { status: 'blocked', initiatedBy: fromUid });
+    // initiatedBy is immutable per firestore.rules; only transition status.
+    await updateDoc(ref, { status: 'blocked' });
     return;
   }
   const participants: [string, string] =

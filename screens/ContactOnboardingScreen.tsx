@@ -11,20 +11,12 @@ import {
 import { AddressBook, ShareNetwork, UserPlus } from 'phosphor-react-native';
 import * as Contacts from 'expo-contacts';
 import * as Haptics from 'expo-haptics';
-import {
-  collection,
-  documentId,
-  getDocs,
-  query,
-  where,
-} from 'firebase/firestore';
 import type { StackScreenProps } from '@react-navigation/stack';
-import { auth, db } from '../firebaseConfig';
+import { auth } from '../firebaseConfig';
 import {
   normalizePhone,
   normalizeEmail,
   hashContact,
-  batchContactHashes,
 } from '../utils/contactHashing';
 import { sendFriendRequest, friendshipId } from '../utils/firebaseOperations';
 import Avatar from '../components/Avatar';
@@ -61,7 +53,13 @@ import type { MatchesStackParamList } from '../navigation/types';
 
 type Props = StackScreenProps<MatchesStackParamList, 'ContactOnboarding'>;
 
-type ConsentState = 'idle' | 'scanning' | 'matched' | 'denied' | 'error';
+type ConsentState =
+  | 'idle'
+  | 'scanning'
+  | 'matched'
+  | 'awaiting-index'
+  | 'denied'
+  | 'error';
 
 interface FriendCandidate {
   uid: string;
@@ -78,6 +76,7 @@ const ContactOnboardingScreen = (_props: Props): React.ReactElement => {
   const toast = useToast();
   const [state, setState] = useState<ConsentState>('idle');
   const [candidates, setCandidates] = useState<FriendCandidate[]>([]);
+  const [hashedCount, setHashedCount] = useState<number>(0);
   const [pendingSends, setPendingSends] = useState<Set<string>>(
     () => new Set<string>(),
   );
@@ -140,65 +139,23 @@ const ContactOnboardingScreen = (_props: Props): React.ReactElement => {
       }
     }
 
-    if (hashes.size === 0) {
-      setCandidates([]);
-      setState('matched');
-      return;
-    }
-
-    // 3. Query Firestore in batches of 10 (array-contains-any limit).
-    // NOTE(5b): once user-doc split is widely deployed we can use a
-    // collectionGroup query to sweep /public/profile across all users.
-    // Until then we fall back to /users and filter client-side — Sprint
-    // 5a scope. The query shape here models the 5b endpoint so the
-    // contract verify_command can assert the server-side path exists.
-    try {
-      const allHashes = [...hashes];
-      const batches = batchContactHashes(allHashes);
-      const results: FriendCandidate[] = [];
-      // We cap the total candidate list to 10 per the contract.
-      const MAX_CANDIDATES = 10;
-
-      for (const batch of batches) {
-        if (results.length >= MAX_CANDIDATES) break;
-        // collectionGroup('public') would reach every /users/{uid}/public/
-        // {doc}; for 5a we use a collection reference + known path.
-        // When 5b adds collectionGroup indexes we'll migrate.
-        const qref = query(
-          collection(db, 'users'),
-          where(documentId(), '!=', uid),
-        );
-        const snap = await getDocs(qref);
-        snap.forEach((d) => {
-          const data = d.data() as {
-            contactHashes?: string[];
-            displayName?: string;
-            profileName?: string;
-            photoURL?: string;
-            tasteProfile?: { labels?: { common: string; rare: string } };
-          };
-          const hasHash =
-            Array.isArray(data.contactHashes) &&
-            data.contactHashes.some((h) => batch.includes(h));
-          if (!hasHash) return;
-          if (results.find((r) => r.uid === d.id)) return;
-          results.push({
-            uid: d.id,
-            displayName: data.displayName ?? data.profileName ?? null,
-            photoURL: data.photoURL ?? null,
-            tasteLabels: data.tasteProfile?.labels ?? null,
-            curated: false,
-          });
-        });
-      }
-
-      setCandidates(results.slice(0, MAX_CANDIDATES));
-      setState('matched');
-    } catch (err) {
-      console.error('Contact match query failed:', err);
-      setErrorMessage('Could not match contacts. Check your connection.');
-      setState('error');
-    }
+    // 3. Hand-off to the 5b surface.
+    //
+    // Cross-user contact matching lives in Sprint 5b: it needs a Firestore
+    // collectionGroup('public') query + a composite index to scan every
+    // user's /public/profile subcollection against the hashed contact set
+    // with `array-contains-any` batches. The index + collectionGroup
+    // query aren't in 5a scope. Rather than run a degraded query against
+    // the private /users collection (which the rules would reject in
+    // production AND doesn't hold contactHashes anyway), we stop at the
+    // hashing step and surface an honest "awaiting-index" state so the
+    // user can still invite friends via the share-link fallback.
+    //
+    // 5b generator: restore the matching pipeline here. `hashedCount`
+    // + the 'awaiting-index' state branch are the seams to remove.
+    setCandidates([]);
+    setHashedCount(hashes.size);
+    setState('awaiting-index');
   }, []);
 
   const handleInvite = useCallback(async () => {
@@ -393,6 +350,36 @@ const ContactOnboardingScreen = (_props: Props): React.ReactElement => {
           <Text style={styles.errorBannerText}>
             {errorMessage ?? 'Something went wrong.'}
           </Text>
+        </View>
+      );
+    }
+
+    if (state === 'awaiting-index') {
+      const contactWord = hashedCount === 1 ? 'contact' : 'contacts';
+      return (
+        <View style={styles.heroCentered}>
+          <View style={styles.iconCircle}>
+            <AddressBook size={36} color={colors.accent} weight="regular" />
+          </View>
+          <Text style={styles.heroTitle}>
+            {hashedCount > 0
+              ? `${hashedCount} ${contactWord} hashed`
+              : 'No contacts to hash'}
+          </Text>
+          <Text style={styles.heroBody}>
+            Cross-user matching lands in the next release.
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Share an invite link"
+            onPress={handleInvite}
+            style={({ pressed }) => [
+              styles.primaryCta,
+              pressed && styles.primaryCtaPressed,
+            ]}
+          >
+            <Text style={styles.primaryCtaText}>Share invite link</Text>
+          </Pressable>
         </View>
       );
     }

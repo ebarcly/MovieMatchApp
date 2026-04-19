@@ -284,6 +284,12 @@ const ProfileSetupScreen = (): React.ReactElement => {
             const selected = streamingServices.includes(service.provider_name);
             return (
               <Pressable
+                accessibilityLabel={service.provider_name}
+                accessibilityRole="button"
+                accessibilityState={{
+                  selected,
+                  disabled: fullCatalogAccess,
+                }}
                 key={service.provider_id}
                 style={[
                   styles.serviceItem,
@@ -294,12 +300,6 @@ const ProfileSetupScreen = (): React.ReactElement => {
                   handleStreamingServiceChange(service.provider_name)
                 }
                 disabled={fullCatalogAccess}
-                accessibilityRole="button"
-                accessibilityLabel={service.provider_name}
-                accessibilityState={{
-                  selected,
-                  disabled: fullCatalogAccess,
-                }}
               >
                 <Image source={{ uri: service.logo_url }} style={styles.logo} />
                 <Text
@@ -324,12 +324,12 @@ const ProfileSetupScreen = (): React.ReactElement => {
             const selected = genres.includes(genre);
             return (
               <Pressable
+                accessibilityLabel={genre}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
                 key={genre}
                 style={[styles.genreItem, selected && styles.genreSelected]}
                 onPress={() => handleGenreChange(genre)}
-                accessibilityRole="button"
-                accessibilityLabel={genre}
-                accessibilityState={{ selected }}
               >
                 <Text
                   style={[
@@ -356,14 +356,14 @@ const ProfileSetupScreen = (): React.ReactElement => {
       ) : null}
 
       <Pressable
+        accessibilityLabel={isEditMode ? 'Save changes' : 'Complete profile'}
+        accessibilityRole="button"
+        accessibilityState={{ disabled: isSubmitting, busy: isSubmitting }}
         onPress={handleProfileUpdate}
         style={({ pressed }) => [
           styles.updateButton,
           pressed && styles.updateButtonPressed,
         ]}
-        accessibilityRole="button"
-        accessibilityLabel={isEditMode ? 'Save changes' : 'Complete profile'}
-        accessibilityState={{ disabled: isSubmitting, busy: isSubmitting }}
         disabled={isSubmitting}
       >
         {isSubmitting ? (

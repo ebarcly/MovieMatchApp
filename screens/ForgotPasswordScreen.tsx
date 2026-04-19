@@ -79,14 +79,14 @@ const ForgotPasswordScreen = ({ navigation }: Props): React.ReactElement => {
           </View>
         ) : null}
         <Pressable
+          accessibilityLabel="Send reset link"
+          accessibilityRole="button"
+          accessibilityState={{ disabled: isSubmitting, busy: isSubmitting }}
           style={({ pressed }) => [
             styles.button,
             pressed && styles.buttonPressed,
           ]}
           onPress={handlePasswordReset}
-          accessibilityRole="button"
-          accessibilityLabel="Send reset link"
-          accessibilityState={{ disabled: isSubmitting, busy: isSubmitting }}
           disabled={isSubmitting}
         >
           {isSubmitting ? (
@@ -96,10 +96,10 @@ const ForgotPasswordScreen = ({ navigation }: Props): React.ReactElement => {
           )}
         </Pressable>
         <Pressable
+          accessibilityLabel="Back to login"
+          accessibilityRole="button"
           onPress={() => navigation.navigate('Login')}
           style={styles.linkWrap}
-          accessibilityRole="button"
-          accessibilityLabel="Back to login"
         >
           <Text style={styles.linkText}>Back to login</Text>
         </Pressable>

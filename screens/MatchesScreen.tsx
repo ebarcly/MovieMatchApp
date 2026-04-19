@@ -128,11 +128,11 @@ const MatchesScreen = ({ navigation }: Props): React.ReactElement => {
             You and {item.friend.name} both love this.
           </Text>
           <Pressable
-            style={styles.chatButton}
-            onPress={() => handleChatPress(item)}
-            accessibilityRole="button"
             accessibilityLabel={`Open chat with ${item.friend.name}`}
             accessibilityHint="Chat surface lands in Sprint 5"
+            accessibilityRole="button"
+            style={styles.chatButton}
+            onPress={() => handleChatPress(item)}
           >
             <Text style={styles.chatButtonText}>Start chat</Text>
           </Pressable>

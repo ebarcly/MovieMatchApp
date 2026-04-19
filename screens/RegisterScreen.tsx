@@ -143,15 +143,15 @@ const RegisterScreen = (): React.ReactElement => {
           </View>
         ) : null}
         <Pressable
+          accessibilityLabel="Sign up"
+          accessibilityRole="button"
+          accessibilityState={{ disabled: isSubmitting, busy: isSubmitting }}
           onPress={handleRegister}
           style={({ pressed }) => [
             styles.button,
             isSubmitting && styles.buttonDisabled,
             pressed && !isSubmitting && styles.buttonPressed,
           ]}
-          accessibilityRole="button"
-          accessibilityLabel="Sign up"
-          accessibilityState={{ disabled: isSubmitting, busy: isSubmitting }}
           disabled={isSubmitting}
         >
           {isSubmitting ? (
@@ -171,10 +171,10 @@ const RegisterScreen = (): React.ReactElement => {
           <Text style={styles.rememberMeText}>Remember me</Text>
         </View>
         <Pressable
+          accessibilityLabel="Back to login"
+          accessibilityRole="button"
           onPress={() => navigation.navigate('Login')}
           style={styles.linkWrap}
-          accessibilityRole="button"
-          accessibilityLabel="Back to login"
         >
           <Text style={styles.linkText}>Already have an account? Log in</Text>
         </Pressable>

@@ -58,7 +58,7 @@ export const colors = {
   error: '#FF3E6C',
   info: '#7FB3FF',
 
-  // Match-badge gradient — tri-stop heat ramp (dim → hot → solar).
+  // Match-score gradient — tri-stop heat ramp (dim → hot → solar).
   matchGradient: ['#5F5F74', '#FF3E9E', '#FBEC5D'] as const,
 } as const;
 

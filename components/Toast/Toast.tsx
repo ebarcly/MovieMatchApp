@@ -174,10 +174,10 @@ const ToastViewport = ({
               style={styles.toastWrap}
             >
               <Pressable
-                onPress={() => onDismiss(t.id)}
-                accessibilityRole="button"
                 accessibilityLabel={`Dismiss ${t.type} toast`}
                 accessibilityHint="Tap to dismiss this notification"
+                accessibilityRole="button"
+                onPress={() => onDismiss(t.id)}
                 style={({ pressed }) =>
                   [
                     styles.toast,

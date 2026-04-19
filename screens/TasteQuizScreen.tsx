@@ -348,13 +348,13 @@ const TasteQuizScreen = (): React.ReactElement => {
               style={styles.ctaWrap}
             >
               <Pressable
+                accessibilityLabel="Open MovieMatch"
+                accessibilityRole="button"
                 onPress={handleDone}
                 style={({ pressed }) => [
                   styles.ctaButton,
                   pressed && styles.ctaPressed,
                 ]}
-                accessibilityRole="button"
-                accessibilityLabel="Open MovieMatch"
               >
                 <Text style={styles.ctaText}>Let&apos;s go</Text>
               </Pressable>
@@ -385,12 +385,12 @@ const TasteQuizScreen = (): React.ReactElement => {
         style={[styles.posterWrap, isChosen && styles.posterChosen]}
       >
         <Pressable
-          onPress={() => handlePick(side)}
-          style={styles.posterPressable}
-          accessibilityRole="button"
           accessibilityLabel={`Pick ${poster.title}`}
           accessibilityHint={`Selects ${poster.title} for this prompt`}
+          accessibilityRole="button"
           accessibilityState={{ selected: isChosen }}
+          onPress={() => handlePick(side)}
+          style={styles.posterPressable}
         >
           {uri ? (
             <Image source={{ uri }} style={styles.posterImage} />

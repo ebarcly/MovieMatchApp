@@ -82,6 +82,9 @@ const LoginScreen = ({ navigation }: Props): React.ReactElement => {
           </View>
         ) : null}
         <Pressable
+          accessibilityLabel="Log In"
+          accessibilityRole="button"
+          accessibilityState={{ disabled: isSubmitting, busy: isSubmitting }}
           onPress={handleLogin}
           style={({ pressed }) => [
             styles.button,
@@ -89,9 +92,6 @@ const LoginScreen = ({ navigation }: Props): React.ReactElement => {
             pressed && !isSubmitting && styles.buttonPressed,
           ]}
           disabled={isSubmitting}
-          accessibilityRole="button"
-          accessibilityLabel="Log In"
-          accessibilityState={{ disabled: isSubmitting, busy: isSubmitting }}
         >
           {isSubmitting ? (
             <DotLoader size="sm" accessibilityLabel="Signing in" />
@@ -100,20 +100,20 @@ const LoginScreen = ({ navigation }: Props): React.ReactElement => {
           )}
         </Pressable>
         <Pressable
+          accessibilityLabel="Forgot your password"
+          accessibilityRole="button"
           onPress={() => navigation.navigate('ForgotPassword')}
           style={styles.linkWrap}
           disabled={isSubmitting}
-          accessibilityRole="button"
-          accessibilityLabel="Forgot your password"
         >
           <Text style={styles.linkText}>Forgot your password?</Text>
         </Pressable>
         <Pressable
+          accessibilityLabel="Register a new account"
+          accessibilityRole="button"
           onPress={() => navigation.navigate('Register')}
           style={styles.linkWrap}
           disabled={isSubmitting}
-          accessibilityRole="button"
-          accessibilityLabel="Register a new account"
         >
           <Text style={styles.linkText}>
             Don&apos;t have an account? Register

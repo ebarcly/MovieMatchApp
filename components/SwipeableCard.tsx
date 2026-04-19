@@ -311,14 +311,14 @@ const SwipeableCard = ({
       )}
       <View style={styles.buttonContainer}>
         <Pressable
+          accessibilityLabel="Skip"
+          accessibilityHint="Skips this title without adding it to your watchlist"
+          accessibilityRole="button"
           style={({ pressed }) => [
             styles.button,
             styles.buttonSkip,
             pressed && styles.buttonPressed,
           ]}
-          accessibilityRole="button"
-          accessibilityLabel="Skip"
-          accessibilityHint="Skips this title without adding it to your watchlist"
           onPress={() => handleSwipe('reject', cardIndex)}
         >
           <SkipForward
@@ -330,14 +330,14 @@ const SwipeableCard = ({
           <Text style={styles.buttonSkipText}>Skip</Text>
         </Pressable>
         <Pressable
+          accessibilityLabel="Watched"
+          accessibilityHint="Adds this title to your watchlist"
+          accessibilityRole="button"
           style={({ pressed }) => [
             styles.button,
             styles.buttonAccept,
             pressed && styles.buttonPressed,
           ]}
-          accessibilityRole="button"
-          accessibilityLabel="Watched"
-          accessibilityHint="Adds this title to your watchlist"
           onPress={() => handleSwipe('accept', cardIndex)}
         >
           <Check

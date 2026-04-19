@@ -229,13 +229,13 @@ const MyCaveScreen = (): React.ReactElement => {
           ))}
         </View>
         <Pressable
+          accessibilityLabel="Edit profile"
+          accessibilityRole="button"
           onPress={navigateToProfileEdit}
           style={({ pressed }) => [
             styles.editProfileButton,
             pressed && styles.editProfilePressed,
           ]}
-          accessibilityRole="button"
-          accessibilityLabel="Edit profile"
         >
           <Text style={styles.editProfileText}>Edit profile</Text>
         </Pressable>
@@ -248,12 +248,12 @@ const MyCaveScreen = (): React.ReactElement => {
           keyExtractor={(item) => String(item?.id ?? '')}
           renderItem={({ item }: { item: WatchlistItem }) => (
             <Pressable
+              accessibilityLabel={`Open ${item.title || item.name || 'title'} details`}
+              accessibilityRole="button"
               onPress={() =>
                 navigation.navigate('Detail', { id: item.id, type: item.type })
               }
               style={styles.watchlistItemContainer}
-              accessibilityRole="button"
-              accessibilityLabel={`Open ${item.title || item.name || 'title'} details`}
             >
               <Image
                 source={{
@@ -262,10 +262,10 @@ const MyCaveScreen = (): React.ReactElement => {
                 style={styles.watchlistItemImage}
               />
               <Pressable
+                accessibilityLabel={`Remove ${item.title || item.name || 'title'} from watchlist`}
+                accessibilityRole="button"
                 onPress={() => handleRemoveFromWatchlist(item)}
                 style={styles.watchlistEditButton}
-                accessibilityRole="button"
-                accessibilityLabel={`Remove ${item.title || item.name || 'title'} from watchlist`}
               >
                 <Text style={styles.watchlistEditText}>Remove</Text>
               </Pressable>
@@ -290,13 +290,13 @@ const MyCaveScreen = (): React.ReactElement => {
         ))}
       </Section>
       <Pressable
+        accessibilityLabel="Log out"
+        accessibilityRole="button"
         onPress={handleLogout}
         style={({ pressed }) => [
           styles.logoutButton,
           pressed && styles.logoutButtonPressed,
         ]}
-        accessibilityRole="button"
-        accessibilityLabel="Log out"
       >
         <Text style={styles.logoutButtonText}>Log out</Text>
       </Pressable>

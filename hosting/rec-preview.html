@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>A MovieMatch rec</title>
+    <!--
+      Sprint 5b Stream B — static rec preview.
+      Served from /rec/** via the firebase.json hosting rewrite.
+      Tiny on purpose (no framework) so iMessage previews load fast
+      and the TTI is near-instant. Dark-first palette mirrors
+      theme/index.ts tokens. The rec document (/recs/{recId}) is
+      participant-gated in Firestore; this preview is the public
+      teaser only — it does NOT fetch the Firestore doc. It just
+      renders a generic "open the app" CTA with an install link.
+      Populating the real poster/sender/note at preview time is
+      Sprint 6 (Cloud Function + hashed server-side render).
+    -->
+    <meta property="og:title" content="A MovieMatch rec" />
+    <meta
+      property="og:description"
+      content="A friend sent you a movie recommendation."
+    />
+    <meta property="og:type" content="website" />
+    <style>
+      :root {
+        --ink: #0a0a12;
+        --surface: #111118;
+        --surface-raised: #1a1a24;
+        --border-strong: #2a2a38;
+        --text-high: #f5f5fa;
+        --text-body: #eaeaf2;
+        --text-secondary: #b4b4ca;
+        --accent: #fbec5d;
+        --accent-fg: #0a0a12;
+        --accent-secondary: #ff3e9e;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        background-color: var(--ink);
+        color: var(--text-high);
+        font-family:
+          -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 32px 20px;
+      }
+      main {
+        max-width: 480px;
+        width: 100%;
+      }
+      .eyebrow {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.25em;
+        color: var(--accent-secondary);
+        margin-bottom: 12px;
+        font-weight: 600;
+      }
+      h1 {
+        font-size: 28px;
+        line-height: 1.15;
+        margin: 0 0 16px 0;
+        color: var(--text-high);
+      }
+      p {
+        font-size: 16px;
+        line-height: 1.5;
+        color: var(--text-body);
+        margin: 0 0 16px 0;
+      }
+      .poster-placeholder {
+        width: 100%;
+        aspect-ratio: 2 / 3;
+        max-width: 240px;
+        margin: 24px auto;
+        background: linear-gradient(
+          160deg,
+          var(--surface) 0%,
+          var(--surface-raised) 100%
+        );
+        border-radius: 12px;
+        border: 1px solid var(--border-strong);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-secondary);
+        font-size: 14px;
+      }
+      .card {
+        background-color: var(--surface);
+        border: 1px solid var(--border-strong);
+        border-radius: 12px;
+        padding: 20px;
+        margin: 24px 0;
+      }
+      .card .sender {
+        color: var(--text-secondary);
+        font-size: 13px;
+        margin-bottom: 8px;
+      }
+      .card .note {
+        color: var(--text-body);
+        font-size: 15px;
+        line-height: 1.45;
+        font-style: italic;
+      }
+      .cta {
+        display: block;
+        width: 100%;
+        background-color: var(--accent);
+        color: var(--accent-fg);
+        font-weight: 600;
+        font-size: 16px;
+        text-align: center;
+        text-decoration: none;
+        padding: 16px 20px;
+        border-radius: 12px;
+        border: 0;
+        margin-top: 24px;
+      }
+      .cta:hover,
+      .cta:focus {
+        background-color: #e5d94a;
+      }
+      footer {
+        margin-top: 32px;
+        font-size: 12px;
+        color: var(--text-secondary);
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="eyebrow">MovieMatch</div>
+      <h1>A friend sent you a rec</h1>
+      <p>
+        Install MovieMatch to see the poster, read the full note, and add this
+        title to your watchlist in one tap.
+      </p>
+      <div class="poster-placeholder" aria-hidden="true">
+        Poster loads in app
+      </div>
+      <div class="card">
+        <div class="sender">From a friend</div>
+        <div class="note">
+          Open this in MovieMatch to see the personal note they wrote for you.
+        </div>
+      </div>
+      <a class="cta" href="https://expo.dev" aria-label="Install MovieMatch"
+        >Install and open in MovieMatch</a
+      >
+      <footer>Thanks for checking out MovieMatch.</footer>
+    </main>
+  </body>
+</html>

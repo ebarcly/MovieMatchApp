@@ -7,5 +7,15 @@
   },
   "storage": {
     "rules": "storage.rules"
+  },
+  "hosting": {
+    "public": "hosting",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "rewrites": [
+      {
+        "source": "/rec/**",
+        "destination": "/rec-preview.html"
+      }
+    ]
   }
 }

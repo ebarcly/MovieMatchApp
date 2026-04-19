@@ -4,11 +4,10 @@ import {
   Text,
   StyleSheet,
   Image,
-  TouchableOpacity,
+  Pressable,
   ScrollView,
   Switch,
   TextInput,
-  Alert,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
@@ -17,6 +16,9 @@ import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { updateProfile } from 'firebase/auth';
 import { auth, db } from '../firebaseConfig';
 import { fetchStreamingServices, type TmdbProvider } from '../services/api';
+import { useToast } from '../components/Toast';
+import DotLoader from '../components/DotLoader';
+import { colors, spacing, radii, typography } from '../theme';
 import type {
   ProfileSetupStackParamList,
   MyCaveStackParamList,
@@ -44,6 +46,7 @@ interface UserProfileDocData {
   streamingServices?: string[];
   genres?: string[];
   fullCatalogAccess?: boolean;
+  tasteProfile?: unknown;
 }
 
 // Route can be either ProfileSetupInitial (initial flow) or EditProfile
@@ -62,6 +65,7 @@ const ProfileSetupScreen = (): React.ReactElement => {
   const navigation = useNavigation<ProfileSetupNav>();
   const params: SharedProfileParams | undefined = route.params;
   const isEditMode: boolean = params?.isEditing ?? false;
+  const toast = useToast();
 
   const [username, setUsername] = useState('');
   const [profileName, setProfileName] = useState('');
@@ -73,6 +77,7 @@ const ProfileSetupScreen = (): React.ReactElement => {
   const [genres, setGenres] = useState<string[]>([]);
   const [fullCatalogAccess, setFullCatalogAccess] = useState(false);
   const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const fetchStreamingServicesData = async (): Promise<void> => {
@@ -110,12 +115,13 @@ const ProfileSetupScreen = (): React.ReactElement => {
         }
       } catch (fetchError) {
         console.error('Error fetching user profile: ', fetchError);
-        setError('Failed to load profile data.');
+        setError('We could not load your profile. Please try again.');
       }
     }
   };
 
   const handleProfileUpdate = async (): Promise<void> => {
+    if (isSubmitting) return;
     const user = auth.currentUser;
     if (!user) {
       setError('No user logged in.');
@@ -123,7 +129,7 @@ const ProfileSetupScreen = (): React.ReactElement => {
     }
 
     if (!profileName.trim()) {
-      setError('Profile Name cannot be empty.');
+      setError('Profile name cannot be empty.');
       return;
     }
     if (!username.trim()) {
@@ -132,6 +138,7 @@ const ProfileSetupScreen = (): React.ReactElement => {
     }
 
     setError('');
+    setIsSubmitting(true);
 
     const dataToSave = {
       username: username.trim(),
@@ -155,10 +162,30 @@ const ProfileSetupScreen = (): React.ReactElement => {
       });
 
       if (isEditMode) {
-        Alert.alert('Success', 'Profile Updated!');
+        toast.show({
+          type: 'success',
+          title: 'Profile updated',
+          body: 'Your changes are saved.',
+        });
         navigation.goBack();
-      } else {
-        Alert.alert('Success', 'Profile Setup Complete!');
+        return;
+      }
+
+      // Initial profile-setup flow — if the user does not already have a
+      // tasteProfile written, route into the onboarding quiz. Otherwise
+      // AppNavigator will advance to Main automatically once the user doc
+      // satisfies the profile-complete predicate.
+      const snap = await getDoc(userDocRef);
+      const hasTaste = Boolean(
+        (snap.data() as UserProfileDocData | undefined)?.tasteProfile,
+      );
+      if (!hasTaste) {
+        (
+          navigation as unknown as StackNavigationProp<
+            ProfileSetupStackParamList,
+            'ProfileSetupInitial'
+          >
+        ).navigate('TasteQuiz');
       }
     } catch (updateError) {
       const msg =
@@ -166,8 +193,9 @@ const ProfileSetupScreen = (): React.ReactElement => {
           ? updateError.message
           : String(updateError);
       console.error('Error updating profile: ', updateError);
-      setError(`Failed to update profile: ${msg}`);
-      Alert.alert('Error', `Failed to update profile: ${msg}`);
+      setError(`We couldn't save your profile: ${msg}`);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -186,9 +214,13 @@ const ProfileSetupScreen = (): React.ReactElement => {
   };
 
   return (
-    <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+    >
       <Text style={styles.title}>
-        {isEditMode ? 'Edit Profile' : 'Setup Profile'}
+        {isEditMode ? 'Edit profile' : 'Set up your profile'}
       </Text>
 
       <View style={styles.inputContainer}>
@@ -197,17 +229,21 @@ const ProfileSetupScreen = (): React.ReactElement => {
           style={styles.input}
           value={username}
           onChangeText={setUsername}
-          placeholder="Enter a unique username"
+          placeholder="A unique handle"
+          placeholderTextColor={colors.textTertiary}
           autoCapitalize="none"
+          accessibilityLabel="Username"
         />
       </View>
       <View style={styles.inputContainer}>
-        <Text style={styles.label}>Profile Name</Text>
+        <Text style={styles.label}>Profile name</Text>
         <TextInput
           style={styles.input}
           value={profileName}
           onChangeText={setProfileName}
           placeholder="How you want to be displayed"
+          placeholderTextColor={colors.textTertiary}
+          accessibilityLabel="Profile name"
         />
       </View>
       <View style={styles.inputContainer}>
@@ -216,96 +252,128 @@ const ProfileSetupScreen = (): React.ReactElement => {
           style={[styles.input, styles.bioInput]}
           value={bio}
           onChangeText={setBio}
-          placeholder="Tell us a bit about yourself"
+          placeholder="A line or two about you"
+          placeholderTextColor={colors.textTertiary}
           multiline
           numberOfLines={3}
+          accessibilityLabel="Bio"
         />
       </View>
 
       <View style={styles.fullCatalogContainer}>
-        <Text style={styles.fullCatalogLabel}>
-          Enable All Services (Full Catalog Access):
-        </Text>
+        <Text style={styles.fullCatalogLabel}>Show everything</Text>
         <Switch
           value={fullCatalogAccess}
           onValueChange={setFullCatalogAccess}
-          trackColor={{ false: '#767577', true: '#81b0ff' }}
-          thumbColor={fullCatalogAccess ? '#f5dd4b' : '#f4f3f4'}
+          trackColor={{
+            false: colors.borderStrong,
+            true: colors.accent,
+          }}
+          thumbColor={
+            fullCatalogAccess ? colors.accentForeground : colors.textHigh
+          }
+          ios_backgroundColor={colors.borderStrong}
+          accessibilityLabel="Show everything"
         />
       </View>
 
       <View style={styles.streamingServicesContainer}>
-        <Text style={styles.streamingServicesLabel}>
-          My Streaming Services:
-        </Text>
+        <Text style={styles.sectionLabel}>Streaming services</Text>
         <View style={styles.serviceList}>
-          {streamingServicesData.map((service) => (
-            <TouchableOpacity
-              key={service.provider_id}
-              style={[
-                styles.serviceItem,
-                streamingServices.includes(service.provider_name) &&
-                  styles.serviceItemSelected,
-              ]}
-              onPress={() =>
-                handleStreamingServiceChange(service.provider_name)
-              }
-              disabled={fullCatalogAccess}
-            >
-              <Image
-                source={{ uri: service.logo_url }}
-                style={[styles.logo, fullCatalogAccess && styles.disabledItem]}
-              />
-              <Text
+          {streamingServicesData.map((service) => {
+            const selected = streamingServices.includes(service.provider_name);
+            return (
+              <Pressable
+                key={service.provider_id}
                 style={[
-                  styles.serviceName,
-                  streamingServices.includes(service.provider_name) &&
-                    styles.serviceNameSelected,
+                  styles.serviceItem,
+                  selected && styles.serviceItemSelected,
                   fullCatalogAccess && styles.disabledItem,
                 ]}
+                onPress={() =>
+                  handleStreamingServiceChange(service.provider_name)
+                }
+                disabled={fullCatalogAccess}
+                accessibilityRole="button"
+                accessibilityLabel={service.provider_name}
+                accessibilityState={{
+                  selected,
+                  disabled: fullCatalogAccess,
+                }}
               >
-                {service.provider_name}
-              </Text>
-            </TouchableOpacity>
-          ))}
+                <Image source={{ uri: service.logo_url }} style={styles.logo} />
+                <Text
+                  style={[
+                    styles.serviceName,
+                    selected && styles.serviceNameSelected,
+                  ]}
+                  numberOfLines={1}
+                >
+                  {service.provider_name}
+                </Text>
+              </Pressable>
+            );
+          })}
         </View>
       </View>
 
       <View style={styles.genresContainer}>
-        <Text style={styles.genresLabel}>My Favorite Genres:</Text>
+        <Text style={styles.sectionLabel}>Favorite genres</Text>
         <View style={styles.genreList}>
-          {GENRES.map((genre) => (
-            <TouchableOpacity
-              key={genre}
-              style={[
-                styles.genreItem,
-                genres.includes(genre) && styles.genreSelected,
-              ]}
-              onPress={() => handleGenreChange(genre)}
-            >
-              <Text
-                style={[
-                  styles.genreText,
-                  genres.includes(genre) && styles.genreTextSelected,
-                ]}
+          {GENRES.map((genre) => {
+            const selected = genres.includes(genre);
+            return (
+              <Pressable
+                key={genre}
+                style={[styles.genreItem, selected && styles.genreSelected]}
+                onPress={() => handleGenreChange(genre)}
+                accessibilityRole="button"
+                accessibilityLabel={genre}
+                accessibilityState={{ selected }}
               >
-                {genre}
-              </Text>
-            </TouchableOpacity>
-          ))}
+                <Text
+                  style={[
+                    styles.genreText,
+                    selected && styles.genreTextSelected,
+                  ]}
+                >
+                  {genre}
+                </Text>
+              </Pressable>
+            );
+          })}
         </View>
       </View>
 
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      {error ? (
+        <View
+          style={styles.errorBanner}
+          accessibilityRole="alert"
+          accessibilityLiveRegion="polite"
+        >
+          <Text style={styles.errorBannerText}>{error}</Text>
+        </View>
+      ) : null}
 
-      <TouchableOpacity
+      <Pressable
         onPress={handleProfileUpdate}
-        style={styles.updateButton}
+        style={({ pressed }) => [
+          styles.updateButton,
+          pressed && styles.updateButtonPressed,
+        ]}
+        accessibilityRole="button"
+        accessibilityLabel={isEditMode ? 'Save changes' : 'Complete profile'}
+        accessibilityState={{ disabled: isSubmitting, busy: isSubmitting }}
+        disabled={isSubmitting}
       >
-        <Text style={styles.updateButtonText}>
-          {isEditMode ? 'Save Changes' : 'Complete Profile'}
-        </Text>
-      </TouchableOpacity>
+        {isSubmitting ? (
+          <DotLoader size="sm" accessibilityLabel="Saving profile" />
+        ) : (
+          <Text style={styles.updateButtonText}>
+            {isEditMode ? 'Save changes' : 'Complete profile'}
+          </Text>
+        )}
+      </Pressable>
     </ScrollView>
   );
 };
@@ -313,164 +381,167 @@ const ProfileSetupScreen = (): React.ReactElement => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
-    backgroundColor: '#fff',
+    backgroundColor: colors.ink,
+  },
+  content: {
+    padding: spacing.lg,
+    paddingBottom: spacing.xxl,
   },
   title: {
-    fontSize: 24,
-    fontFamily: 'WorkSans-Bold',
-    marginBottom: 25,
+    ...typography.titleLg,
+    marginBottom: spacing.lg,
     textAlign: 'center',
-    color: '#333',
+    color: colors.textHigh,
   },
   inputContainer: {
-    marginBottom: 15,
+    marginBottom: spacing.md,
   },
   label: {
-    fontFamily: 'WorkSans-SemiBold',
-    marginBottom: 8,
-    fontSize: 14,
-    color: '#555',
+    ...typography.label,
+    marginBottom: spacing.xs,
+    color: colors.textSecondary,
   },
   input: {
+    ...typography.body,
     borderWidth: 1,
-    borderColor: '#ccc',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 8,
-    fontSize: 14,
-    fontFamily: 'WorkSans-Regular',
-    backgroundColor: '#f9f9f9',
+    borderColor: colors.borderSubtle,
+    backgroundColor: colors.surfaceRaised,
+    color: colors.textBody,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radii.md,
+    minHeight: 44,
   },
   bioInput: {
-    height: 80,
+    minHeight: 96,
     textAlignVertical: 'top',
   },
   streamingServicesContainer: {
-    marginBottom: 25,
+    marginBottom: spacing.lg,
   },
-  streamingServicesLabel: {
-    fontFamily: 'WorkSans-Bold',
-    marginBottom: 15,
-    fontSize: 16,
-    color: '#333',
+  sectionLabel: {
+    ...typography.titleSm,
+    marginBottom: spacing.sm,
+    color: colors.textHigh,
   },
   serviceList: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginHorizontal: -5,
+    marginHorizontal: -spacing.xxs,
   },
   serviceItem: {
     width: '48%',
     flexDirection: 'column',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: spacing.sm,
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 10,
+    borderColor: colors.borderSubtle,
+    borderRadius: radii.md,
+    padding: spacing.sm,
     marginHorizontal: '1%',
-    backgroundColor: '#fff',
+    backgroundColor: colors.surfaceRaised,
+    minHeight: 44,
   },
   serviceItemSelected: {
-    borderColor: 'blue',
-    backgroundColor: '#eef4ff',
+    borderColor: colors.accent,
+    backgroundColor: colors.accentMuted,
   },
   logo: {
-    width: 45,
-    height: 45,
-    marginBottom: 8,
+    width: 44,
+    height: 44,
+    marginBottom: spacing.xs,
     resizeMode: 'contain',
   },
   serviceName: {
-    fontSize: 11,
+    ...typography.caption,
     textAlign: 'center',
-    fontFamily: 'WorkSans-Regular',
-    color: '#444',
+    color: colors.textBody,
   },
   serviceNameSelected: {
-    color: 'blue',
-    fontFamily: 'WorkSans-SemiBold',
+    color: colors.accent,
   },
   disabledItem: {
-    opacity: 0.5,
+    opacity: 0.4,
   },
-  errorText: {
-    color: 'red',
-    fontFamily: 'WorkSans-Regular',
-    marginBottom: 15,
-    textAlign: 'center',
-    fontSize: 13,
+  errorBanner: {
+    marginBottom: spacing.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radii.md,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.error,
+    backgroundColor: colors.surfaceRaised,
+  },
+  errorBannerText: {
+    ...typography.bodySm,
+    color: colors.textHigh,
   },
   genresContainer: {
-    marginBottom: 25,
-  },
-  genresLabel: {
-    fontFamily: 'WorkSans-Bold',
-    marginBottom: 15,
-    fontSize: 16,
-    color: '#333',
+    marginBottom: spacing.lg,
   },
   genreList: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginHorizontal: -5,
+    marginHorizontal: -spacing.xxs,
   },
   genreItem: {
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: spacing.xs,
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 15,
-    paddingVertical: 8,
-    paddingHorizontal: 15,
+    borderColor: colors.borderSubtle,
+    borderRadius: radii.pill,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
     marginHorizontal: '1%',
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
+    minHeight: 36,
+    justifyContent: 'center',
   },
   genreSelected: {
-    borderColor: 'blue',
-    backgroundColor: '#eef4ff',
+    borderColor: colors.accent,
+    backgroundColor: colors.accentMuted,
   },
   genreText: {
-    fontSize: 12,
+    ...typography.caption,
     textAlign: 'center',
-    fontFamily: 'WorkSans-Regular',
-    color: '#444',
+    color: colors.textBody,
   },
   genreTextSelected: {
-    color: 'blue',
-    fontFamily: 'WorkSans-SemiBold',
+    color: colors.accent,
   },
   fullCatalogContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 25,
-    paddingVertical: 10,
-    paddingHorizontal: 5,
+    marginBottom: spacing.lg,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.xs,
     borderTopWidth: 1,
     borderBottomWidth: 1,
-    borderColor: '#eee',
+    borderColor: colors.borderSubtle,
   },
   fullCatalogLabel: {
-    fontFamily: 'WorkSans-SemiBold',
-    fontSize: 14,
-    color: '#555',
+    ...typography.label,
+    color: colors.textHigh,
     flexShrink: 1,
-    marginRight: 10,
+    marginRight: spacing.sm,
   },
   updateButton: {
-    backgroundColor: '#007BFF',
-    paddingVertical: 14,
-    borderRadius: 8,
+    backgroundColor: colors.accent,
+    paddingVertical: spacing.md,
+    borderRadius: radii.pill,
     alignItems: 'center',
-    marginTop: 10,
-    marginBottom: 40,
+    justifyContent: 'center',
+    marginTop: spacing.md,
+    marginBottom: spacing.xxl,
+    minHeight: 52,
+  },
+  updateButtonPressed: {
+    backgroundColor: colors.accentHover,
   },
   updateButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontFamily: 'WorkSans-Bold',
+    ...typography.button,
+    color: colors.accentForeground,
   },
 });
 

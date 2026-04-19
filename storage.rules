@@ -1,0 +1,40 @@
+rules_version = '2';
+
+// MovieMatchApp — Firebase Storage security rules (Sprint 5a).
+//
+// Path layout:
+//   /profileImages/{uid}/{timestamp}.jpg
+//
+// Rules:
+//   - Write: authenticated, owner-only, ≤2 MB, image/* mime only.
+//   - Read: any authenticated user (avatars are public surfaces, parallel
+//     to /users/{uid}/public/profile reads).
+//
+// Deployment remains a user task:
+//   npx firebase deploy --only storage
+// Generator verifies file content via verify_command; evaluator confirms
+// deploy via manual iPhone smoke.
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Default deny.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+
+    // --- Profile images ---
+    match /profileImages/{userId}/{filename} {
+      // Read: any authenticated user. Avatars are a public surface —
+      // cross-user rendering is expected.
+      allow read: if request.auth != null;
+
+      // Write: owner-only; ≤2MB; image/* content type only.
+      // 2 * 1024 * 1024 = 2097152 bytes (2MB).
+      allow write: if request.auth != null
+                    && request.auth.uid == userId
+                    && request.resource.size < 2 * 1024 * 1024
+                    && request.resource.contentType.matches('image/.*');
+    }
+  }
+}

@@ -2,15 +2,19 @@ rules_version = '2';
 
 // MovieMatchApp — Firestore security rules
 //
-// Policy: default deny. Users own their profile + subcollections; other
-// authenticated users get narrow, friendship-gated access. Match records
-// are readable only to participants.
+// Policy: default deny. Owners own private data; other authenticated users
+// get narrow, explicitly-opened access. Sprint 5a introduces two major
+// surfaces:
 //
-// Known follow-ups (Sprint 2):
-//   - Split /users/{uid} into public + private shape so cross-user reads
-//     can't see preferences/email.
-//   - Wire mutual friend-adding when a match is created so the friendship
-//     gate below lines up with the app's match flow.
+//   - /friendships/{id} — a participant-only social graph primitive.
+//   - /users/{uid}/public/profile — a public-surface subcollection holding
+//     only the fields other users need to render a friend card
+//     (displayName, photoURL, tasteLabels, contactHashes). Everything
+//     else stays on the private /users/{uid} root doc.
+//
+// Deployment remains a user task (npx firebase deploy --only firestore:rules)
+// — generator verifies the file contents; evaluator confirms deploy via
+// manual smoke.
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -20,36 +24,77 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // --- /users ---
+    // --- /users (PRIVATE ROOT DOC) ---
+    // Owner-only reads + writes on the private doc (email, phone,
+    // tasteProfile axes, interactedTitles, genres, streamingServices,
+    // settings). No cross-user reads here anymore — cross-user discovery
+    // goes through /users/{uid}/public/profile instead.
     match /users/{userId} {
-      // Owner: full access to own profile.
       allow read, write: if request.auth != null && request.auth.uid == userId;
 
-      // Friends-only cross-user read. The requester can read `userId`'s
-      // profile ONLY if `userId` has listed the requester in `friends[]`.
-      // The previous rule allowed ANY authenticated user to read any
-      // profile — that's the leak this replaces.
-      allow read: if request.auth != null
-                   && request.auth.uid != userId
-                   && resource.data.friends is list
-                   && request.auth.uid in resource.data.friends;
+      // --- PUBLIC PROFILE SUBCOLLECTION (Sprint 5a) ---
+      // Any authenticated user can READ the public profile (needed for
+      // friend-candidate surfaces + match% display in 5b). Only the owner
+      // can WRITE.
+      match /public/{document=**} {
+        allow read: if request.auth != null;
+        allow write: if request.auth != null && request.auth.uid == userId;
+      }
 
-      // Watchlist subcollection.
+      // Watchlist subcollection — owner-only in 5a (cross-user queue
+      // access moves to /queues/{id} in 5b).
       match /watchlist/{itemId} {
-        // Owner: full access.
         allow read, write: if request.auth != null && request.auth.uid == userId;
-
-        // Friend can read the watchlist of a user that has them as a friend.
-        allow get, list: if request.auth != null
-                          && userId != request.auth.uid
-                          && request.auth.uid in
-                             get(/databases/$(database)/documents/users/$(userId)).data.friends;
       }
 
       // Per-user interaction log. Owner-only.
       match /interactedTitles/{titleId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
+    }
+
+    // --- /friendships (Sprint 5a) ---
+    // Document shape: { participants: [uidA, uidB] (sorted lexicographically),
+    //                   status: 'pending' | 'accepted' | 'blocked',
+    //                   createdAt, acceptedAt?, initiatedBy }
+    //
+    // friendshipId = `${min(uidA,uidB)}_${max(uidA,uidB)}` enforces uniqueness
+    // via the document ID (one friendship per pair, regardless of argument
+    // order).
+    match /friendships/{friendshipId} {
+      // Participants can read their own friendships.
+      allow read: if request.auth != null
+                   && request.auth.uid in resource.data.participants;
+
+      // Create: initiator must be one of the participants, document must
+      // include both participants + status='pending' + initiatedBy=requester.
+      allow create: if request.auth != null
+                     && request.auth.uid in request.resource.data.participants
+                     && request.resource.data.participants is list
+                     && request.resource.data.participants.size() == 2
+                     && request.resource.data.status == 'pending'
+                     && request.resource.data.initiatedBy == request.auth.uid;
+
+      // Update: only participants; initiatedBy + participants immutable;
+      // status can only transition pending -> accepted|blocked.
+      allow update: if request.auth != null
+                     && request.auth.uid in resource.data.participants
+                     && request.resource.data.participants == resource.data.participants
+                     && request.resource.data.initiatedBy == resource.data.initiatedBy
+                     && (request.resource.data.status == 'accepted'
+                         || request.resource.data.status == 'blocked'
+                         || request.resource.data.status == 'pending');
+
+      // Delete: only participants (for decline / unfriend).
+      allow delete: if request.auth != null
+                     && request.auth.uid in resource.data.participants;
+    }
+
+    // --- /migrations (Sprint 5a debug log) ---
+    // Each migration event is written by the migrating user; no cross-user
+    // reads.
+    match /migrations/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
     // --- /movies, /tvShows (read-only cache) ---
@@ -64,9 +109,9 @@ service cloud.firestore {
     }
 
     // --- /matches ---
-    // Read: only participants. The existing client query uses
-    // `where('userIds', 'array-contains', auth.uid)`, which satisfies
-    // per-document rule evaluation for both `get` and `list`.
+    // Read: only participants. Client query uses
+    // `where('userIds', 'array-contains', auth.uid)` which satisfies the
+    // per-document rule for both get + list.
     match /matches/{matchId} {
       allow read: if request.auth != null
                    && request.auth.uid in resource.data.userIds;

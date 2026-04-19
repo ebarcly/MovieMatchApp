@@ -1,12 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Image,
-  Pressable,
-  ActivityIndicator as _ActivityIndicator,
-} from 'react-native';
+import { View, Text, StyleSheet, Image, Pressable } from 'react-native';
+// DotLoader is the app's single motion motif — do not import ActivityIndicator here.
 import { MotiView } from 'moti';
 import { useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
@@ -23,12 +17,6 @@ import DotLoader from '../components/DotLoader';
 import { springs } from '../theme/motion';
 import { colors, spacing, radii, typography, shadows } from '../theme';
 import type { ProfileSetupStackParamList } from '../navigation/types';
-
-// Prevent a dead-code lint warning on the unused ActivityIndicator alias —
-// we alias-import it so a future `ActivityIndicator` accidental usage in
-// this file is still lint-visible. (We never render it — DotLoader is the
-// one motion motif.)
-void _ActivityIndicator;
 
 /**
  * TasteQuizScreen — 7 poster A/B pairs over 8 taste axes. No Likert, no
@@ -142,8 +130,6 @@ const TOTAL = PAIRS.length;
 // Progress indicator appears starting at pair 4 per the dopamine brief.
 const PROGRESS_REVEAL_AT_INDEX = 3;
 
-type AxisScoreMap = Partial<Record<TasteAxis, number>>;
-
 const emptyAxisVector = (): Record<TasteAxis, number> => ({
   pacing: 0,
   era: 0,
@@ -209,8 +195,6 @@ const buildProfileFromPicks = (
 
 const readbackSentence = (labels: { common: string; rare: string }): string =>
   `You lean ${labels.common} and ${labels.rare}. Let's find you some people.`;
-
-void ({} as AxisScoreMap);
 
 const TasteQuizScreen = (): React.ReactElement => {
   const navigation = useNavigation<NavProp>();

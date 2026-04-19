@@ -180,6 +180,9 @@ const ProfileSetupScreen = (): React.ReactElement => {
         (snap.data() as UserProfileDocData | undefined)?.tasteProfile,
       );
       if (!hasTaste) {
+        // reason: ProfileSetupScreen mounts in both ProfileSetupStack and
+        // MyCaveStack (as EditProfile); narrowing to the setup stack here
+        // because TasteQuiz is only reachable from initial onboarding.
         (
           navigation as unknown as StackNavigationProp<
             ProfileSetupStackParamList,

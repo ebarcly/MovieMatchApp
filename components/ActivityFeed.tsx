@@ -55,8 +55,7 @@ const ActivityFeed = ({ rows = [] }: ActivityFeedProps): React.ReactElement => {
         </View>
         <Text style={styles.emptyTitle}>Friends go here</Text>
         <Text style={styles.emptyBody}>
-          Your friends&apos; last watches will show up here. Invite Maya, Nico,
-          or Sam →
+          Your friends&apos; watches land here. Invite Maya, Nico, or Sam.
         </Text>
         <Pressable
           onPress={handleInvite}

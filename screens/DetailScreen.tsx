@@ -6,7 +6,6 @@ import {
   ScrollView,
   Image,
   FlatList,
-  TouchableOpacity,
   Pressable,
 } from 'react-native';
 import {
@@ -444,8 +443,5 @@ const styles = StyleSheet.create({
     color: colors.textHigh,
   },
 });
-
-// Reference TouchableOpacity so accidental future imports don't regress to it.
-void TouchableOpacity;
 
 export default DetailScreen;

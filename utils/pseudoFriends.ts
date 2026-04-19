@@ -22,34 +22,15 @@
  */
 
 import { colors } from '../theme';
-
-// 8 taste axes, -1 to +1 signed continuous. Sprint 5 match% computes
-// as a dot product over the axis vectors.
-export type TasteAxis =
-  | 'pacing'
-  | 'era'
-  | 'mood'
-  | 'stakes'
-  | 'tone'
-  | 'genreFluency'
-  | 'realism'
-  | 'runtime';
-
-export type TasteAxisVector = Record<TasteAxis, number>;
-
-export interface TasteLabels {
-  /** Tribal-belonging "common" label. e.g. "late-night comfort". */
-  common: string;
-  /** Optimal-distinctiveness "rare" label. e.g. "slow cinema". */
-  rare: string;
-}
-
-export interface TasteProfile {
-  axes: TasteAxisVector;
-  labels: TasteLabels;
-  /** Epoch ms timestamp for local objects; serverTimestamp in Firestore. */
-  completedAt?: number;
-}
+import type { TasteProfile } from './firebaseOperations';
+// Shared taste-profile types live in firebaseOperations (backbone). We
+// re-export here so existing `import { TasteAxis } from '../utils/pseudoFriends'`
+// call sites keep compiling while the type lives in one place.
+export type {
+  TasteAxis,
+  TasteLabels,
+  TasteProfile,
+} from './firebaseOperations';
 
 export interface PseudoFriend {
   id: string;

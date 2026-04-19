@@ -151,6 +151,7 @@ const AppNavigator = (): React.ReactElement => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isProfileSetupComplete, setIsProfileSetupComplete] = useState(false);
+  const [hasTasteProfile, setHasTasteProfile] = useState(false);
 
   // Auth subscription.
   useEffect(() => {
@@ -158,33 +159,43 @@ const AppNavigator = (): React.ReactElement => {
       setUser(currentUser);
       if (!currentUser) {
         setIsProfileSetupComplete(false);
+        setHasTasteProfile(false);
         setIsLoading(false);
       }
     });
     return unsubscribe;
   }, []);
 
-  // Profile-completion subscription. Firebase Auth's updateProfile does
-  // NOT fire onAuthStateChanged, so we can't rely on displayName. Instead
-  // we watch the Firestore user doc, which is the source of truth.
+  // Profile + tasteProfile subscription. Firebase Auth's updateProfile
+  // does NOT fire onAuthStateChanged, so we can't rely on displayName.
+  // Instead we watch the Firestore user doc, which is the source of
+  // truth. Sprint 4 additionally gates Main on the presence of a
+  // tasteProfile field — first-time users land in ProfileSetup →
+  // TasteQuiz before Main.
   useEffect(() => {
     if (!user) return undefined;
     const unsubscribe = onSnapshot(
       doc(db, 'users', user.uid),
       (snap) => {
         const data = snap.data() as
-          | { profileName?: string; genres?: string[] }
+          | {
+              profileName?: string;
+              genres?: string[];
+              tasteProfile?: unknown;
+            }
           | undefined;
         setIsProfileSetupComplete(
           !!data?.profileName &&
             Array.isArray(data?.genres) &&
             data.genres.length > 0,
         );
+        setHasTasteProfile(Boolean(data?.tasteProfile));
         setIsLoading(false);
       },
       (err) => {
         console.error('Error watching user doc:', err);
         setIsProfileSetupComplete(false);
+        setHasTasteProfile(false);
         setIsLoading(false);
       },
     );
@@ -210,7 +221,7 @@ const AppNavigator = (): React.ReactElement => {
     return <AuthStackScreen />;
   }
 
-  if (user && !isProfileSetupComplete) {
+  if (user && (!isProfileSetupComplete || !hasTasteProfile)) {
     return <ProfileSetupStackScreen />;
   }
 

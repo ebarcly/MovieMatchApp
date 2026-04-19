@@ -419,6 +419,27 @@ const fetchCertificationsById = async (
   }
 };
 
+// Sprint 4: thin helper for the TasteQuiz — fetch the poster_path for a
+// single title and return the full CDN URL. Graceful fallback: returns
+// null if the title or poster path is missing / the fetch fails so the
+// caller can render an ink placeholder.
+export const fetchTMDBImage = async (
+  id: number,
+  type: MediaType,
+): Promise<string | null> => {
+  try {
+    const response = await tmdbApi.get<{ poster_path?: string | null }>(
+      `/${type}/${id}`,
+    );
+    const path = response.data.poster_path;
+    if (!path) return null;
+    return `https://image.tmdb.org/t/p/w780${path}`;
+  } catch (error) {
+    console.warn(`fetchTMDBImage failed for ${type}/${id}:`, error);
+    return null;
+  }
+};
+
 // Fetch details for a movie or TV show by ID from TMDB, including additional information like credits and watch providers
 export const fetchDetailsById = async (
   id: number | string,

@@ -166,9 +166,28 @@ async function main() {
   );
 
   // Create friendship — pending, initiatedBy=A. Idempotent.
+  //
+  // Firestore rules gotcha: the /friendships/{id} read rule requires
+  // `request.auth.uid in resource.data.participants`. When the doc does
+  // NOT exist, `resource.data` is undefined, the predicate is false,
+  // and `getDoc` throws `permission-denied`. That's the same signal as
+  // "doc doesn't exist" for our idempotency purposes, so we treat it
+  // as such. Any OTHER error propagates up.
   const friendshipRef = doc(db, 'friendships', FRIENDSHIP_ID);
-  const friendshipSnap = await getDoc(friendshipRef);
-  if (!friendshipSnap.exists()) {
+  let friendshipExists = false;
+  let existingStatus = null;
+  try {
+    const friendshipSnap = await getDoc(friendshipRef);
+    friendshipExists = friendshipSnap.exists();
+    existingStatus = friendshipSnap.data()?.status ?? null;
+  } catch (err) {
+    if (err?.code === 'permission-denied') {
+      friendshipExists = false;
+    } else {
+      throw err;
+    }
+  }
+  if (!friendshipExists) {
     await setDoc(friendshipRef, {
       participants: [LO_UID, HI_UID],
       status: 'pending',
@@ -178,14 +197,25 @@ async function main() {
     console.log('[seed] friendship created (pending) by A ✓');
   } else {
     console.log(
-      `[seed] friendship ${FRIENDSHIP_ID} already exists (status=${friendshipSnap.data().status}), skipping create`,
+      `[seed] friendship ${FRIENDSHIP_ID} already exists (status=${existingStatus}), skipping create`,
     );
   }
 
-  // Create the queue — idempotent deterministic ID.
+  // Create the queue — idempotent deterministic ID. Same permission-denied
+  // handling as friendship: the /queues read rule is participant-gated.
   const queueRef = doc(db, 'queues', QUEUE_ID);
-  const queueSnap = await getDoc(queueRef);
-  if (!queueSnap.exists()) {
+  let queueExists = false;
+  try {
+    const queueSnap = await getDoc(queueRef);
+    queueExists = queueSnap.exists();
+  } catch (err) {
+    if (err?.code === 'permission-denied') {
+      queueExists = false;
+    } else {
+      throw err;
+    }
+  }
+  if (!queueExists) {
     await setDoc(queueRef, QUEUE_SEED);
     console.log(`[seed] queue ${QUEUE_ID} created ✓`);
   } else {

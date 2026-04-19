@@ -1,15 +1,12 @@
 import React, { useState, useEffect, useContext, useCallback } from 'react';
-import {
-  View,
-  ScrollView,
-  StyleSheet,
-  ActivityIndicator,
-  Text,
-} from 'react-native';
+import { View, ScrollView, StyleSheet, Text, Pressable } from 'react-native';
 import { doc, getDoc } from 'firebase/firestore';
 import SwipeableCard from '../components/SwipeableCard';
 import NavigationBar from '../components/NavigationBar';
 import CategoryTabs, { type Category } from '../components/CategoryTabs';
+import DotLoader from '../components/DotLoader';
+import StoriesStrip from '../components/StoriesStrip';
+import { FilmStrip } from 'phosphor-react-native';
 import {
   fetchPopularMovies,
   fetchPopularTVShows,
@@ -24,6 +21,7 @@ import { MoviesContext } from '../context/MoviesContext';
 import { fetchInteractedTitleIds } from '../utils/firebaseOperations';
 import type { StackScreenProps } from '@react-navigation/stack';
 import type { HomeStackParamList } from '../navigation/types';
+import { colors, spacing, radii, typography } from '../theme';
 
 // Sprint 2 BUG-5: when every fetched title has already been interacted
 // with, retry the next TMDB page up to this many times before giving
@@ -68,7 +66,7 @@ const HomeScreen = (_props: Props): React.ReactElement => {
     } catch (err) {
       console.error('Error fetching user preferences:', err);
       setError(
-        'Failed to load user preferences. Please check your internet connection.',
+        'Failed to load user preferences. Please check your connection.',
       );
       return null;
     }
@@ -148,7 +146,7 @@ const HomeScreen = (_props: Props): React.ReactElement => {
         setError(
           lastRawLength === 0
             ? 'No content available right now. Try a different category.'
-            : "You've swiped through everything we have for this category. Check back soon!",
+            : "You've swiped through everything for this category. Check back soon.",
         );
       } else {
         setContent(filteredData);
@@ -173,9 +171,7 @@ const HomeScreen = (_props: Props): React.ReactElement => {
   };
 
   // Sprint 2 BUG-5 (round 2): fetch the NEXT TMDB page and append
-  // non-duplicate, non-interacted titles to the existing deck. Skips the
-  // trending endpoint ('All'), which returns the same set regardless of
-  // page. Idempotent under concurrent invocation via isLoadingMore guard.
+  // non-duplicate, non-interacted titles to the existing deck.
   const loadMoreContent = useCallback(async (): Promise<void> => {
     if (isLoadingMore || selectedCategory === 'All') return;
     setIsLoadingMore(true);
@@ -227,10 +223,6 @@ const HomeScreen = (_props: Props): React.ReactElement => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCategory]);
 
-  // Prefetch the next page as soon as the user nears the end of the
-  // currently-loaded deck. Runs off currentCardIndex / content.length
-  // changes so both "user swiped" and "new page appended" ticks trigger
-  // the same check — and the isLoadingMore guard prevents double-fires.
   useEffect(() => {
     if (
       content.length > 0 &&
@@ -259,34 +251,50 @@ const HomeScreen = (_props: Props): React.ReactElement => {
     dispatch({ type: actionType, payload: newIndex });
   }, [currentCardIndex, selectedCategory, dispatch]);
 
+  const handleRetry = useCallback((): void => {
+    fetchContentBasedOnCategory(selectedCategory);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCategory]);
+
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#00ff00" />
+      <View style={styles.screen}>
+        <NavigationBar />
+        <View style={styles.loadingContainer}>
+          <DotLoader size="lg" accessibilityLabel="Loading your deck" />
+          <Text style={styles.loadingText}>Warming up your deck…</Text>
+        </View>
       </View>
     );
   }
 
-  if (error) {
-    return <Text style={styles.errorText}>{error}</Text>;
-  }
-
-  if (content.length === 0) {
-    return (
-      <Text style={styles.errorText}>
-        No content available for your selection.
-      </Text>
-    );
-  }
-
   const currentCard = content[currentCardIndex];
-  const deckExhausted = !currentCard;
+  const deckExhausted = !currentCard && content.length > 0;
 
   return (
-    <ScrollView style={styles.container}>
+    <View style={styles.screen}>
       <NavigationBar />
+      <StoriesStrip />
       <CategoryTabs onCategorySelect={setSelectedCategory} />
-      <View style={styles.cardContainer}>
+      {error ? (
+        <View
+          style={styles.errorBanner}
+          accessibilityLiveRegion="polite"
+          accessibilityRole="alert"
+        >
+          <Text style={styles.errorBannerText}>{error}</Text>
+          <Pressable
+            onPress={handleRetry}
+            accessibilityRole="button"
+            accessibilityLabel="Retry"
+            accessibilityHint="Re-fetches the deck"
+            style={styles.errorRetry}
+          >
+            <Text style={styles.errorRetryText}>Retry</Text>
+          </Pressable>
+        </View>
+      ) : null}
+      <ScrollView contentContainerStyle={styles.cardContainer}>
         {currentCard ? (
           <SwipeableCard
             key={currentCard.id.toString()}
@@ -301,51 +309,113 @@ const HomeScreen = (_props: Props): React.ReactElement => {
           />
         ) : isLoadingMore ? (
           <View style={styles.loadingMoreContainer}>
-            <ActivityIndicator size="large" />
+            <DotLoader size="md" accessibilityLabel="Loading more titles" />
             <Text style={styles.loadingMoreText}>Loading more titles…</Text>
           </View>
         ) : deckExhausted ? (
-          <Text style={styles.errorText}>
-            You&apos;ve reached the end for now. Try another category or check
-            back soon!
-          </Text>
+          <View style={styles.emptyState}>
+            <View style={styles.emptyIconCircle}>
+              <FilmStrip size={32} color={colors.accent} weight="regular" />
+            </View>
+            <Text style={styles.emptyTitle}>You&apos;re caught up</Text>
+            <Text style={styles.emptyBody}>
+              Try another category or check back soon.
+            </Text>
+          </View>
         ) : null}
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  screen: {
     flex: 1,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: colors.ink,
   },
   cardContainer: {
     alignItems: 'center',
-    padding: 16,
-    flex: 1,
-  },
-  errorText: {
-    color: 'red',
-    fontSize: 18,
-    textAlign: 'center',
-    marginTop: 20,
+    padding: spacing.md,
+    flexGrow: 1,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 100,
+    paddingVertical: spacing.xxl,
+  },
+  loadingText: {
+    ...typography.bodySm,
+    color: colors.textTertiary,
+    marginTop: spacing.md,
   },
   loadingMoreContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 32,
+    padding: spacing.xl,
   },
   loadingMoreText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: '#888',
+    ...typography.bodySm,
+    color: colors.textTertiary,
+    marginTop: spacing.sm,
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.xxl,
+    paddingHorizontal: spacing.lg,
+  },
+  emptyIconCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: radii.pill,
+    backgroundColor: colors.accentMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
+  },
+  emptyTitle: {
+    ...typography.titleSm,
+    color: colors.textHigh,
+    marginBottom: spacing.xs,
+    textAlign: 'center',
+  },
+  emptyBody: {
+    ...typography.bodySm,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginHorizontal: spacing.md,
+    marginBottom: spacing.sm,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radii.md,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.error,
+    backgroundColor: colors.surfaceRaised,
+  },
+  errorBannerText: {
+    ...typography.bodySm,
+    color: colors.textHigh,
+    flex: 1,
+    marginRight: spacing.sm,
+  },
+  errorRetry: {
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radii.sm,
+    minHeight: 44,
+    minWidth: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  errorRetryText: {
+    ...typography.button,
+    color: colors.accent,
   },
 });
 

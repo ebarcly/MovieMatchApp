@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { StyleSheet, ScrollView } from 'react-native';
 import CategoryButton from './CategoryButton';
+import { spacing } from '../theme';
 
 const categories = ['TV Shows', 'Movies', 'All'] as const;
 export type Category = (typeof categories)[number];
@@ -40,8 +41,9 @@ const CategoryTabs = ({
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    padding: 16,
-    backgroundColor: '#f0f0f0',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    backgroundColor: 'transparent',
   },
 });
 

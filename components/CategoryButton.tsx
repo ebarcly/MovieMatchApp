@@ -1,5 +1,6 @@
 import React from 'react';
 import { Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { colors, spacing, radii, typography } from '../theme';
 
 interface CategoryButtonProps {
   label: string;
@@ -11,24 +12,26 @@ const styles = StyleSheet.create({
   button: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    marginHorizontal: 4,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    marginHorizontal: spacing.xxs,
     borderWidth: 1,
-    borderColor: '#6063b4',
-    borderRadius: 24,
-    backgroundColor: '#19192b',
+    borderColor: colors.borderStrong,
+    borderRadius: radii.pill,
+    backgroundColor: colors.surface,
+    minHeight: 44,
+    minWidth: 44,
   },
   text: {
-    color: '#d1d2d5',
-    fontSize: 15,
-    fontFamily: 'WorkSans-Medium',
+    ...typography.label,
+    color: colors.textSecondary,
   },
   activeButton: {
-    backgroundColor: '#6063b4',
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
   },
   activeText: {
-    color: '#ffffff',
+    color: colors.accentForeground,
   },
 });
 
@@ -41,6 +44,9 @@ const CategoryButton = ({
     <TouchableOpacity
       style={[styles.button, isActive && styles.activeButton]}
       onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${label} category`}
+      accessibilityState={{ selected: isActive }}
     >
       <Text style={[styles.text, isActive && styles.activeText]}>{label}</Text>
     </TouchableOpacity>

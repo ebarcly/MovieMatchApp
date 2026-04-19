@@ -3,6 +3,7 @@ import { View, StyleSheet, Text } from 'react-native';
 import SearchIcon from './SearchIcon';
 import { auth, db } from '../firebaseConfig';
 import { doc, onSnapshot } from 'firebase/firestore';
+import { colors, spacing, typography } from '../theme';
 
 const NavigationBar = (): React.ReactElement => {
   const [profileName, setProfileName] = useState<string>('');
@@ -41,17 +42,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 48,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    backgroundColor: '#f0f0f0',
-    borderBottomWidth: 1,
-    borderBottomColor: '#ccc',
+    marginTop: spacing.xxl,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    // Sprint 4 theme migration — fixes the MyCaveScreen / HomeScreen
+    // header seam noted in the Sprint 3 handoff (was opaque #f0f0f0 on
+    // an ink-backed scroll view).
+    backgroundColor: 'transparent',
   },
   title: {
-    fontSize: 20,
-    fontFamily: 'WorkSans-Medium',
-    color: '#000',
+    ...typography.titleSm,
+    color: colors.textHigh,
   },
 });
 

@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
 import {
-  ActivityIndicator,
   View,
   TextInput,
-  TouchableOpacity,
+  Pressable,
   Text,
   StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../firebaseConfig';
+import DotLoader from '../components/DotLoader';
 import { colors, spacing, radii, typography } from '../theme';
 import type { StackScreenProps } from '@react-navigation/stack';
 import type { AuthStackParamList } from '../navigation/types';
@@ -38,60 +40,87 @@ const LoginScreen = ({ navigation }: Props): React.ReactElement => {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Welcome back!</Text>
-      <Text style={styles.label}>Email</Text>
-      <TextInput
-        style={styles.input}
-        onChangeText={(text) => setEmail(text.toLowerCase())}
-        value={email}
-        placeholder="Enter your E-mail"
-        placeholderTextColor={colors.textTertiary}
-        keyboardType="email-address"
-        editable={!isSubmitting}
-      />
-      <Text style={styles.label}>Password</Text>
-      <TextInput
-        style={styles.input}
-        onChangeText={setPassword}
-        value={password}
-        placeholder="Enter your password"
-        placeholderTextColor={colors.textTertiary}
-        secureTextEntry
-        editable={!isSubmitting}
-      />
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
-      <TouchableOpacity
-        onPress={handleLogin}
-        style={[styles.button, isSubmitting && styles.buttonDisabled]}
-        disabled={isSubmitting}
-        accessibilityRole="button"
-        accessibilityLabel="Log In"
-        accessibilityState={{ disabled: isSubmitting, busy: isSubmitting }}
-      >
-        {isSubmitting ? (
-          <ActivityIndicator color={colors.accentForeground} />
-        ) : (
-          <Text style={styles.buttonText}>Log In</Text>
-        )}
-      </TouchableOpacity>
-      <TouchableOpacity
-        onPress={() => navigation.navigate('ForgotPassword')}
-        style={styles.forgotPassword}
-        disabled={isSubmitting}
-      >
-        <Text style={styles.linkText}>Forgot your password?</Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        onPress={() => navigation.navigate('Register')}
-        style={styles.signup}
-        disabled={isSubmitting}
-      >
-        <Text style={styles.linkText}>
-          Don&apos;t have an account? Register
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <View style={styles.inner}>
+        <Text style={styles.title}>Welcome back</Text>
+        <Text style={styles.subtitle}>
+          Sign in to pick up where you left off.
         </Text>
-      </TouchableOpacity>
-    </View>
+        <Text style={styles.label}>Email</Text>
+        <TextInput
+          style={styles.input}
+          onChangeText={(text) => setEmail(text.toLowerCase())}
+          value={email}
+          placeholder="Enter your E-mail"
+          placeholderTextColor={colors.textTertiary}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          editable={!isSubmitting}
+          accessibilityLabel="Email"
+        />
+        <Text style={styles.label}>Password</Text>
+        <TextInput
+          style={styles.input}
+          onChangeText={setPassword}
+          value={password}
+          placeholder="Enter your password"
+          placeholderTextColor={colors.textTertiary}
+          secureTextEntry
+          editable={!isSubmitting}
+          accessibilityLabel="Password"
+        />
+        {error ? (
+          <View
+            style={styles.errorBanner}
+            accessibilityRole="alert"
+            accessibilityLiveRegion="polite"
+          >
+            <Text style={styles.errorBannerText}>{error}</Text>
+          </View>
+        ) : null}
+        <Pressable
+          onPress={handleLogin}
+          style={({ pressed }) => [
+            styles.button,
+            isSubmitting && styles.buttonDisabled,
+            pressed && !isSubmitting && styles.buttonPressed,
+          ]}
+          disabled={isSubmitting}
+          accessibilityRole="button"
+          accessibilityLabel="Log In"
+          accessibilityState={{ disabled: isSubmitting, busy: isSubmitting }}
+        >
+          {isSubmitting ? (
+            <DotLoader size="sm" accessibilityLabel="Signing in" />
+          ) : (
+            <Text style={styles.buttonText}>Log in</Text>
+          )}
+        </Pressable>
+        <Pressable
+          onPress={() => navigation.navigate('ForgotPassword')}
+          style={styles.linkWrap}
+          disabled={isSubmitting}
+          accessibilityRole="button"
+          accessibilityLabel="Forgot your password"
+        >
+          <Text style={styles.linkText}>Forgot your password?</Text>
+        </Pressable>
+        <Pressable
+          onPress={() => navigation.navigate('Register')}
+          style={styles.linkWrap}
+          disabled={isSubmitting}
+          accessibilityRole="button"
+          accessibilityLabel="Register a new account"
+        >
+          <Text style={styles.linkText}>
+            Don&apos;t have an account? Register
+          </Text>
+        </Pressable>
+      </View>
+    </KeyboardAvoidingView>
   );
 };
 
@@ -99,13 +128,21 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',
-    padding: spacing.lg,
     backgroundColor: colors.ink,
+  },
+  inner: {
+    padding: spacing.lg,
   },
   title: {
     ...typography.titleLg,
     color: colors.textHigh,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.xxs,
+    textAlign: 'center',
+  },
+  subtitle: {
+    ...typography.body,
+    color: colors.textSecondary,
+    marginBottom: spacing.xl,
     textAlign: 'center',
   },
   label: {
@@ -122,6 +159,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
     borderWidth: 1,
     borderColor: colors.borderSubtle,
+    minHeight: 44,
   },
   button: {
     backgroundColor: colors.accent,
@@ -132,6 +170,9 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
     minHeight: 52,
   },
+  buttonPressed: {
+    backgroundColor: colors.accentHover,
+  },
   buttonDisabled: {
     backgroundColor: colors.accentHover,
     opacity: 0.7,
@@ -140,24 +181,31 @@ const styles = StyleSheet.create({
     ...typography.button,
     color: colors.accentForeground,
   },
+  linkWrap: {
+    marginTop: spacing.md,
+    paddingVertical: spacing.sm,
+    alignItems: 'center',
+    minHeight: 44,
+    justifyContent: 'center',
+  },
   linkText: {
     ...typography.bodySm,
     color: colors.textSecondary,
-    marginTop: spacing.md,
     textAlign: 'center',
   },
-  errorText: {
+  errorBanner: {
+    marginTop: spacing.xs,
+    marginBottom: spacing.xs,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radii.md,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.error,
+    backgroundColor: colors.surfaceRaised,
+  },
+  errorBannerText: {
     ...typography.bodySm,
-    color: colors.error,
-    textAlign: 'center',
-    marginTop: spacing.sm,
-    marginBottom: spacing.sm,
-  },
-  forgotPassword: {
-    marginTop: spacing.md,
-  },
-  signup: {
-    marginTop: spacing.md,
+    color: colors.textHigh,
   },
 });
 

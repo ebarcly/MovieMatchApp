@@ -4,13 +4,16 @@ import {
   Text,
   FlatList,
   StyleSheet,
-  ActivityIndicator,
-  Alert,
   Image,
-  TouchableOpacity,
+  Pressable,
 } from 'react-native';
+import { Heart } from 'phosphor-react-native';
 import { fetchUserMatches, type UserMatch } from '../utils/firebaseOperations';
 import { auth } from '../firebaseConfig';
+import DotLoader from '../components/DotLoader';
+import ActivityFeed from '../components/ActivityFeed';
+import { useToast } from '../components/Toast';
+import { colors, spacing, radii, typography } from '../theme';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { MainTabsParamList } from '../navigation/types';
 
@@ -20,10 +23,14 @@ const MatchesScreen = ({ navigation }: Props): React.ReactElement => {
   const [matchesList, setMatchesList] = useState<UserMatch[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const toast = useToast();
 
   const handleChatPress = (match: UserMatch): void => {
-    // TODO: Implement chat functionality
-    Alert.alert('Chat', `Chat with ${match.friend.name} coming soon!`);
+    toast.show({
+      type: 'info',
+      title: 'Chat lands in Sprint 5',
+      body: `Your conversation with ${match.friend.name} will open here.`,
+    });
   };
 
   useEffect(() => {
@@ -37,8 +44,7 @@ const MatchesScreen = ({ navigation }: Props): React.ReactElement => {
           setMatchesList(fetchedMatches);
         } catch (err) {
           console.error('Failed to load matches on screen:', err);
-          setError("Couldn't load your matches. Please try again later.");
-          Alert.alert('Error', "Couldn't load your matches.");
+          setError("We couldn't load your matches. Pull to retry.");
         } finally {
           setLoading(false);
         }
@@ -57,24 +63,42 @@ const MatchesScreen = ({ navigation }: Props): React.ReactElement => {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#0000ff" />
-        <Text>Loading Matches...</Text>
+        <DotLoader size="lg" accessibilityLabel="Loading matches" />
+        <Text style={styles.loadingText}>Loading matches…</Text>
       </View>
     );
   }
 
   if (error) {
     return (
-      <View style={styles.centered}>
-        <Text style={styles.errorText}>{error}</Text>
+      <View style={styles.container}>
+        <View
+          style={styles.errorBanner}
+          accessibilityRole="alert"
+          accessibilityLiveRegion="polite"
+        >
+          <Text style={styles.errorBannerText}>{error}</Text>
+        </View>
       </View>
     );
   }
 
   if (matchesList.length === 0) {
     return (
-      <View style={styles.centered}>
-        <Text>No matches yet! Keep swiping.</Text>
+      <View style={styles.container}>
+        <Text style={styles.header}>Matches</Text>
+        <View style={styles.emptyContainer}>
+          <View style={styles.iconCircle}>
+            <Heart size={36} color={colors.accent} weight="regular" />
+          </View>
+          <Text style={styles.emptyTitle}>No matches yet</Text>
+          <Text style={styles.emptyBody}>
+            Keep swiping. Matches land here when you and a friend both like the
+            same title.
+          </Text>
+        </View>
+        <Text style={styles.subheader}>Friend activity</Text>
+        <ActivityFeed />
       </View>
     );
   }
@@ -97,18 +121,21 @@ const MatchesScreen = ({ navigation }: Props): React.ReactElement => {
           <View style={[styles.matchImage, styles.matchImagePlaceholder]} />
         )}
         <View style={styles.matchDetails}>
-          <Text style={styles.matchTitle}>
+          <Text style={styles.matchTitle} numberOfLines={2}>
             {item.title.title || item.title.name}
           </Text>
           <Text style={styles.matchText}>
-            You and {item.friend.name} both liked this.
+            You and {item.friend.name} both love this.
           </Text>
-          <TouchableOpacity
+          <Pressable
             style={styles.chatButton}
             onPress={() => handleChatPress(item)}
+            accessibilityRole="button"
+            accessibilityLabel={`Open chat with ${item.friend.name}`}
+            accessibilityHint="Chat surface lands in Sprint 5"
           >
-            <Text style={styles.chatButtonText}>Chat</Text>
-          </TouchableOpacity>
+            <Text style={styles.chatButtonText}>Start chat</Text>
+          </Pressable>
         </View>
       </View>
     );
@@ -116,12 +143,15 @@ const MatchesScreen = ({ navigation }: Props): React.ReactElement => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>Your Matches</Text>
+      <Text style={styles.header}>Matches</Text>
       <FlatList
         data={matchesList}
         renderItem={renderMatchItem}
         keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.listContent}
       />
+      <Text style={styles.subheader}>Friend activity</Text>
+      <ActivityFeed />
     </View>
   );
 };
@@ -129,69 +159,123 @@ const MatchesScreen = ({ navigation }: Props): React.ReactElement => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 10,
-    backgroundColor: '#f0f0f0',
+    paddingTop: spacing.xl,
+    backgroundColor: colors.ink,
   },
   centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: colors.ink,
+  },
+  loadingText: {
+    ...typography.bodySm,
+    color: colors.textTertiary,
+    marginTop: spacing.md,
   },
   header: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    marginBottom: 10,
-    textAlign: 'center',
+    ...typography.titleLg,
+    color: colors.textHigh,
+    marginBottom: spacing.md,
+    marginHorizontal: spacing.md,
+  },
+  subheader: {
+    ...typography.titleSm,
+    color: colors.textHigh,
+    marginTop: spacing.md,
+    marginHorizontal: spacing.md,
+    marginBottom: spacing.xs,
+  },
+  listContent: {
+    paddingBottom: spacing.md,
   },
   matchItem: {
     flexDirection: 'row',
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 10,
-    marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    backgroundColor: colors.surface,
+    borderRadius: radii.lg,
+    padding: spacing.sm,
+    marginHorizontal: spacing.md,
+    marginBottom: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
   },
   matchImage: {
-    width: 100,
-    height: 150,
-    borderRadius: 8,
+    width: 84,
+    height: 126,
+    borderRadius: radii.md,
+    backgroundColor: colors.surfaceRaised,
   },
   matchImagePlaceholder: {
-    backgroundColor: '#e0e0e0',
+    backgroundColor: colors.borderSubtle,
   },
   matchDetails: {
     flex: 1,
-    marginLeft: 10,
+    marginLeft: spacing.sm,
     justifyContent: 'center',
   },
   matchTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    ...typography.titleSm,
+    color: colors.textHigh,
   },
   matchText: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 5,
+    ...typography.bodySm,
+    color: colors.textSecondary,
+    marginTop: spacing.xxs,
   },
   chatButton: {
-    backgroundColor: '#007bff',
-    padding: 10,
-    borderRadius: 5,
-    marginTop: 10,
-    alignItems: 'center',
+    backgroundColor: colors.accent,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+    borderRadius: radii.pill,
+    marginTop: spacing.sm,
+    alignSelf: 'flex-start',
+    minHeight: 44,
+    minWidth: 44,
+    justifyContent: 'center',
   },
   chatButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
+    ...typography.button,
+    color: colors.accentForeground,
   },
-  errorText: {
-    color: 'red',
-    fontSize: 16,
+  errorBanner: {
+    margin: spacing.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radii.md,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.error,
+    backgroundColor: colors.surfaceRaised,
+  },
+  errorBannerText: {
+    ...typography.body,
+    color: colors.textHigh,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.xl,
+    paddingHorizontal: spacing.lg,
+  },
+  iconCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: radii.pill,
+    backgroundColor: colors.accentMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
+  },
+  emptyTitle: {
+    ...typography.titleSm,
+    color: colors.textHigh,
+    marginBottom: spacing.xxs,
     textAlign: 'center',
+  },
+  emptyBody: {
+    ...typography.bodySm,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    maxWidth: 320,
   },
 });
 

@@ -153,7 +153,12 @@ jest.mock('phosphor-react-native', () => {
     MagnifyingGlass: factory('MagnifyingGlass'),
     PlayCircle: factory('PlayCircle'),
     FilmStrip: factory('FilmStrip'),
+    FilmSlate: factory('FilmSlate'),
     Clock: factory('Clock'),
+    Heart: factory('Heart'),
+    UserCircle: factory('UserCircle'),
+    User: factory('User'),
+    Users: factory('Users'),
   };
 });
 

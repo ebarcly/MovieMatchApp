@@ -52,7 +52,10 @@ import type {
 import { fetchDetailsById, type TitleDetails } from '../services/api';
 import { useWhyYouMatch } from '../hooks/useWhyYouMatch';
 import { getDefaultLLMClient } from '../utils/ai/impl/AnthropicLLMClient';
-import { shareMatchCardFromRef } from '../utils/shareMatchCard';
+import {
+  captureMatchCardToFile,
+  shareCapturedMatchCard,
+} from '../utils/shareMatchCard';
 import type { MatchesStackParamList } from '../navigation/types';
 import { colors, spacing, radii, typography } from '../theme';
 
@@ -338,16 +341,25 @@ const FriendDetailScreen = (): React.ReactElement => {
       setCapturing(true);
       await new Promise<void>((resolve) => setTimeout(resolve, 80));
       console.log('[match-card] capture starting');
-      await Promise.race([
-        shareMatchCardFromRef({ current: cardRef.current }),
+      // Capture under an 8s timeout — short because this is pure native
+      // rasterization, not user interaction. Split off the share step so
+      // the user can take their time in the share sheet without us
+      // timing out a legitimate interaction.
+      const uri = await Promise.race([
+        captureMatchCardToFile({ current: cardRef.current }),
         new Promise<never>((_, reject) =>
           setTimeout(
-            () => reject(new Error('shareMatchCard timed out after 8s')),
+            () => reject(new Error('capture timed out after 8s')),
             8_000,
           ),
         ),
       ]);
-      console.log('[match-card] capture + share completed');
+      console.log('[match-card] capture done — uri:', uri);
+      // Hide the flash-visible wrapper immediately so the share sheet
+      // doesn't open on top of a visible card — it's already captured.
+      setCapturing(false);
+      await shareCapturedMatchCard(uri);
+      console.log('[match-card] share sheet closed');
     } catch (err) {
       console.warn('[match-card] shareMatchCard failed:', err);
       toast.show({

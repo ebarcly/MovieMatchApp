@@ -20,13 +20,16 @@ export interface MatchCardRefLike {
 
 /**
  * Capture the currently-mounted MatchCard ref into a PNG in the cache
- * dir and open the system Share sheet.
+ * dir. Returns the tmp-file URI. Does NOT open the Share sheet —
+ * callers should then hide the capture-visible wrapper and invoke
+ * `shareCapturedMatchCard(uri)` separately so the browse-the-share-sheet
+ * time isn't counted against any capture timeout.
  *
  * Dimensions pinned to 1080x1920 for iMessage/Snap/IG-Story legibility.
  */
-export async function shareMatchCardFromRef(
+export async function captureMatchCardToFile(
   cardRef: MatchCardRefLike,
-): Promise<void> {
+): Promise<string> {
   const uri = await captureRef(cardRef.current as RefObject<unknown>, {
     format: 'png',
     quality: 1,
@@ -34,7 +37,28 @@ export async function shareMatchCardFromRef(
     width: 1080,
     height: 1920,
   });
+  return uri;
+}
+
+/**
+ * Open the native Share sheet with a previously-captured PNG URI. No
+ * timeout — user can browse the sheet for as long as they want.
+ */
+export async function shareCapturedMatchCard(uri: string): Promise<void> {
   await Share.share({ url: uri, message: uri });
+}
+
+/**
+ * Convenience wrapper — capture then share in one call. Preserved for
+ * backwards compatibility; new callers should prefer the split form so
+ * the capture-visible wrapper can be hidden before the share sheet
+ * opens.
+ */
+export async function shareMatchCardFromRef(
+  cardRef: MatchCardRefLike,
+): Promise<void> {
+  const uri = await captureMatchCardToFile(cardRef);
+  await shareCapturedMatchCard(uri);
 }
 
 /**

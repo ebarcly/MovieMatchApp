@@ -24,6 +24,7 @@ import {
 import { FilmStrip } from 'phosphor-react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
+import { doc, getDoc } from 'firebase/firestore';
 import Avatar from './Avatar';
 import DotLoader from './DotLoader';
 import {
@@ -31,7 +32,7 @@ import {
   queueReactionKey,
   type QueueDoc,
 } from '../utils/firebaseOperations';
-import { auth } from '../firebaseConfig';
+import { auth, db } from '../firebaseConfig';
 import { fetchDetailsById, type TitleDetails } from '../services/api';
 import { colors, spacing, radii, typography } from '../theme';
 import type { HomeStackParamList } from '../navigation/types';
@@ -39,6 +40,11 @@ import type { HomeStackParamList } from '../navigation/types';
 const MAX_QUEUES = 5;
 
 type QueueStripNav = StackNavigationProp<HomeStackParamList>;
+
+interface ParticipantIdentity {
+  displayName: string | null;
+  photoURL: string | null;
+}
 
 interface ResolvedQueueRow {
   queue: QueueDoc;
@@ -50,6 +56,9 @@ const QueueStrip = (): React.ReactElement => {
   const navigation = useNavigation<QueueStripNav>();
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<ResolvedQueueRow[]>([]);
+  const [participantById, setParticipantById] = useState<
+    Record<string, ParticipantIdentity>
+  >({});
 
   useEffect(() => {
     const uid = auth.currentUser?.uid;
@@ -83,6 +92,40 @@ const QueueStrip = (): React.ReactElement => {
           }),
         );
         if (!cancelled) setRows(resolved);
+
+        // Resolve participant identities (up to 3 avatars rendered per row;
+        // fetch only those uids). Reads /users/{uid}/public/profile per
+        // Sprint 5a data-locality rule — never the private root.
+        const uidSet = new Set<string>();
+        for (const q of queues) {
+          for (const pid of q.participants.slice(0, 3)) uidSet.add(pid);
+        }
+        const identities = await Promise.all(
+          Array.from(uidSet).map(async (pid) => {
+            try {
+              const snap = await getDoc(
+                doc(db, 'users', pid, 'public', 'profile'),
+              );
+              const data = snap.data() as
+                | { displayName?: string | null; photoURL?: string | null }
+                | undefined;
+              return [
+                pid,
+                {
+                  displayName: data?.displayName ?? null,
+                  photoURL: data?.photoURL ?? null,
+                },
+              ] as const;
+            } catch {
+              return [pid, { displayName: null, photoURL: null }] as const;
+            }
+          }),
+        );
+        if (!cancelled) {
+          const next: Record<string, ParticipantIdentity> = {};
+          for (const [pid, ident] of identities) next[pid] = ident;
+          setParticipantById(next);
+        }
       } catch (err) {
         console.warn('[QueueStrip] load failed:', err);
       } finally {
@@ -139,17 +182,24 @@ const QueueStrip = (): React.ReactElement => {
               </View>
             )}
             <View style={styles.avatarStack}>
-              {queue.participants.slice(0, 3).map((uid, idx) => (
-                <View
-                  key={uid}
-                  style={[
-                    styles.avatarSlot,
-                    { marginLeft: idx === 0 ? 0 : -8 },
-                  ]}
-                >
-                  <Avatar size="xs" displayName={uid} />
-                </View>
-              ))}
+              {queue.participants.slice(0, 3).map((uid, idx) => {
+                const ident = participantById[uid];
+                return (
+                  <View
+                    key={uid}
+                    style={[
+                      styles.avatarSlot,
+                      { marginLeft: idx === 0 ? 0 : -8 },
+                    ]}
+                  >
+                    <Avatar
+                      size="xs"
+                      displayName={ident?.displayName ?? null}
+                      photoURL={ident?.photoURL ?? null}
+                    />
+                  </View>
+                );
+              })}
             </View>
             <Text style={styles.queueName} numberOfLines={1}>
               {queue.name ?? 'Shared queue'}

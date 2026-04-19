@@ -17,7 +17,7 @@
  * contribution is from the friend's public profile.
  */
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -37,6 +37,7 @@ import { auth, db } from '../firebaseConfig';
 import Avatar from '../components/Avatar';
 import DotLoader from '../components/DotLoader';
 import MatchScoreChip from '../components/MatchScoreChip';
+import MatchCard, { type MatchCardSharedTitle } from '../components/MatchCard';
 import {
   computeMatchScore,
   tasteProfileToUserTasteProfile,
@@ -50,7 +51,7 @@ import type {
 import { fetchDetailsById, type TitleDetails } from '../services/api';
 import { useWhyYouMatch } from '../hooks/useWhyYouMatch';
 import { getDefaultLLMClient } from '../utils/ai/impl/AnthropicLLMClient';
-import { shareMatchCard } from '../utils/shareMatchCard';
+import { shareMatchCardFromRef } from '../utils/shareMatchCard';
 import type { MatchesStackParamList } from '../navigation/types';
 import { colors, spacing, radii, typography } from '../theme';
 
@@ -260,10 +261,32 @@ const FriendDetailScreen = (): React.ReactElement => {
     });
   };
 
+  // Off-screen ref to the MatchCard so `react-native-view-shot` can
+  // capture the rendered 9:16 card into a PNG for the system share sheet.
+  // Per Sprint 5b Stream E contract + evaluator refinement: manual smoke
+  // step 12 must send an image, not a URL. The card is mounted hidden
+  // below the scroll content; `collapsable={false}` keeps the native
+  // view hierarchy intact on Android so captureRef can find it.
+  const cardRef = useRef<View>(null);
+
+  const matchCardSharedTitles: MatchCardSharedTitle[] = useMemo(() => {
+    if (!matchResult) return [];
+    return matchResult.sharedTitleIds.slice(0, 3).map((id) => {
+      const d = titleDetails[id];
+      return {
+        id,
+        posterUrl: d?.poster_path
+          ? `https://image.tmdb.org/t/p/w342${d.poster_path}`
+          : null,
+        title: d?.title ?? d?.name ?? `#${id}`,
+      };
+    });
+  }, [matchResult, titleDetails]);
+
   const handleShareMatchCard = async (): Promise<void> => {
-    if (!userUid || !friendUid) return;
+    if (!userUid || !friendUid || !cardRef.current) return;
     try {
-      await shareMatchCard(userUid, friendUid);
+      await shareMatchCardFromRef({ current: cardRef.current });
     } catch (err) {
       console.warn('[FriendDetail] shareMatchCard failed:', err);
     }
@@ -282,92 +305,118 @@ const FriendDetailScreen = (): React.ReactElement => {
   const displayName = friendPublic?.displayName ?? 'Your friend';
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <View style={styles.hero}>
-        <Avatar
-          photoURL={friendPublic?.photoURL ?? null}
-          displayName={displayName}
-          size="xl"
+    <>
+      {/*
+        Off-screen MatchCard mount — captured by react-native-view-shot
+        when the user taps "Share match card". Kept in the view hierarchy
+        (not unmounted) so captureRef can always find it; positioned far
+        off-screen so it never visibly paints. collapsable={false} is
+        required on Android.
+      */}
+      <View
+        ref={cardRef}
+        collapsable={false}
+        pointerEvents="none"
+        style={styles.offscreenCardWrap}
+      >
+        <MatchCard
+          userUid={userUid ?? ''}
+          friendUid={friendUid}
+          matchResult={matchResult}
+          userDisplayName={userPublic?.displayName ?? null}
+          friendDisplayName={friendPublic?.displayName ?? null}
+          userPhotoURL={userPublic?.photoURL ?? null}
+          friendPhotoURL={friendPublic?.photoURL ?? null}
+          sharedTitles={matchCardSharedTitles}
         />
-        <Text style={styles.name}>{displayName}</Text>
-        {friendLabels ? (
-          <Text style={styles.labels} numberOfLines={2}>
-            {friendLabels.common} · {friendLabels.rare}
-          </Text>
-        ) : null}
-        <View style={styles.chipWrap}>
-          <MatchScoreChip score={matchResult.score} size="lg" />
+      </View>
+      <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+        <View style={styles.hero}>
+          <Avatar
+            photoURL={friendPublic?.photoURL ?? null}
+            displayName={displayName}
+            size="xl"
+          />
+          <Text style={styles.name}>{displayName}</Text>
+          {friendLabels ? (
+            <Text style={styles.labels} numberOfLines={2}>
+              {friendLabels.common} · {friendLabels.rare}
+            </Text>
+          ) : null}
+          <View style={styles.chipWrap}>
+            <MatchScoreChip score={matchResult.score} size="lg" />
+          </View>
         </View>
-      </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Why you match</Text>
-        {whyState.loading ? (
-          <View style={styles.loaderRow}>
-            <DotLoader size="sm" accessibilityLabel="Generating reason" />
-          </View>
-        ) : (
-          <Text style={styles.whyText}>{whyState.text}</Text>
-        )}
-      </View>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Why you match</Text>
+          {whyState.loading ? (
+            <View style={styles.loaderRow}>
+              <DotLoader size="sm" accessibilityLabel="Generating reason" />
+            </View>
+          ) : (
+            <Text style={styles.whyText}>{whyState.text}</Text>
+          )}
+        </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Top shared titles</Text>
-        {top3.length === 0 ? (
-          <Text style={styles.emptyLine}>
-            No overlap yet — swap a rec to seed one.
-          </Text>
-        ) : (
-          <View style={styles.posterRow}>
-            {top3.map((id) => {
-              const d = titleDetails[id];
-              return (
-                <View key={id} style={styles.posterCell}>
-                  {d?.poster_path ? (
-                    <Image
-                      source={{
-                        uri: `https://image.tmdb.org/t/p/w342${d.poster_path}`,
-                      }}
-                      style={styles.poster}
-                    />
-                  ) : (
-                    <View style={[styles.poster, styles.posterPlaceholder]} />
-                  )}
-                  <Text style={styles.posterTitle} numberOfLines={2}>
-                    {d?.title ?? d?.name ?? `#${id}`}
-                  </Text>
-                </View>
-              );
-            })}
-          </View>
-        )}
-      </View>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Top shared titles</Text>
+          {top3.length === 0 ? (
+            <Text style={styles.emptyLine}>
+              No overlap yet — swap a rec to seed one.
+            </Text>
+          ) : (
+            <View style={styles.posterRow}>
+              {top3.map((id) => {
+                const d = titleDetails[id];
+                return (
+                  <View key={id} style={styles.posterCell}>
+                    {d?.poster_path ? (
+                      <Image
+                        source={{
+                          uri: `https://image.tmdb.org/t/p/w342${d.poster_path}`,
+                        }}
+                        style={styles.poster}
+                      />
+                    ) : (
+                      <View style={[styles.poster, styles.posterPlaceholder]} />
+                    )}
+                    <Text style={styles.posterTitle} numberOfLines={2}>
+                      {d?.title ?? d?.name ?? `#${id}`}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+          )}
+        </View>
 
-      <View style={styles.ctaRow}>
-        <Pressable
-          style={({ pressed }) => [
-            styles.tertiaryBtn,
-            pressed ? styles.tertiaryBtnPressed : null,
-          ]}
-          onPress={handleSendRec}
-          accessibilityRole="button"
-          accessibilityLabel="Send a rec to this friend"
-        >
-          <Text style={styles.tertiaryBtnText}>Send rec</Text>
-        </Pressable>
-        <Pressable
-          style={({ pressed }) => [
-            styles.tertiaryBtn,
-            pressed ? styles.tertiaryBtnPressed : null,
-          ]}
-          onPress={handleShareMatchCard}
-          accessibilityRole="button"
-          accessibilityLabel="Share match card"
-        >
-          <Text style={styles.tertiaryBtnText}>Share match card</Text>
-        </Pressable>
-      </View>
-    </ScrollView>
+        <View style={styles.ctaRow}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.tertiaryBtn,
+              pressed ? styles.tertiaryBtnPressed : null,
+            ]}
+            onPress={handleSendRec}
+            accessibilityRole="button"
+            accessibilityLabel="Send a rec to this friend"
+          >
+            <Text style={styles.tertiaryBtnText}>Send rec</Text>
+          </Pressable>
+          <Pressable
+            style={({ pressed }) => [
+              styles.tertiaryBtn,
+              pressed ? styles.tertiaryBtnPressed : null,
+            ]}
+            onPress={handleShareMatchCard}
+            accessibilityRole="button"
+            accessibilityLabel="Share match card"
+          >
+            <Text style={styles.tertiaryBtnText}>Share match card</Text>
+          </Pressable>
+        </View>
+      </ScrollView>
+    </>
   );
 };
 
@@ -465,6 +514,17 @@ const styles = StyleSheet.create({
   tertiaryBtnText: {
     ...typography.button,
     color: colors.textHigh,
+  },
+  offscreenCardWrap: {
+    // Far off-screen so it never paints visibly. react-native-view-shot
+    // captures this hidden view on demand. 360 logical units gives the
+    // card a reasonable 9:16 footprint for on-device layout; captureRef
+    // pins the OUTPUT image to 1080x1920 regardless.
+    position: 'absolute',
+    top: -99999,
+    left: -99999,
+    width: 360,
+    aspectRatio: 9 / 16,
   },
 });
 

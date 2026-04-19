@@ -30,18 +30,10 @@ import { tierForScore, type MatchTierLabel } from './MatchScoreChip';
 import type { MatchScoreResult } from '../utils/matchScore';
 import { colors, spacing, radii } from '../theme';
 
-// The 4 ratified tier labels this card renders via `tierForScore`:
-//   'Getting There' (0-40%) | 'In Sync' (40-60%)
-//   'Tight Loop' (60-80%)   | 'Soulmates' (80-100%)
-// The strings live in MatchScoreChip.ts; they are exposed here in type
-// form via MatchTierLabel and at runtime via `tierForScore(score)`.
-/* eslint-disable-next-line no-unused-vars, @typescript-eslint/no-unused-vars */
-type _TierLabelsForVerify =
-  | 'Getting There'
-  | 'In Sync'
-  | 'Tight Loop'
-  | 'Soulmates';
-
+// The 4 ratified tier labels this card renders via `tierForScore`
+// (imported from MatchScoreChip.tsx, which is the single source of truth
+// for tier string literals per Sprint 5b contract refinement).
+//
 // Sprint 5b: 1080x1920 is the target capture size. The component itself
 // renders at a logical size that view-shot scales up on capture; React
 // Native's StyleSheet is density-agnostic, so the numbers below use the

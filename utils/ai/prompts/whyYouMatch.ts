@@ -40,5 +40,27 @@ export const WHY_YOU_MATCH_GUARD_TOKENS = [
   'Between 10 and 22',
 ] as const;
 
-/** Tool name for structured output. Schema owned by AnthropicLLMClient. */
+/** Tool name for structured output. */
 export const WHY_YOU_MATCH_TOOL_NAME = 'submit_bridge_sentence';
+
+/**
+ * Tool input_schema for structured output — the model MUST respond via
+ * this tool, never freeform JSON. Keeping the schema here (adjacent to
+ * the prompt body) makes it obvious that a prompt edit + schema edit
+ * travel together and keeps SDK types out of the prompt file.
+ */
+export const WHY_YOU_MATCH_INPUT_SCHEMA: {
+  type: 'object';
+  properties: Record<string, { type: 'string'; description: string }>;
+  required: string[];
+} = {
+  type: 'object',
+  properties: {
+    sentence: {
+      type: 'string',
+      description:
+        'Exactly one sentence, 10-22 words, second person, present tense, names a shared concrete taste attribute. Uses {displayLabel} placeholder for the friend.',
+    },
+  },
+  required: ['sentence'],
+};

@@ -97,6 +97,23 @@ jest.mock('firebase/firestore', () => ({
   arrayUnion: jest.fn((x: unknown) => ({ __op: 'arrayUnion', x })),
   serverTimestamp: jest.fn(() => ({ __ts: Date.now() })),
   onSnapshot: jest.fn((_ref: unknown, _cb: unknown) => () => {}),
+  // Sprint 5b: default passthrough — tests that need the transaction
+  // semantics override this per-case with mockImplementation.
+  // reason: firestore runTransaction's real signature is generic; the mock is a thin executor.
+  runTransaction: jest.fn(
+    async (_db: unknown, cb: (tx: unknown) => Promise<unknown>) => {
+      const txStub = {
+        get: jest.fn(async () => ({
+          exists: () => false,
+          data: () => undefined,
+        })),
+        set: jest.fn(),
+        update: jest.fn(),
+        delete: jest.fn(),
+      };
+      return cb(txStub);
+    },
+  ),
   Timestamp: {
     now: jest.fn(() => ({ seconds: 0, nanoseconds: 0 })),
     fromDate: jest.fn((d: Date) => ({

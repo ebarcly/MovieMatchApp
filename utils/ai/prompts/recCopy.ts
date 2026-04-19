@@ -32,5 +32,48 @@ export const REC_COPY_GUARD_TOKENS = [
   'No exclamation',
 ] as const;
 
-/** Tool name for structured output. Schema owned by AnthropicLLMClient. */
+/** Tool name for structured output. */
 export const REC_COPY_TOOL_NAME = 'submit_rec_variants';
+
+/**
+ * Tool input_schema for structured output — the model MUST respond via
+ * this tool, never freeform JSON. Keeping the schema here keeps the
+ * prompt + schema travelling together on edits.
+ */
+export const REC_COPY_INPUT_SCHEMA: {
+  type: 'object';
+  properties: {
+    variants: {
+      type: 'array';
+      minItems: number;
+      maxItems: number;
+      items: {
+        type: 'string';
+        minLength: number;
+        maxLength: number;
+        description: string;
+      };
+      description: string;
+    };
+  };
+  required: string[];
+} = {
+  type: 'object',
+  properties: {
+    variants: {
+      type: 'array',
+      minItems: 3,
+      maxItems: 3,
+      items: {
+        type: 'string',
+        minLength: 30,
+        maxLength: 280,
+        description:
+          'One rec-copy variant, 30-280 chars, no exclamation, no emoji, no #.',
+      },
+      description:
+        'Exactly 3 distinct-first-word variants, each 30-280 chars, bridge-framed.',
+    },
+  },
+  required: ['variants'],
+};

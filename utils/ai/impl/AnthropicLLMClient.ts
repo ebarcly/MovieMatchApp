@@ -46,8 +46,13 @@ import type {
 import {
   WHY_YOU_MATCH_SYSTEM_PROMPT,
   WHY_YOU_MATCH_TOOL_NAME,
+  WHY_YOU_MATCH_INPUT_SCHEMA,
 } from '../prompts/whyYouMatch';
-import { REC_COPY_SYSTEM_PROMPT, REC_COPY_TOOL_NAME } from '../prompts/recCopy';
+import {
+  REC_COPY_SYSTEM_PROMPT,
+  REC_COPY_TOOL_NAME,
+  REC_COPY_INPUT_SCHEMA,
+} from '../prompts/recCopy';
 import {
   sentenceIsValid,
   assertRecCopyBatch,
@@ -85,40 +90,23 @@ const WHY_YOU_MATCH_MAX_TOKENS = 120;
 const REC_COPY_MAX_TOKENS = 600;
 
 // --- Tool schemas (brief §2 + §3) -----------------------------------
+//
+// Schemas live alongside the prompt body in `prompts/*.ts` — a prompt
+// edit and schema edit travel together. Tool wrappers here just compose
+// the SDK Tool shape from the prompt-owned schema.
 
 const WHY_YOU_MATCH_TOOL: Tool = {
   name: WHY_YOU_MATCH_TOOL_NAME,
   description:
     'Submit the single bridge sentence. Must contain the literal placeholder token {displayLabel} where the friend name goes.',
-  input_schema: {
-    type: 'object',
-    properties: {
-      sentence: {
-        type: 'string',
-        description:
-          'One sentence, present tense, second person. Contains the literal placeholder {displayLabel}.',
-      },
-    },
-    required: ['sentence'],
-  },
+  input_schema: WHY_YOU_MATCH_INPUT_SCHEMA,
 };
 
 const REC_COPY_TOOL: Tool = {
   name: REC_COPY_TOOL_NAME,
   description:
     'Submit exactly 3 rec-copy variants. Each between 30 and 280 characters. No exclamation marks, no emoji, no hashtags.',
-  input_schema: {
-    type: 'object',
-    properties: {
-      variants: {
-        type: 'array',
-        minItems: 3,
-        maxItems: 3,
-        items: { type: 'string', minLength: 30, maxLength: 280 },
-      },
-    },
-    required: ['variants'],
-  },
+  input_schema: REC_COPY_INPUT_SCHEMA,
 };
 
 // --- Construction ----------------------------------------------------

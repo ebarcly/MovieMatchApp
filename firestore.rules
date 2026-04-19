@@ -184,6 +184,23 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // --- /aiCache (Sprint 5b Stream C) ---
+    // Firestore-backed LLM response cache keyed by SHA-256 hashes. No
+    // PII — keys are hashes and payloads are already sanitized text
+    // (the `{displayLabel}` placeholder is substituted client-side at
+    // render time). Sprint 6 will tighten this to server-only writes
+    // when inference moves to Cloud Functions.
+    match /aiCache/{hash} {
+      allow read, write: if request.auth != null;
+    }
+
+    // --- /aiSpend (Sprint 5b Stream C) ---
+    // Daily LLM cost tracking, transactionally incremented per call.
+    // Keys are yyyy-mm-dd — no PII. Sprint 6 also tightens this.
+    match /aiSpend/{dayKey} {
+      allow read, write: if request.auth != null;
+    }
+
     // --- /migrations (Sprint 5a debug log) ---
     // Each migration event is written by the migrating user; no cross-user
     // reads.

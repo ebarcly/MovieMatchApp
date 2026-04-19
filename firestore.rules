@@ -90,6 +90,48 @@ service cloud.firestore {
                      && request.auth.uid in resource.data.participants;
     }
 
+    // --- /recs (Sprint 5b Stream B) ---
+    // Rec card document — a personalized recommendation sent from one
+    // signed-in user (`from`) to a friend (`to`). Shape:
+    //   { from: uid, to: uid, titleId: number, note: string (30-280),
+    //     createdAt: serverTimestamp, viewedAt?: serverTimestamp }
+    //
+    // Sender creates. Sender + recipient read. Nobody else. Content is
+    // immutable post-create except `viewedAt`, which the recipient stamps
+    // once on first open. (`/rec/{recId}` hosting preview is a public
+    // render of `from` displayName + note + poster; the Firestore doc
+    // itself stays participant-gated — the preview HTML fetches title
+    // metadata via TMDB on the client, not via an authenticated rec read.)
+    match /recs/{recId} {
+      allow read: if request.auth != null
+                   && (request.auth.uid == resource.data.from
+                       || request.auth.uid == resource.data.to);
+
+      allow create: if request.auth != null
+                     && request.auth.uid == request.resource.data.from
+                     && request.resource.data.from is string
+                     && request.resource.data.to is string
+                     && request.resource.data.from != request.resource.data.to
+                     && request.resource.data.titleId is number
+                     && request.resource.data.note is string
+                     && request.resource.data.note.size() >= 30
+                     && request.resource.data.note.size() <= 280
+                     && 'createdAt' in request.resource.data
+                     && request.resource.data.keys().hasOnly(
+                         ['from', 'to', 'titleId', 'note', 'createdAt']);
+
+      // Recipient can stamp viewedAt once. Only that field may change.
+      allow update: if request.auth != null
+                     && request.auth.uid == resource.data.to
+                     && request.resource.data.from == resource.data.from
+                     && request.resource.data.to == resource.data.to
+                     && request.resource.data.titleId == resource.data.titleId
+                     && request.resource.data.note == resource.data.note
+                     && request.resource.data.createdAt == resource.data.createdAt;
+
+      allow delete: if false;
+    }
+
     // --- /migrations (Sprint 5a debug log) ---
     // Each migration event is written by the migrating user; no cross-user
     // reads.

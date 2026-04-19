@@ -275,7 +275,10 @@ const HomeScreen = (_props: Props): React.ReactElement => {
     <View style={styles.screen}>
       <NavigationBar />
       <StoriesStrip />
-      <CategoryTabs onCategorySelect={setSelectedCategory} />
+      <CategoryTabs
+        selected={selectedCategory}
+        onCategorySelect={setSelectedCategory}
+      />
       {error ? (
         <View
           style={styles.errorBanner}

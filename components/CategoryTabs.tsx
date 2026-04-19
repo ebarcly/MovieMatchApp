@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { StyleSheet, ScrollView } from 'react-native';
 import CategoryButton from './CategoryButton';
 import { spacing } from '../theme';
@@ -7,19 +7,16 @@ const categories = ['TV Shows', 'Movies', 'All'] as const;
 export type Category = (typeof categories)[number];
 
 interface CategoryTabsProps {
+  selected: Category;
   onCategorySelect: (category: Category) => void;
 }
 
+// reason: controlled component — parent owns selected category so the
+// active highlight and the content stay in sync on the first tap.
 const CategoryTabs = ({
+  selected,
   onCategorySelect,
 }: CategoryTabsProps): React.ReactElement => {
-  const [activeTab, setActiveTab] = useState<Category>(categories[0]);
-
-  const handleCategorySelect = (category: Category): void => {
-    setActiveTab(category);
-    onCategorySelect(category);
-  };
-
   return (
     <ScrollView
       horizontal
@@ -30,8 +27,8 @@ const CategoryTabs = ({
         <CategoryButton
           key={category}
           label={category}
-          isActive={activeTab === category}
-          onPress={() => handleCategorySelect(category)}
+          isActive={selected === category}
+          onPress={() => onCategorySelect(category)}
         />
       ))}
     </ScrollView>

@@ -1,0 +1,8 @@
+env: load .env
+env: export EXPO_PUBLIC_TMDB_API_KEY EXPO_PUBLIC_FIREBASE_API_KEY EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN EXPO_PUBLIC_FIREBASE_PROJECT_ID EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID EXPO_PUBLIC_FIREBASE_APP_ID
+Starting project at C:\Users\enrique\Documents\Projects\MovieMatchApp
+ΓÇ║ Port 8081 is being used by another process
+Input is required, but 'npx expo' is in non-interactive mode.
+Required input:
+> Use port 8083 instead?
+ΓÇ║ Skipping dev server

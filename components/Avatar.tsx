@@ -24,16 +24,18 @@ import { colors, radii, typography } from '../theme';
  *   - 'xs' = 24 (inline row chips)
  *   - 'sm' = 32 (list rows)
  *   - 'md' = 48 (default, friend-candidate cards)
- *   - 'lg' = 80 (profile hero)
+ *   - 'lg' = 80 (onboarding hero)
+ *   - 'xl' = 120 (MyCave profile hero)
  */
 
-type AvatarSize = 'xs' | 'sm' | 'md' | 'lg';
+type AvatarSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
 
 const SIZE_MAP: Readonly<Record<AvatarSize, number>> = {
   xs: 24,
   sm: 32,
   md: 48,
   lg: 80,
+  xl: 120,
 };
 
 export interface AvatarProps {

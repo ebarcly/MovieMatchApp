@@ -19,11 +19,17 @@ import {
   deleteDoc,
   getDocs,
   getDoc,
+  onSnapshot,
 } from 'firebase/firestore';
 import { MoviesContext } from '../context/MoviesContext';
 import { fetchDetailsById } from '../services/api';
+import Avatar from '../components/Avatar';
 import DotLoader from '../components/DotLoader';
 import { useToast } from '../components/Toast';
+import {
+  uploadProfileImage,
+  ProfileImageError,
+} from '../utils/profileImageUpload';
 import { colors, spacing, radii, typography, shadows } from '../theme';
 import type { MyCaveStackParamList } from '../navigation/types';
 import type { WatchlistItem } from '../utils/firebaseOperations';
@@ -45,15 +51,28 @@ const MyCaveScreen = (): React.ReactElement => {
   const navigation = useNavigation<NavProp>();
   const { state, dispatch } = useContext(MoviesContext);
   const toast = useToast();
-  const [profileImage, setProfileImage] = useState<ImageSourcePropType>(
-    require('../assets/profile_default.jpg') as ImageSourcePropType,
-  );
+  const [photoURL, setPhotoURL] = useState<string | null>(null);
+  const [photoUploading, setPhotoUploading] = useState(false);
   const [headerImage, setHeaderImage] = useState<ImageSourcePropType>(
     require('../assets/header_default.png') as ImageSourcePropType,
   );
   const [friendsActivity] = useState<FriendActivity[]>([]);
   const [userData, setUserData] = useState<UserProfileData>({});
   const [loading, setLoading] = useState(true);
+
+  // Sprint 5a follow-up: photoURL now lives on /users/{uid}/public/profile,
+  // not on the private root doc. Subscribe so uploads from ProfilePhotoScreen
+  // reflect here without a manual refresh.
+  useEffect(() => {
+    const user = auth.currentUser;
+    if (!user) return undefined;
+    const publicRef = doc(db, 'users', user.uid, 'public', 'profile');
+    const unsub = onSnapshot(publicRef, (snap) => {
+      const data = snap.data() as { photoURL?: string } | undefined;
+      setPhotoURL(data?.photoURL ?? null);
+    });
+    return () => unsub();
+  }, []);
 
   const navigateToProfileEdit = (): void => {
     navigation.navigate('EditProfile', { isEditing: true });
@@ -161,6 +180,8 @@ const MyCaveScreen = (): React.ReactElement => {
   };
 
   const handleProfileImageChange = async (): Promise<void> => {
+    const user = auth.currentUser;
+    if (!user) return;
     const permissionResult =
       await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permissionResult.granted) {
@@ -172,9 +193,38 @@ const MyCaveScreen = (): React.ReactElement => {
       return;
     }
 
-    const pickerResult = await ImagePicker.launchImageLibraryAsync();
-    if (!pickerResult.canceled && pickerResult.assets?.[0]?.uri) {
-      setProfileImage({ uri: pickerResult.assets[0].uri });
+    const pickerResult = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.9,
+    });
+    const asset = pickerResult.assets?.[0];
+    if (pickerResult.canceled || !asset?.uri) return;
+
+    setPhotoUploading(true);
+    try {
+      await uploadProfileImage(user.uid, {
+        localUri: asset.uri,
+        mimeType: asset.mimeType ?? 'image/jpeg',
+        sizeBytes: asset.fileSize ?? 0,
+      });
+      // onSnapshot above will update photoURL once Firestore writes.
+      toast.show({
+        type: 'success',
+        title: 'Photo updated',
+        body: 'Your new profile picture is live.',
+      });
+    } catch (err) {
+      const body =
+        err instanceof ProfileImageError && err.kind === 'too-large'
+          ? 'Image too large — pick one under 2 MB.'
+          : err instanceof ProfileImageError && err.kind === 'bad-mime'
+            ? 'Only JPEG or PNG images are supported.'
+            : 'Upload failed. Check your connection and try again.';
+      toast.show({ type: 'error', title: 'Upload failed', body });
+    } finally {
+      setPhotoUploading(false);
     }
   };
 
@@ -214,8 +264,25 @@ const MyCaveScreen = (): React.ReactElement => {
           onPress={handleProfileImageChange}
           accessibilityRole="button"
           accessibilityLabel="Change profile picture"
+          accessibilityState={{ disabled: photoUploading }}
+          disabled={photoUploading}
+          style={styles.profileImageWrapper}
         >
-          <Image source={profileImage} style={styles.profileImage} />
+          <Avatar
+            photoURL={photoURL}
+            displayName={userData.profileName ?? null}
+            size="xl"
+            style={styles.profileImage}
+          />
+          {photoUploading ? (
+            <View
+              style={styles.profileImageOverlay}
+              pointerEvents="none"
+              accessibilityLiveRegion="polite"
+            >
+              <DotLoader size="md" accessibilityLabel="Uploading photo" />
+            </View>
+          ) : null}
         </Pressable>
         <Text style={styles.name}>{userData.profileName || 'Your Name'}</Text>
         <Text style={styles.description}>
@@ -344,9 +411,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: -spacing.xxxl,
   },
+  profileImageWrapper: {
+    position: 'relative',
+  },
   profileImage: {
-    width: 120,
-    height: 120,
+    borderWidth: 4,
+    borderColor: colors.ink,
+  },
+  profileImageOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(10,10,18,0.55)',
     borderRadius: radii.pill,
     borderWidth: 4,
     borderColor: colors.ink,

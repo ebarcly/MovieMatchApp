@@ -24,6 +24,17 @@ import { colors, spacing, radii, typography } from '../theme';
 
 type Props = StackScreenProps<HomeStackParamList, 'Detail'>;
 
+function dedupeById<T extends { id: number }>(items: T[]): T[] {
+  const seen = new Set<number>();
+  const out: T[] = [];
+  for (const item of items) {
+    if (seen.has(item.id)) continue;
+    seen.add(item.id);
+    out.push(item);
+  }
+  return out;
+}
+
 const DetailScreen = ({ route, navigation }: Props): React.ReactElement => {
   const { id, type } = route.params;
   const [detailData, setDetailData] = useState<TitleDetails | null>(null);
@@ -259,7 +270,11 @@ const DetailScreen = ({ route, navigation }: Props): React.ReactElement => {
 
       {detailData.credits && detailData.credits.cast ? (
         <FlatList
-          data={detailData.credits.cast}
+          // TMDB can return the same person twice in cast (multiple roles,
+          // voice + body credit, etc.). Dedupe by `id` — keeps first
+          // occurrence — so FlatList keys stay unique and the UI doesn't
+          // render the same actor twice.
+          data={dedupeById(detailData.credits.cast)}
           horizontal
           style={styles.castList}
           contentContainerStyle={styles.castListContent}

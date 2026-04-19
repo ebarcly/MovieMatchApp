@@ -120,9 +120,13 @@ async function prompt(question) {
   return answer.trim();
 }
 
-async function promptOrEnv(envKey, question) {
-  const v = process.env[envKey];
-  if (v && v.length > 0) return v;
+// Takes the resolved env value directly rather than an env key — Expo's
+// `expo/no-dynamic-env-var` lint rule blocks dynamic indexing into
+// `process.env` because EXPO_PUBLIC_* prefix enforcement happens at
+// bundle time via static analysis. This script is node-only (not
+// bundled), but we match the convention anyway.
+async function promptOrValue(envValue, question) {
+  if (envValue && envValue.length > 0) return envValue;
   return prompt(question);
 }
 
@@ -143,8 +147,8 @@ async function main() {
 
   // --- Phase A: sign in as A -------------------------------------------
 
-  const aPassword = await promptOrEnv(
-    'SEED_A_PASSWORD',
+  const aPassword = await promptOrValue(
+    process.env.SEED_A_PASSWORD,
     `Password for ${A_EMAIL} (User A): `,
   );
   const aCred = await signInWithEmailAndPassword(auth, A_EMAIL, aPassword);
@@ -226,9 +230,12 @@ async function main() {
 
   await signOut(auth);
 
-  const bEmail = await promptOrEnv('SEED_B_EMAIL', 'User B email: ');
-  const bPassword = await promptOrEnv(
-    'SEED_B_PASSWORD',
+  const bEmail = await promptOrValue(
+    process.env.SEED_B_EMAIL,
+    'User B email: ',
+  );
+  const bPassword = await promptOrValue(
+    process.env.SEED_B_PASSWORD,
     `Password for ${bEmail} (User B): `,
   );
   const bCred = await signInWithEmailAndPassword(auth, bEmail, bPassword);

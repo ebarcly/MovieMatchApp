@@ -51,3 +51,6 @@ CLAUDE.md.local
 # Transient smoke-test logs (captured via `npx expo start ... | tee <name>.log`)
 expo-smoke.log
 *.smoke.log
+
+# Firebase CLI hosting/functions deploy cache — regenerated on every deploy.
+.firebase/

@@ -295,6 +295,14 @@ const FriendDetailScreen = (): React.ReactElement => {
 
   const toast = useToast();
   const [sharingMatchCard, setSharingMatchCard] = useState(false);
+  // `capturing` toggles the off-screen MatchCard wrapper's opacity from
+  // 0 → 1 for the duration of the view-shot capture. Rendering at opacity
+  // 0 produces a blank PNG (every pixel's alpha channel = 0) — the PR
+  // before this one shipped that bug. Briefly setting opacity to 1 lets
+  // view-shot's captureRef see fully-opaque pixel data. The card is
+  // still off-screen-ish (absolute position, width 360 × height 640)
+  // so the visual flash is a ~300ms appearance in the top-left area.
+  const [capturing, setCapturing] = useState(false);
 
   const handleShareMatchCard = async (): Promise<void> => {
     console.log(
@@ -314,9 +322,6 @@ const FriendDetailScreen = (): React.ReactElement => {
       return;
     }
     if (!cardRef.current) {
-      // Race: off-screen MatchCard ref not yet attached. Shouldn't
-      // normally happen post-mount, but if it does we surface it
-      // instead of silently returning (evaluator called this out).
       toast.show({
         type: 'error',
         title: 'Match card not ready',
@@ -326,10 +331,13 @@ const FriendDetailScreen = (): React.ReactElement => {
     }
     try {
       setSharingMatchCard(true);
-      // 8s timeout on view-shot capture + share flow. Long enough for
-      // image encode on lower-end devices, short enough that a silent
-      // native failure (view-shot not registered, share sheet hang)
-      // surfaces in the UI.
+      // Toggle the wrapper to visible. One animation frame (≈16ms) is
+      // usually enough for React to commit the style change and iOS to
+      // re-render the CALayer; we use 80ms to absorb any image-load
+      // jitter on the avatar + poster thumbnails inside MatchCard.
+      setCapturing(true);
+      await new Promise<void>((resolve) => setTimeout(resolve, 80));
+      console.log('[match-card] capture starting');
       await Promise.race([
         shareMatchCardFromRef({ current: cardRef.current }),
         new Promise<never>((_, reject) =>
@@ -351,6 +359,7 @@ const FriendDetailScreen = (): React.ReactElement => {
             : "Couldn't capture the match card.",
       });
     } finally {
+      setCapturing(false);
       setSharingMatchCard(false);
     }
   };
@@ -380,7 +389,7 @@ const FriendDetailScreen = (): React.ReactElement => {
         ref={cardRef}
         collapsable={false}
         pointerEvents="none"
-        style={styles.offscreenCardWrap}
+        style={[styles.offscreenCardWrap, { opacity: capturing ? 1 : 0 }]}
       >
         <MatchCard
           userUid={userUid ?? ''}
@@ -585,13 +594,13 @@ const styles = StyleSheet.create({
     color: colors.textHigh,
   },
   offscreenCardWrap: {
-    // Hidden via opacity + absolute positioning at top-left of the view
-    // hierarchy (NOT off-screen at negative coords — `react-native-view-shot`
-    // on iOS won't flush a view that's positioned far outside the window
-    // bounds into the native capture buffer, and captureRef hangs until
-    // timeout). Keep it in normal layout with opacity:0 so the native
-    // module can traverse + rasterize it. pointerEvents:'none' keeps it
-    // from stealing taps from the real UI behind/above it.
+    // Positioned at top-left within the view hierarchy so
+    // react-native-view-shot can traverse + rasterize it (negative
+    // off-screen coords like top:-99999 prevent iOS from flushing the
+    // view to the native capture buffer — captureRef hangs until
+    // timeout). Opacity is toggled dynamically via the `capturing` state
+    // in the component — 0 when idle (visually hidden), 1 during capture
+    // (so the resulting PNG has full-alpha pixels, not blank alpha).
     //
     // Explicit width + height (not aspectRatio) so RN measures it
     // synchronously — deterministic rendering for captureRef.
@@ -600,7 +609,6 @@ const styles = StyleSheet.create({
     left: 0,
     width: 360,
     height: 640,
-    opacity: 0,
   },
 });
 

@@ -19,7 +19,16 @@ const wrap = (ui: React.ReactElement) => <ToastProvider>{ui}</ToastProvider>;
 describe('ContactOnboardingScreen (Sprint 5a)', () => {
   it('renders the idle hero with a privacy-framed body', () => {
     const { getByText, getByLabelText } = render(
-      wrap(<ContactOnboardingScreen {...({} as never)} />),
+      wrap(
+        // reason: smoke test — nav props aren't exercised by the idle
+        // hero; cast via unknown to skip the StackScreenProps requirement.
+        React.createElement(
+          ContactOnboardingScreen as unknown as React.ComponentType<
+            Record<string, unknown>
+          >,
+          {},
+        ),
+      ),
     );
 
     expect(getByText('Find your people')).toBeTruthy();
@@ -33,7 +42,16 @@ describe('ContactOnboardingScreen (Sprint 5a)', () => {
       .mockResolvedValue({ action: 'dismissedAction' });
 
     const { getByLabelText } = render(
-      wrap(<ContactOnboardingScreen {...({} as never)} />),
+      wrap(
+        // reason: smoke test — nav props aren't exercised by the idle
+        // hero; cast via unknown to skip the StackScreenProps requirement.
+        React.createElement(
+          ContactOnboardingScreen as unknown as React.ComponentType<
+            Record<string, unknown>
+          >,
+          {},
+        ),
+      ),
     );
 
     fireEvent.press(getByLabelText('Share an invite link instead'));

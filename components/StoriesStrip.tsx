@@ -108,7 +108,9 @@ const StoriesStrip = (): React.ReactElement => {
 
 const styles = StyleSheet.create({
   container: {
-    height: 96,
+    // 56 avatar + 4 marginBottom + 2× 16 caption line-height + 16 paddingVertical
+    // = 108 min; 120 gives the rare/common labels room to breathe without clip.
+    height: 120,
     paddingVertical: spacing.xs,
     backgroundColor: 'transparent',
   },
@@ -121,7 +123,7 @@ const styles = StyleSheet.create({
     marginRight: spacing.sm,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 72,
+    minHeight: 104,
   },
   avatarRing: {
     width: 56,

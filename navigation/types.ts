@@ -41,8 +41,12 @@ export type MyCaveStackParamList = {
 };
 
 // --- Profile Setup stack ----------------------------------------------
+// Sprint 4 adds TasteQuiz to the onboarding flow — ProfileSetup →
+// TasteQuiz → Main (if tasteProfile absent) / ProfileSetup → Main
+// (if tasteProfile present). Idempotent on re-entry.
 export type ProfileSetupStackParamList = {
   ProfileSetupInitial: SharedProfileParams;
+  TasteQuiz: undefined;
 };
 
 // --- Main tabs --------------------------------------------------------

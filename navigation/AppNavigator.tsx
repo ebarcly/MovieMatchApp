@@ -9,10 +9,14 @@ import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 import ProfileSetupScreen from '../screens/ProfileSetupScreen';
+import TasteQuizScreen from '../screens/TasteQuizScreen';
+import DotLoader from '../components/DotLoader';
 import { auth, db } from '../firebaseConfig';
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
-import { ActivityIndicator, View } from 'react-native';
+import { View, StyleSheet } from 'react-native';
+import { FilmSlate, Heart, User as UserIcon } from 'phosphor-react-native';
+import { colors } from '../theme';
 import type {
   AuthStackParamList,
   HomeStackParamList,
@@ -42,28 +46,43 @@ function AuthStackScreen(): React.ReactElement {
   );
 }
 
+// Shared themed stack header options — Sprint 4 DetailScreen iOS header
+// fix. Stacks were leaking the platform default light header on iOS.
+const themedStackHeader = {
+  headerStyle: { backgroundColor: colors.ink, shadowColor: 'transparent' },
+  headerTintColor: colors.textHigh,
+  headerTitleStyle: { color: colors.textHigh },
+} as const;
+
 function HomeStackScreen(): React.ReactElement {
   return (
-    <HomeStackNav.Navigator>
+    <HomeStackNav.Navigator screenOptions={themedStackHeader}>
       <HomeStackNav.Screen
         name="Home"
         component={HomeScreen}
         options={{ headerShown: false }}
       />
-      <HomeStackNav.Screen name="Detail" component={DetailScreen} />
+      <HomeStackNav.Screen
+        name="Detail"
+        component={DetailScreen}
+        options={{ title: '' }}
+      />
     </HomeStackNav.Navigator>
   );
 }
 
-// Stack for the initial Profile Setup flow
+// Stack for the initial Profile Setup flow + onboarding TasteQuiz.
 function ProfileSetupStackScreen(): React.ReactElement {
   return (
-    <ProfileSetupStackNav.Navigator>
+    <ProfileSetupStackNav.Navigator screenOptions={{ headerShown: false }}>
       <ProfileSetupStackNav.Screen
         name="ProfileSetupInitial"
         component={ProfileSetupScreen}
-        options={{ headerShown: false }}
         initialParams={{ isEditing: false }}
+      />
+      <ProfileSetupStackNav.Screen
+        name="TasteQuiz"
+        component={TasteQuizScreen}
       />
     </ProfileSetupStackNav.Navigator>
   );
@@ -72,7 +91,7 @@ function ProfileSetupStackScreen(): React.ReactElement {
 // Stack used within the My Cave Tab
 function MyCaveStackScreen(): React.ReactElement {
   return (
-    <MyCaveStackNav.Navigator>
+    <MyCaveStackNav.Navigator screenOptions={themedStackHeader}>
       <MyCaveStackNav.Screen
         name="MyCaveProfile"
         component={MyCaveScreen}
@@ -83,14 +102,42 @@ function MyCaveStackScreen(): React.ReactElement {
         component={ProfileSetupScreen}
         options={{ title: 'Edit Profile' }}
       />
+      <MyCaveStackNav.Screen
+        name="Detail"
+        component={DetailScreen}
+        options={{ title: '' }}
+      />
     </MyCaveStackNav.Navigator>
   );
 }
 
-// Main App Tabs shown after login and profile setup
+// Main App Tabs shown after login and profile setup.
+// Sprint 4 tab bar fix: the Sprint-2-era blue ▼ selector was the
+// platform default tint. Override with accent-yellow active tint, ink
+// bar, textTertiary inactive, accent icon on focus.
 function MainAppTabs(): React.ReactElement {
   return (
-    <TabNav.Navigator screenOptions={{ headerShown: false }}>
+    <TabNav.Navigator
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        tabBarActiveTintColor: colors.accent,
+        tabBarInactiveTintColor: colors.textTertiary,
+        tabBarStyle: {
+          backgroundColor: colors.ink,
+          borderTopColor: colors.borderStrong,
+          borderTopWidth: StyleSheet.hairlineWidth,
+        },
+        tabBarIcon: ({ color, size }: { color: string; size: number }) => {
+          if (route.name === 'Deck') {
+            return <FilmSlate size={size} color={color} weight="regular" />;
+          }
+          if (route.name === 'Matches') {
+            return <Heart size={size} color={color} weight="regular" />;
+          }
+          return <UserIcon size={size} color={color} weight="regular" />;
+        },
+      })}
+    >
       <TabNav.Screen name="Deck" component={HomeStackScreen} />
       <TabNav.Screen name="Matches" component={MatchesScreen} />
       <TabNav.Screen name="My Cave" component={MyCaveStackScreen} />
@@ -146,8 +193,15 @@ const AppNavigator = (): React.ReactElement => {
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" />
+      <View
+        style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: colors.ink,
+        }}
+      >
+        <DotLoader size="lg" accessibilityLabel="Loading app" />
       </View>
     );
   }

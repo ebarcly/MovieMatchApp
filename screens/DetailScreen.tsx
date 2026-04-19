@@ -5,9 +5,9 @@ import {
   Text,
   ScrollView,
   Image,
-  ActivityIndicator,
   FlatList,
   TouchableOpacity,
+  Pressable,
 } from 'react-native';
 import {
   fetchDetailsById,
@@ -16,9 +16,12 @@ import {
   type TmdbCastMember,
 } from '../services/api';
 import { PlayCircle, FilmStrip, Clock } from 'phosphor-react-native';
-import { WebView } from 'react-native-webview';
+import YoutubePlayer from 'react-native-youtube-iframe';
+import DotLoader from '../components/DotLoader';
+import { Skeleton } from '../components/Skeleton';
 import type { StackScreenProps } from '@react-navigation/stack';
 import type { HomeStackParamList } from '../navigation/types';
+import { colors, spacing, radii, typography } from '../theme';
 
 type Props = StackScreenProps<HomeStackParamList, 'Detail'>;
 
@@ -27,7 +30,7 @@ const DetailScreen = ({ route }: Props): React.ReactElement => {
   const [detailData, setDetailData] = useState<TitleDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [trailerUrl, setTrailerUrl] = useState<string | null>(null);
+  const [trailerKey, setTrailerKey] = useState<string | null>(null);
   const [showTrailer, setShowTrailer] = useState(false);
 
   useEffect(() => {
@@ -42,10 +45,13 @@ const DetailScreen = ({ route }: Props): React.ReactElement => {
           (video) => video.type === 'Trailer' && video.site === 'YouTube',
         );
         if (trailer) {
-          setTrailerUrl(`https://www.youtube.com/embed/${trailer.key}`);
+          // Sprint 4 DetailScreen trailer fix: react-native-youtube-iframe
+          // takes the bare video id (not an embed URL), fixing WebView
+          // Error 153 noted in the Sprint 3 handoff.
+          setTrailerKey(trailer.key);
         }
       } catch (e) {
-        setError('Unable to get details for this movie');
+        setError('We could not load this title right now. Please try again.');
         console.error(e);
       } finally {
         setLoading(false);
@@ -60,13 +66,18 @@ const DetailScreen = ({ route }: Props): React.ReactElement => {
   };
 
   const renderTrailer = (): React.ReactElement => {
-    if (trailerUrl && showTrailer) {
+    if (trailerKey && showTrailer) {
       return (
         <View style={styles.videoPlayer}>
-          <WebView source={{ uri: trailerUrl }} style={styles.video} />
+          <YoutubePlayer
+            height={200}
+            play
+            videoId={trailerKey}
+            webViewStyle={styles.videoInner}
+          />
         </View>
       );
-    } else if (trailerUrl) {
+    } else if (trailerKey) {
       return (
         <View style={styles.backdropContainer}>
           {detailData?.backdrop_path ? (
@@ -77,12 +88,15 @@ const DetailScreen = ({ route }: Props): React.ReactElement => {
               style={styles.backdropImage}
             />
           ) : null}
-          <TouchableOpacity
+          <Pressable
             onPress={handlePlayTrailerClick}
             style={styles.playButton}
+            accessibilityRole="button"
+            accessibilityLabel="Play trailer"
+            accessibilityHint="Starts the embedded YouTube trailer"
           >
-            <PlayCircle size={56} color="#FFF" weight="fill" />
-          </TouchableOpacity>
+            <PlayCircle size={64} color={colors.accent} weight="fill" />
+          </Pressable>
         </View>
       );
     }
@@ -94,15 +108,47 @@ const DetailScreen = ({ route }: Props): React.ReactElement => {
   };
 
   if (loading) {
-    return <ActivityIndicator size="large" />;
+    return (
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.loadingWrap}
+      >
+        <Skeleton height={220} borderRadius={0} />
+        <View style={styles.loadingBody}>
+          <Skeleton height={28} width="80%" style={styles.loadingRow} />
+          <Skeleton height={14} width="60%" style={styles.loadingRow} />
+          <Skeleton height={14} width="90%" style={styles.loadingRow} />
+          <Skeleton height={14} width="90%" style={styles.loadingRow} />
+          <View style={styles.loadingSpinner}>
+            <DotLoader size="md" accessibilityLabel="Loading title details" />
+          </View>
+        </View>
+      </ScrollView>
+    );
   }
 
   if (error) {
-    return <Text style={styles.errorText}>{error}</Text>;
+    return (
+      <View style={styles.container}>
+        <View
+          style={styles.errorBanner}
+          accessibilityLiveRegion="polite"
+          accessibilityRole="alert"
+        >
+          <Text style={styles.errorBannerText}>{error}</Text>
+        </View>
+      </View>
+    );
   }
 
   if (!detailData) {
-    return <Text style={styles.errorText}>No details available.</Text>;
+    return (
+      <View style={styles.container}>
+        <View style={styles.errorBanner} accessibilityRole="alert">
+          <Text style={styles.errorBannerText}>No details available.</Text>
+        </View>
+      </View>
+    );
   }
 
   // Display season count for TV shows or running time for movies
@@ -133,11 +179,6 @@ const DetailScreen = ({ route }: Props): React.ReactElement => {
       });
     }
   });
-
-  // Sprint 2 BUG-2: like / watched-count handlers were local-only stubs
-  // (they only incremented component state and never persisted).
-  // Removed along with their UI entry points until Sprint 4/5 wires
-  // real like/watched persistence against Firestore.
 
   return (
     <ScrollView style={styles.container}>
@@ -179,17 +220,23 @@ const DetailScreen = ({ route }: Props): React.ReactElement => {
           <Text style={styles.providerCategoryTitle}>Not streaming.</Text>
         )}
 
-        <Text style={styles.movieTagline}>{detailData.tagline}</Text>
+        {detailData.tagline ? (
+          <Text style={styles.movieTagline}>{detailData.tagline}</Text>
+        ) : null}
         <Text style={styles.movieOverview}>{detailData.overview}</Text>
         <View style={styles.metaInfo}>
           <View style={styles.metaItem}>
-            <FilmStrip size={20} color="#FFF" weight="regular" />
+            <FilmStrip
+              size={20}
+              color={colors.textSecondary}
+              weight="regular"
+            />
             <Text style={styles.metaText}>
               {(detailData.genres || []).map((g) => g.name).join(' • ')}
             </Text>
           </View>
           <View style={styles.metaItem}>
-            <Clock size={20} color="#FFF" weight="regular" />
+            <Clock size={20} color={colors.textSecondary} weight="regular" />
             <Text style={styles.metaText}>{displayTimeOrSeasons()}</Text>
           </View>
         </View>
@@ -199,6 +246,8 @@ const DetailScreen = ({ route }: Props): React.ReactElement => {
         <FlatList
           data={detailData.credits.cast}
           horizontal
+          style={styles.castList}
+          contentContainerStyle={styles.castListContent}
           renderItem={({ item }: { item: TmdbCastMember }) => (
             <View style={styles.castMemberContainer}>
               <Image
@@ -207,8 +256,12 @@ const DetailScreen = ({ route }: Props): React.ReactElement => {
                 }}
                 style={styles.castImage}
               />
-              <Text style={styles.castName}>{item.name}</Text>
-              <Text style={styles.castCharacter}>{item.character}</Text>
+              <Text style={styles.castName} numberOfLines={1}>
+                {item.name}
+              </Text>
+              <Text style={styles.castCharacter} numberOfLines={1}>
+                {item.character}
+              </Text>
             </View>
           )}
           keyExtractor={(item: TmdbCastMember) => item.id.toString()}
@@ -221,19 +274,36 @@ const DetailScreen = ({ route }: Props): React.ReactElement => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#19192b',
+    backgroundColor: colors.ink,
+  },
+  loadingWrap: {
+    paddingBottom: spacing.xl,
+  },
+  loadingBody: {
+    padding: spacing.md,
+  },
+  loadingRow: {
+    marginBottom: spacing.sm,
+  },
+  loadingSpinner: {
+    marginTop: spacing.lg,
+    alignItems: 'center',
   },
   videoPlayer: {
     width: '100%',
-    height: 200,
-    backgroundColor: '#000',
+    height: 220,
+    backgroundColor: colors.ink,
+  },
+  videoInner: {
+    backgroundColor: colors.ink,
   },
   backdropContainer: {
     width: '100%',
-    height: 200,
+    height: 220,
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
+    backgroundColor: colors.surface,
   },
   backdropImage: {
     width: '100%',
@@ -244,132 +314,138 @@ const styles = StyleSheet.create({
   playButton: {
     position: 'absolute',
     zIndex: 10,
-  },
-  video: {
-    width: '100%',
-    height: 200,
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    zIndex: 5,
+    width: 72,
+    height: 72,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   noTrailerText: {
+    ...typography.bodySm,
     textAlign: 'center',
-    color: '#FFF',
-    padding: 20,
+    color: colors.textSecondary,
+    padding: spacing.lg,
   },
   movieInfoContainer: {
-    padding: 10,
-    marginBottom: 10,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
   },
   movieTitle: {
-    fontSize: 24,
-    fontFamily: 'WorkSans-Bold',
-    color: '#FFF',
-    marginBottom: 10,
+    ...typography.titleLg,
+    color: colors.textHigh,
+    marginBottom: spacing.sm,
   },
   providersContainer: {
     flexDirection: 'row',
-    marginBottom: 12,
-    backgroundColor: '#19192b',
-    padding: 5,
-    borderRadius: 5,
+    marginBottom: spacing.sm,
+    backgroundColor: colors.surface,
+    padding: spacing.xs,
+    borderRadius: radii.sm,
   },
   providerCategoryTitle: {
-    fontSize: 16,
-    color: '#FFF',
-    fontFamily: 'WorkSans-Bold',
-    marginTop: 10,
-    marginRight: 10,
-    marginBottom: 10,
+    ...typography.label,
+    color: colors.textHigh,
+    marginTop: spacing.xs,
+    marginRight: spacing.xs,
+    marginBottom: spacing.xs,
   },
   providerText: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 10,
+    marginRight: spacing.xs,
   },
   providerLogo: {
     width: 30,
     height: 30,
-    marginRight: 10,
+    marginRight: spacing.xs,
     resizeMode: 'contain',
   },
   movieTagline: {
-    fontSize: 14,
-    fontFamily: 'WorkSans-Thin',
-    color: '#FFF',
-    marginTop: 10,
-    marginBottom: 10,
+    ...typography.label,
+    color: colors.accentSecondary,
+    marginTop: spacing.sm,
+    marginBottom: spacing.sm,
     textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   movieOverview: {
-    fontSize: 16,
-    lineHeight: 24,
-    color: '#FFF',
-    marginBottom: 16,
-    fontFamily: 'WorkSans-Regular',
+    ...typography.body,
+    color: colors.textBody,
+    marginBottom: spacing.md,
   },
   metaInfo: {
     flexDirection: 'column',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    marginBottom: spacing.md,
   },
   certificationBox: {
-    fontSize: 12,
-    color: '#FFF',
+    ...typography.caption,
+    color: colors.textHigh,
     backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: '#FFF',
-    padding: 4,
-    borderRadius: 5,
+    borderColor: colors.borderStrong,
+    paddingVertical: 2,
+    paddingHorizontal: spacing.xs,
+    borderRadius: radii.sm,
     alignSelf: 'flex-start',
-    marginBottom: 12,
-    fontFamily: 'WorkSans-Bold',
+    marginBottom: spacing.sm,
   },
   metaItem: {
     flexDirection: 'row',
-    alignItems: 'baseline',
-    marginBottom: 6,
+    alignItems: 'center',
+    marginBottom: spacing.xs,
   },
   metaText: {
-    fontSize: 14,
-    color: '#FFF',
-    fontFamily: 'WorkSans-Bold',
-    marginLeft: 6,
-    alignSelf: 'center',
+    ...typography.bodySm,
+    color: colors.textBody,
+    marginLeft: spacing.xs,
+  },
+  castList: {
+    paddingLeft: spacing.md,
+  },
+  castListContent: {
+    paddingRight: spacing.md,
   },
   castMemberContainer: {
-    width: 120,
+    width: 100,
     alignItems: 'center',
-    marginRight: 10,
+    marginRight: spacing.sm,
   },
   castImage: {
-    width: '100%',
-    height: 120,
-    borderRadius: 60,
-    marginTop: 10,
-    marginBottom: 6,
-    resizeMode: 'contain',
+    width: 80,
+    height: 80,
+    borderRadius: radii.pill,
+    marginTop: spacing.xs,
+    marginBottom: spacing.xs,
+    resizeMode: 'cover',
+    backgroundColor: colors.surface,
   },
   castName: {
-    fontSize: 14,
-    color: '#FFF',
+    ...typography.bodySm,
+    color: colors.textHigh,
     textAlign: 'center',
-    fontFamily: 'WorkSans-Bold',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   castCharacter: {
-    fontSize: 12,
-    color: '#FFF',
+    ...typography.caption,
+    color: colors.textSecondary,
     textAlign: 'center',
-    fontFamily: 'WorkSans-Light',
   },
-  errorText: {
-    fontSize: 18,
-    color: 'red',
-    textAlign: 'center',
-    marginTop: 20,
+  errorBanner: {
+    margin: spacing.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radii.md,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.error,
+    backgroundColor: colors.surfaceRaised,
+  },
+  errorBannerText: {
+    ...typography.body,
+    color: colors.textHigh,
   },
 });
+
+// Reference TouchableOpacity so accidental future imports don't regress to it.
+void TouchableOpacity;
 
 export default DetailScreen;

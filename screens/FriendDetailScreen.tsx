@@ -152,18 +152,27 @@ const FriendDetailScreen = (): React.ReactElement => {
   }, [userUid]);
 
   // Compose UserTasteProfile for both sides.
+  //
+  // User's own match-signal fields read from PUBLIC profile for symmetry
+  // with the friend side (which is forced to read from public since rules
+  // reject cross-user private reads). This codifies a Sprint 5b design
+  // call: interactedTitleIds / genres / streamingServices live on the
+  // public profile because matching requires both sides to be readable.
+  // tasteProfile.axes stays on the private root (that's the quiz output
+  // that seeds the 8-axis signature — still owner-only).
   const userTaste: UserTasteProfile | null = useMemo(() => {
     if (!userUid) return null;
     return tasteProfileToUserTasteProfile(
       userUid,
       userPrivate?.tasteProfile ?? null,
       {
-        interactedTitleIds: [],
-        genres: userPrivate?.genres ?? [],
-        streamingServices: userPrivate?.streamingServices ?? [],
+        interactedTitleIds: userPublic?.interactedTitleIds ?? [],
+        genres: userPublic?.genres ?? userPrivate?.genres ?? [],
+        streamingServices:
+          userPublic?.streamingServices ?? userPrivate?.streamingServices ?? [],
       },
     );
-  }, [userUid, userPrivate]);
+  }, [userUid, userPublic, userPrivate]);
 
   const friendTaste: UserTasteProfile | null = useMemo(() => {
     if (!friendUid) return null;

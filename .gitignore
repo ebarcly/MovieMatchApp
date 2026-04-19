@@ -47,3 +47,7 @@ CLAUDE.md.local
 # IDE
 .idea/
 *.swp
+
+# Transient smoke-test logs (captured via `npx expo start ... | tee <name>.log`)
+expo-smoke.log
+*.smoke.log

@@ -24,7 +24,7 @@ import { colors, spacing, radii, typography } from '../theme';
 
 type Props = StackScreenProps<HomeStackParamList, 'Detail'>;
 
-const DetailScreen = ({ route }: Props): React.ReactElement => {
+const DetailScreen = ({ route, navigation }: Props): React.ReactElement => {
   const { id, type } = route.params;
   const [detailData, setDetailData] = useState<TitleDetails | null>(null);
   const [loading, setLoading] = useState(true);
@@ -239,6 +239,22 @@ const DetailScreen = ({ route }: Props): React.ReactElement => {
             <Text style={styles.metaText}>{displayTimeOrSeasons()}</Text>
           </View>
         </View>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Recommend this title to a friend"
+          onPress={() =>
+            navigation.navigate('RecCardCompose', {
+              titleId:
+                typeof id === 'number' ? id : Number.parseInt(String(id), 10),
+            })
+          }
+          style={({ pressed }) => [
+            styles.recommendBtn,
+            pressed ? styles.recommendBtnPressed : null,
+          ]}
+        >
+          <Text style={styles.recommendBtnText}>Recommend</Text>
+        </Pressable>
       </View>
 
       {detailData.credits && detailData.credits.cast ? (
@@ -375,6 +391,24 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     justifyContent: 'space-between',
     marginBottom: spacing.md,
+  },
+  recommendBtn: {
+    paddingVertical: spacing.md,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.accentSecondary,
+    backgroundColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: spacing.sm,
+    minHeight: 44,
+  },
+  recommendBtnPressed: {
+    opacity: 0.85,
+  },
+  recommendBtnText: {
+    ...typography.button,
+    color: colors.accentSecondary,
   },
   certificationBox: {
     ...typography.caption,

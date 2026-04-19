@@ -46,7 +46,9 @@ jest.mock('../services/api', () => ({
 jest.mock('../utils/firebaseOperations', () => ({
   fetchInteractedTitleIds: jest.fn(async () => []),
   listQueuesForUid: jest.fn(async () => []),
-  queueReactionKey: jest.fn((titleId: number, uid: string) => `${titleId}_${uid}`),
+  queueReactionKey: jest.fn(
+    (titleId: number, uid: string) => `${titleId}_${uid}`,
+  ),
 }));
 
 jest.mock('../firebaseConfig', () => ({

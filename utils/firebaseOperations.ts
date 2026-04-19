@@ -894,3 +894,87 @@ export async function listQueuesForUid(uid: string): Promise<QueueDoc[]> {
   });
   return out;
 }
+
+// --- Stream B: recs --------------------------------------------------
+//
+// Sprint 5b Stream B — personalized rec cards. A signed-in user sends a
+// titleId + note to a friend. The note is client-validated to 30-280
+// chars (Hinge rule per brief) BEFORE any Firestore write; the rule file
+// re-checks server-side. The returned shareUrl points at the Firebase
+// Hosting /rec/{recId} preview page.
+//
+// PII discipline: only `from`, `to`, `titleId`, `note`, and `createdAt`
+// are written. `displayName` is pulled by the hosting preview at render
+// time via a public-profile read, never persisted on the rec doc.
+
+/** The web hosting URL base for the rec-card universal link. */
+export const REC_HOSTING_BASE_URL = 'https://moviematch-6367e.web.app';
+
+export const REC_NOTE_MIN_LEN = 30;
+export const REC_NOTE_MAX_LEN = 280;
+
+/** Typed error thrown when `createRec` rejects a note on length grounds. */
+export class RecNoteLengthError extends Error {
+  public readonly actualLength: number;
+  public readonly minLength: number;
+  public readonly maxLength: number;
+  constructor(actualLength: number) {
+    super(
+      `createRec: note length ${actualLength} outside allowed range ${REC_NOTE_MIN_LEN}-${REC_NOTE_MAX_LEN}`,
+    );
+    this.name = 'RecNoteLengthError';
+    this.actualLength = actualLength;
+    this.minLength = REC_NOTE_MIN_LEN;
+    this.maxLength = REC_NOTE_MAX_LEN;
+  }
+}
+
+export interface CreateRecResult {
+  recId: string;
+  shareUrl: string;
+}
+
+/**
+ * Create a rec card document and return its ID + universal-link URL.
+ *
+ * Length check (30-280) is enforced on the client BEFORE the write to
+ * keep the UI banner fast and explicit; firestore.rules enforces the
+ * same bounds server-side as a defense-in-depth guard.
+ *
+ * Returns `{ recId, shareUrl }` where
+ * `shareUrl = ${REC_HOSTING_BASE_URL}/rec/{recId}`. The caller invokes
+ * `Share.share({ message: shareUrl })` after this resolves.
+ */
+export async function createRec(
+  toUid: string,
+  titleId: number,
+  note: string,
+): Promise<CreateRecResult> {
+  if (typeof note !== 'string') {
+    throw new RecNoteLengthError(0);
+  }
+  if (note.length < REC_NOTE_MIN_LEN || note.length > REC_NOTE_MAX_LEN) {
+    throw new RecNoteLengthError(note.length);
+  }
+  const fromUid = auth.currentUser?.uid;
+  if (!fromUid) {
+    throw new Error('createRec: not signed in');
+  }
+  if (!toUid) {
+    throw new Error('createRec: empty recipient uid');
+  }
+  if (!Number.isFinite(titleId)) {
+    throw new Error('createRec: non-finite titleId');
+  }
+  const ref = await addDoc(collection(db, 'recs'), {
+    from: fromUid,
+    to: toUid,
+    titleId,
+    note,
+    createdAt: serverTimestamp(),
+  });
+  return {
+    recId: ref.id,
+    shareUrl: `${REC_HOSTING_BASE_URL}/rec/${ref.id}`,
+  };
+}

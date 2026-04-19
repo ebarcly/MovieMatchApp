@@ -23,11 +23,7 @@ import type {
   WhyYouMatchOutput,
 } from '../utils/ai/LLMClient';
 import { whyYouMatchFallback } from '../utils/ai/fallbacks';
-import {
-  buildCacheKey,
-  getFromCache,
-  setInCache,
-} from '../utils/ai/cache';
+import { buildCacheKey, getFromCache, setInCache } from '../utils/ai/cache';
 
 export const DOT_LOADER_FALLBACK_AT_MS = 1500;
 export const LATE_SWAP_CUTOFF_MS = 2000;
@@ -71,7 +67,11 @@ export function useWhyYouMatch(
         sharedGenre: input.overlap.sharedGenres[0],
         sharedMood: input.overlap.sharedMoods[0],
       }),
-    [input.overlap.signalTier, input.overlap.sharedGenres, input.overlap.sharedMoods],
+    [
+      input.overlap.signalTier,
+      input.overlap.sharedGenres,
+      input.overlap.sharedMoods,
+    ],
   );
 
   const [state, setState] = useState<UseWhyYouMatchState>({

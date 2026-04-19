@@ -44,17 +44,15 @@ export interface TokenUsage {
  * Returns 0 when pricing for the model is unknown (fail-open on cost
  * so we never block a valid call, but log a warning in the caller).
  */
-export function computeCostUsd(
-  model: string,
-  usage: TokenUsage,
-): number {
+export function computeCostUsd(model: string, usage: TokenUsage): number {
   const pricing = MODEL_PRICING[model];
   if (!pricing) {
     return 0;
   }
   const perToken = (mtokPrice: number) => mtokPrice / 1_000_000;
   const input =
-    (usage.inputTokens - (usage.cacheReadTokens ?? 0)) * perToken(pricing.input);
+    (usage.inputTokens - (usage.cacheReadTokens ?? 0)) *
+    perToken(pricing.input);
   const cacheRead = (usage.cacheReadTokens ?? 0) * perToken(pricing.cacheRead);
   const cacheWrite =
     (usage.cacheWriteTokens ?? 0) * perToken(pricing.cacheWrite);

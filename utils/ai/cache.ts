@@ -25,9 +25,7 @@ import {
   type DocumentReference,
 } from 'firebase/firestore';
 import { db } from '../../firebaseConfig';
-import {
-  WHY_YOU_MATCH_PROMPT_VERSION,
-} from './prompts/whyYouMatch';
+import { WHY_YOU_MATCH_PROMPT_VERSION } from './prompts/whyYouMatch';
 import { REC_COPY_PROMPT_VERSION } from './prompts/recCopy';
 
 export type AiCacheKind = 'why-you-match' | 'rec-copy';

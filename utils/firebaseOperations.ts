@@ -324,13 +324,15 @@ export const fetchUserMatches = async (
         return null;
       }
 
-      // Fetch friend's data
-      const userDocRef = doc(db, 'users', otherUserId);
-      const userDocSnap = await getDoc(userDocRef);
-      const friendData = userDocSnap.exists()
-        ? (userDocSnap.data() as {
-            profileName?: string;
-            profileImage?: string | null;
+      // Fetch friend's public data from /users/{uid}/public/profile.
+      // Sprint 5a split moved displayName/photoURL to the public subdoc;
+      // cross-user reads of the private root are rules-rejected.
+      const publicRef = doc(db, 'users', otherUserId, 'public', 'profile');
+      const publicSnap = await getDoc(publicRef);
+      const friendData = publicSnap.exists()
+        ? (publicSnap.data() as {
+            displayName?: string;
+            photoURL?: string | null;
           })
         : {};
 
@@ -349,8 +351,8 @@ export const fetchUserMatches = async (
         status: matchData.status,
         friend: {
           id: otherUserId,
-          name: friendData.profileName || 'Unknown User',
-          profileImage: friendData.profileImage ?? null,
+          name: friendData.displayName || 'Unknown User',
+          profileImage: friendData.photoURL ?? null,
         },
         title: { ...titleDetails },
       };

@@ -12,6 +12,7 @@ import ProfileSetupScreen from '../screens/ProfileSetupScreen';
 import TasteQuizScreen from '../screens/TasteQuizScreen';
 import ProfilePhotoScreen from '../screens/ProfilePhotoScreen';
 import ContactOnboardingScreen from '../screens/ContactOnboardingScreen';
+import FriendDetailScreen from '../screens/FriendDetailScreen';
 import DotLoader from '../components/DotLoader';
 import { auth, db } from '../firebaseConfig';
 import { onAuthStateChanged, type User } from 'firebase/auth';
@@ -178,6 +179,11 @@ function MatchesStackScreen(): React.ReactElement {
         name="ContactOnboarding"
         component={ContactOnboardingScreen}
         options={{ title: 'Find friends' }}
+      />
+      <MatchesStackNav.Screen
+        name="FriendDetail"
+        component={FriendDetailScreen}
+        options={{ title: '' }}
       />
     </MatchesStackNav.Navigator>
   );

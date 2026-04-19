@@ -28,9 +28,15 @@ export type AuthStackParamList = {
 };
 
 // --- Home / Deck stack ------------------------------------------------
+// Sprint 5b adds RecCardCompose + QueueDetail here so DetailScreen's
+// "Recommend" CTA + HomeScreen's QueueStrip can push into them without
+// crossing tab boundaries.
 export type HomeStackParamList = {
   Home: undefined;
   Detail: { id: number | string; type: TitleType };
+  RecCardCompose: { titleId: number; friendUid?: string };
+  QueueDetail: { queueId: string };
+  FriendDetail: { friendUid: string };
 };
 
 // --- My Cave stack ----------------------------------------------------
@@ -50,14 +56,23 @@ export type ProfileSetupStackParamList = {
   ProfilePhoto: undefined;
 };
 
-// --- Matches stack (Sprint 5a) ----------------------------------------
+// --- Matches stack (Sprint 5a + 5b) -----------------------------------
 // Sprint 5a introduces the ContactOnboarding screen, reachable from the
 // Matches-tab empty state's "Find friends" CTA. MatchesHome itself is
 // the prior MatchesScreen; the stack is the host so the CTA can push
 // onto it without reaching across tabs.
+//
+// Sprint 5b adds:
+//   - FriendDetail — per-friend page with match% + why-you-match + top
+//     shared titles + send-rec CTA (Stream A).
+//   - QueueDetail — per-queue list + reactions + mark-watched (Stream D).
+//   - RecCardCompose — compose a rec card, pre-select a friend (Stream B).
 export type MatchesStackParamList = {
   MatchesHome: undefined;
   ContactOnboarding: undefined;
+  FriendDetail: { friendUid: string };
+  QueueDetail: { queueId: string };
+  RecCardCompose: { titleId: number; friendUid?: string };
 };
 
 // --- Main tabs --------------------------------------------------------

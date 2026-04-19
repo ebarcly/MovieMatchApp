@@ -109,10 +109,10 @@ export interface SanitizedRecCopyPayload {
 }
 
 /** Helper: sanitize a full tasteLabels block. */
-export function sanitizeTasteLabels(labels: {
+export function sanitizeTasteLabels(labels: { common: string; rare: string }): {
   common: string;
   rare: string;
-}): { common: string; rare: string } {
+} {
   return {
     common: sanitizeLabel(labels.common),
     rare: sanitizeLabel(labels.rare),

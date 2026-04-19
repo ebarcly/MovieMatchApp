@@ -146,7 +146,7 @@ export async function incrementSpend(
     await runTransaction(db, async (tx: Transaction) => {
       const snap = await tx.get(ref);
       const existing = snap.exists()
-        ? (snap.data() as AiSpendDoc).totalCents ?? 0
+        ? ((snap.data() as AiSpendDoc).totalCents ?? 0)
         : 0;
       newTotal = existing + costCents;
       const body: AiSpendDoc = { totalCents: newTotal };

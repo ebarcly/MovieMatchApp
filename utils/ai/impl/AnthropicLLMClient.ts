@@ -47,19 +47,13 @@ import {
   WHY_YOU_MATCH_SYSTEM_PROMPT,
   WHY_YOU_MATCH_TOOL_NAME,
 } from '../prompts/whyYouMatch';
-import {
-  REC_COPY_SYSTEM_PROMPT,
-  REC_COPY_TOOL_NAME,
-} from '../prompts/recCopy';
+import { REC_COPY_SYSTEM_PROMPT, REC_COPY_TOOL_NAME } from '../prompts/recCopy';
 import {
   sentenceIsValid,
   assertRecCopyBatch,
   recCopyBatchIsValid,
 } from '../validators';
-import {
-  whyYouMatchFallback,
-  recCopyFallback,
-} from '../fallbacks';
+import { whyYouMatchFallback, recCopyFallback } from '../fallbacks';
 import {
   sanitizeLabel,
   sanitizeTitle,
@@ -68,12 +62,7 @@ import {
   type SanitizedWhyYouMatchPayload,
   type SanitizedRecCopyPayload,
 } from '../pii';
-import {
-  buildCacheKey,
-  hashLabels,
-  getFromCache,
-  setInCache,
-} from '../cache';
+import { buildCacheKey, hashLabels, getFromCache, setInCache } from '../cache';
 import {
   checkSpendStatus,
   incrementSpend,
@@ -497,13 +486,13 @@ function extractToolInput(
     (b): b is ToolUseBlock => b.type === 'tool_use' && b.name === toolName,
   );
   if (!block) {
-    throw new RejectedOutputError(`expected tool_use "${toolName}" in response`);
+    throw new RejectedOutputError(
+      `expected tool_use "${toolName}" in response`,
+    );
   }
   const input = block.input;
   if (!input || typeof input !== 'object' || Array.isArray(input)) {
-    throw new RejectedOutputError(
-      `tool_use "${toolName}" input malformed`,
-    );
+    throw new RejectedOutputError(`tool_use "${toolName}" input malformed`);
   }
   return input as Record<string, unknown>;
 }

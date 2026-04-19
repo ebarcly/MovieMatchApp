@@ -66,11 +66,13 @@ export function variantIsValid(v: string): boolean {
 }
 
 function firstWord(s: string): string {
-  return s
-    .trim()
-    .split(/\s+/)[0]
-    ?.toLowerCase()
-    .replace(/[^a-z0-9]/g, '') ?? '';
+  return (
+    s
+      .trim()
+      .split(/\s+/)[0]
+      ?.toLowerCase()
+      .replace(/[^a-z0-9]/g, '') ?? ''
+  );
 }
 
 /**

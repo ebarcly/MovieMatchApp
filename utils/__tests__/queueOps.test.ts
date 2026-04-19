@@ -31,8 +31,9 @@ const mocked = <T extends (...args: never[]) => unknown>(fn: T) =>
   fn as unknown as jest.Mock;
 
 const setCurrentUser = (uid: string | null): void => {
-  (auth as unknown as { currentUser: { uid: string } | null }).currentUser =
-    uid ? { uid } : null;
+  (auth as unknown as { currentUser: { uid: string } | null }).currentUser = uid
+    ? { uid }
+    : null;
 };
 
 beforeEach(() => {

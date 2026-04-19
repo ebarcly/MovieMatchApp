@@ -26,9 +26,7 @@ export interface WhyYouMatchFallbackInput {
  * placeholder which the UI replaces with the friend's real first name.
  * Intentionally word-count-safe (10-22 words) to pass validators.
  */
-export function whyYouMatchFallback(
-  input: WhyYouMatchFallbackInput,
-): string {
+export function whyYouMatchFallback(input: WhyYouMatchFallbackInput): string {
   const { signalTier, sharedGenre, sharedMood } = input;
   const texture = sharedMood ?? sharedGenre ?? 'texture';
   switch (signalTier) {

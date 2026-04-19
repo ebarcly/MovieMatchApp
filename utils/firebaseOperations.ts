@@ -9,6 +9,7 @@ import {
   addDoc,
   setDoc,
   updateDoc,
+  deleteDoc,
   arrayUnion,
   serverTimestamp,
 } from 'firebase/firestore';
@@ -417,3 +418,176 @@ export const createMatchDocument = async (
     console.error('CREATE_MATCH_DOCUMENT: Error:', error);
   }
 };
+
+/// --- FRIEND GRAPH (Sprint 5a) ---------------------------------------
+
+export type FriendshipStatus = 'pending' | 'accepted' | 'blocked';
+
+export interface FriendshipDoc {
+  id: string;
+  participants: [string, string];
+  status: FriendshipStatus;
+  initiatedBy: string;
+  createdAt: unknown;
+  acceptedAt?: unknown;
+}
+
+/**
+ * Deterministic friendship document ID: `${min(uidA,uidB)}_${max(uidA,uidB)}`.
+ *
+ * Using the lexicographic pair as the document ID enforces uniqueness at
+ * the Firestore layer (one friendship per pair, regardless of who
+ * initiated) — no extra query needed to dedupe. `friendshipId('a','b')`
+ * and `friendshipId('b','a')` return the same string.
+ */
+export function friendshipId(uidA: string, uidB: string): string {
+  if (!uidA || !uidB) {
+    throw new Error('friendshipId: empty uid');
+  }
+  if (uidA === uidB) {
+    throw new Error('friendshipId: cannot befriend yourself');
+  }
+  return uidA < uidB ? `${uidA}_${uidB}` : `${uidB}_${uidA}`;
+}
+
+/**
+ * Send a friend request from the currently signed-in user (`fromUid`)
+ * to another user (`toUid`). Creates a `pending` friendship document
+ * at `/friendships/{friendshipId}` with `initiatedBy = fromUid`.
+ *
+ * If a document already exists at that ID (e.g. the other user already
+ * sent a request), the call is a no-op and returns the existing doc —
+ * the UI layer decides whether to auto-accept or prompt.
+ */
+export async function sendFriendRequest(
+  fromUid: string,
+  toUid: string,
+): Promise<FriendshipDoc> {
+  const id = friendshipId(fromUid, toUid);
+  const ref = doc(db, 'friendships', id);
+  const existing = await getDoc(ref);
+  if (existing.exists()) {
+    const data = existing.data() as Omit<FriendshipDoc, 'id'>;
+    return { id, ...data };
+  }
+  const participants: [string, string] =
+    fromUid < toUid ? [fromUid, toUid] : [toUid, fromUid];
+  const payload = {
+    participants,
+    status: 'pending' as const,
+    initiatedBy: fromUid,
+    createdAt: serverTimestamp(),
+  };
+  await setDoc(ref, payload);
+  return { id, ...payload };
+}
+
+/**
+ * Accept a pending friend request by transitioning its status from
+ * 'pending' → 'accepted' and stamping acceptedAt. Idempotent — calling
+ * accept on an already-accepted friendship is safe (rules allow it).
+ *
+ * Sprint 4 rule: the caller is responsible for rolling back optimistic
+ * local state if this write rejects (inline banner; no modal).
+ */
+export async function acceptFriendRequest(
+  friendshipDocId: string,
+): Promise<void> {
+  if (!friendshipDocId) {
+    throw new Error('acceptFriendRequest: empty friendshipId');
+  }
+  const ref = doc(db, 'friendships', friendshipDocId);
+  await updateDoc(ref, {
+    status: 'accepted',
+    acceptedAt: serverTimestamp(),
+  });
+}
+
+/**
+ * Decline a pending friend request by deleting the document. The
+ * requester will see a fresh "send request" CTA; no permanent block.
+ * For blocking, use `blockUser` instead.
+ */
+export async function declineFriendRequest(
+  friendshipDocId: string,
+): Promise<void> {
+  if (!friendshipDocId) {
+    throw new Error('declineFriendRequest: empty friendshipId');
+  }
+  const ref = doc(db, 'friendships', friendshipDocId);
+  await deleteDoc(ref);
+}
+
+/**
+ * Block a user. Creates or transitions the friendship to status='blocked',
+ * with initiatedBy = the blocking user. Once blocked, neither user can
+ * send a new request to the other until the blocking user lifts it.
+ */
+export async function blockUser(fromUid: string, toUid: string): Promise<void> {
+  const id = friendshipId(fromUid, toUid);
+  const ref = doc(db, 'friendships', id);
+  const existing = await getDoc(ref);
+  if (existing.exists()) {
+    await updateDoc(ref, { status: 'blocked', initiatedBy: fromUid });
+    return;
+  }
+  const participants: [string, string] =
+    fromUid < toUid ? [fromUid, toUid] : [toUid, fromUid];
+  await setDoc(ref, {
+    participants,
+    status: 'blocked' as const,
+    initiatedBy: fromUid,
+    createdAt: serverTimestamp(),
+  });
+}
+
+/**
+ * List the signed-in user's accepted friends. Returns FriendshipDoc
+ * records where status='accepted' and `participants` contains `uid`.
+ */
+export async function listFriends(uid: string): Promise<FriendshipDoc[]> {
+  if (!uid) return [];
+  const ref = collection(db, 'friendships');
+  const q = query(
+    ref,
+    where('participants', 'array-contains', uid),
+    where('status', '==', 'accepted'),
+  );
+  const snap = await getDocs(q);
+  const out: FriendshipDoc[] = [];
+  snap.forEach((d) => {
+    const data = d.data() as Omit<FriendshipDoc, 'id'>;
+    out.push({ id: d.id, ...data });
+  });
+  return out;
+}
+
+/**
+ * List pending friend requests for a user, in a specific direction:
+ *   - 'incoming': requests where someone else initiated and this user
+ *     needs to accept/decline.
+ *   - 'outgoing': requests this user sent that are still pending.
+ */
+export async function listPendingRequests(
+  uid: string,
+  direction: 'incoming' | 'outgoing',
+): Promise<FriendshipDoc[]> {
+  if (!uid) return [];
+  const ref = collection(db, 'friendships');
+  const q = query(
+    ref,
+    where('participants', 'array-contains', uid),
+    where('status', '==', 'pending'),
+  );
+  const snap = await getDocs(q);
+  const out: FriendshipDoc[] = [];
+  snap.forEach((d) => {
+    const data = d.data() as Omit<FriendshipDoc, 'id'>;
+    if (direction === 'incoming' && data.initiatedBy !== uid) {
+      out.push({ id: d.id, ...data });
+    } else if (direction === 'outgoing' && data.initiatedBy === uid) {
+      out.push({ id: d.id, ...data });
+    }
+  });
+  return out;
+}

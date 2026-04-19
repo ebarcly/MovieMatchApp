@@ -95,6 +95,18 @@ const MatchesScreen = ({ navigation }: Props): React.ReactElement => {
           <Text style={styles.emptyBody}>
             Keep swiping. Matches land when you both like the same title.
           </Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Find friends"
+            accessibilityHint="Opens the contact match screen"
+            onPress={() => navigation.navigate('ContactOnboarding')}
+            style={({ pressed }) => [
+              styles.findFriendsCta,
+              pressed && styles.findFriendsCtaPressed,
+            ]}
+          >
+            <Text style={styles.findFriendsCtaText}>Find friends</Text>
+          </Pressable>
         </View>
         <Text style={styles.subheader}>Friend activity</Text>
         <ActivityFeed />
@@ -275,6 +287,23 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center',
     maxWidth: 320,
+    marginBottom: spacing.md,
+  },
+  findFriendsCta: {
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.xl,
+    borderRadius: radii.pill,
+    backgroundColor: colors.accent,
+    minHeight: 44,
+    minWidth: 44,
+    justifyContent: 'center',
+  },
+  findFriendsCtaPressed: {
+    backgroundColor: colors.accentHover,
+  },
+  findFriendsCtaText: {
+    ...typography.button,
+    color: colors.accentForeground,
   },
 });
 

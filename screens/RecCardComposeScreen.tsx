@@ -26,6 +26,8 @@ import {
   ScrollView,
   TextInput,
   Image,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import {
   useNavigation,
@@ -234,142 +236,161 @@ const RecCardComposeScreen = (): React.ReactElement => {
   };
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <View style={styles.headerRow}>
-        {titleDetails?.poster_path ? (
-          <Image
-            source={{
-              uri: `https://image.tmdb.org/t/p/w185${titleDetails.poster_path}`,
-            }}
-            style={styles.poster}
-          />
-        ) : (
-          <View style={[styles.poster, styles.posterPlaceholder]} />
-        )}
-        <View style={styles.headerMeta}>
-          <Text style={styles.titleText} numberOfLines={2}>
-            {titleDetails?.title ?? titleDetails?.name ?? `Title ${titleId}`}
-          </Text>
-          <Text style={styles.subText}>Send a rec</Text>
+    <KeyboardAvoidingView
+      style={styles.kbAvoid}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      // iOS bottom-tab bar + stack header offset. 80 clears both so the
+      // note textarea lifts above the keyboard when focused.
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
+    >
+      <ScrollView
+        style={styles.screen}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.headerRow}>
+          {titleDetails?.poster_path ? (
+            <Image
+              source={{
+                uri: `https://image.tmdb.org/t/p/w185${titleDetails.poster_path}`,
+              }}
+              style={styles.poster}
+            />
+          ) : (
+            <View style={[styles.poster, styles.posterPlaceholder]} />
+          )}
+          <View style={styles.headerMeta}>
+            <Text style={styles.titleText} numberOfLines={2}>
+              {titleDetails?.title ?? titleDetails?.name ?? `Title ${titleId}`}
+            </Text>
+            <Text style={styles.subText}>Send a rec</Text>
+          </View>
         </View>
-      </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionLabel}>To</Text>
-        {friends.length === 0 ? (
-          <Text style={styles.emptyFriendsLine}>
-            No friends yet — add one first.
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>To</Text>
+          {friends.length === 0 ? (
+            <Text style={styles.emptyFriendsLine}>
+              No friends yet — add one first.
+            </Text>
+          ) : (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {friends.map((f) => (
+                <Pressable
+                  key={f.uid}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Pick ${f.displayName ?? f.uid}`}
+                  onPress={() => setSelectedFriend(f.uid)}
+                  style={({ pressed }) => [
+                    styles.friendChip,
+                    selectedFriend === f.uid ? styles.friendChipActive : null,
+                    pressed ? styles.friendChipPressed : null,
+                  ]}
+                >
+                  <Avatar
+                    photoURL={f.photoURL}
+                    displayName={f.displayName}
+                    size="sm"
+                  />
+                  <Text style={styles.friendChipText} numberOfLines={1}>
+                    {f.displayName ?? f.uid.slice(0, 6)}
+                  </Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          )}
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>3 AI suggestions</Text>
+          {recCopy.loading ? (
+            <View style={styles.suggestionsLoading}>
+              <DotLoader
+                size="sm"
+                accessibilityLabel="Generating suggestions"
+              />
+            </View>
+          ) : (
+            <View style={styles.suggestionList}>
+              {recCopy.variants.map((v, i) => (
+                <Pressable
+                  key={`${i}-${v.slice(0, 10)}`}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Use suggestion ${i + 1}`}
+                  onPress={() => setNote(v)}
+                  style={({ pressed }) => [
+                    styles.suggestionChip,
+                    pressed ? styles.suggestionChipPressed : null,
+                  ]}
+                >
+                  <Text style={styles.suggestionText} numberOfLines={3}>
+                    {v}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          )}
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>Your note</Text>
+          <TextInput
+            value={note}
+            onChangeText={setNote}
+            multiline
+            maxLength={REC_NOTE_MAX_LEN + 20}
+            placeholder="Why this one, in your own words"
+            placeholderTextColor={colors.textTertiary}
+            style={styles.textarea}
+            accessibilityLabel="Rec note"
+          />
+          <Text
+            style={[
+              styles.charCount,
+              noteValid ? styles.charCountOk : styles.charCountBad,
+            ]}
+          >
+            {note.length} / {REC_NOTE_MAX_LEN} (min {REC_NOTE_MIN_LEN})
           </Text>
-        ) : (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {friends.map((f) => (
-              <Pressable
-                key={f.uid}
-                accessibilityRole="button"
-                accessibilityLabel={`Pick ${f.displayName ?? f.uid}`}
-                onPress={() => setSelectedFriend(f.uid)}
-                style={({ pressed }) => [
-                  styles.friendChip,
-                  selectedFriend === f.uid ? styles.friendChipActive : null,
-                  pressed ? styles.friendChipPressed : null,
-                ]}
-              >
-                <Avatar
-                  photoURL={f.photoURL}
-                  displayName={f.displayName}
-                  size="sm"
-                />
-                <Text style={styles.friendChipText} numberOfLines={1}>
-                  {f.displayName ?? f.uid.slice(0, 6)}
-                </Text>
-              </Pressable>
-            ))}
-          </ScrollView>
-        )}
-      </View>
+        </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionLabel}>3 AI suggestions</Text>
-        {recCopy.loading ? (
-          <View style={styles.suggestionsLoading}>
-            <DotLoader size="sm" accessibilityLabel="Generating suggestions" />
+        {error ? (
+          <View
+            style={styles.errorBanner}
+            accessibilityLiveRegion="polite"
+            accessibilityRole="alert"
+          >
+            <Text style={styles.errorText}>{error}</Text>
           </View>
-        ) : (
-          <View style={styles.suggestionList}>
-            {recCopy.variants.map((v, i) => (
-              <Pressable
-                key={`${i}-${v.slice(0, 10)}`}
-                accessibilityRole="button"
-                accessibilityLabel={`Use suggestion ${i + 1}`}
-                onPress={() => setNote(v)}
-                style={({ pressed }) => [
-                  styles.suggestionChip,
-                  pressed ? styles.suggestionChipPressed : null,
-                ]}
-              >
-                <Text style={styles.suggestionText} numberOfLines={3}>
-                  {v}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-        )}
-      </View>
+        ) : null}
 
-      <View style={styles.section}>
-        <Text style={styles.sectionLabel}>Your note</Text>
-        <TextInput
-          value={note}
-          onChangeText={setNote}
-          multiline
-          maxLength={REC_NOTE_MAX_LEN + 20}
-          placeholder="Why this one, in your own words"
-          placeholderTextColor={colors.textTertiary}
-          style={styles.textarea}
-          accessibilityLabel="Rec note"
-        />
-        <Text
-          style={[
-            styles.charCount,
-            noteValid ? styles.charCountOk : styles.charCountBad,
+        <Pressable
+          disabled={!canSend}
+          accessibilityRole="button"
+          accessibilityLabel="Send rec"
+          onPress={handleSend}
+          style={({ pressed }) => [
+            styles.sendBtn,
+            !canSend ? styles.sendBtnDisabled : null,
+            pressed ? styles.sendBtnPressed : null,
           ]}
         >
-          {note.length} / {REC_NOTE_MAX_LEN} (min {REC_NOTE_MIN_LEN})
-        </Text>
-      </View>
-
-      {error ? (
-        <View
-          style={styles.errorBanner}
-          accessibilityLiveRegion="polite"
-          accessibilityRole="alert"
-        >
-          <Text style={styles.errorText}>{error}</Text>
-        </View>
-      ) : null}
-
-      <Pressable
-        disabled={!canSend}
-        accessibilityRole="button"
-        accessibilityLabel="Send rec"
-        onPress={handleSend}
-        style={({ pressed }) => [
-          styles.sendBtn,
-          !canSend ? styles.sendBtnDisabled : null,
-          pressed ? styles.sendBtnPressed : null,
-        ]}
-      >
-        {sending ? (
-          <DotLoader size="sm" accessibilityLabel="Sending" />
-        ) : (
-          <Text style={styles.sendBtnText}>Send</Text>
-        )}
-      </Pressable>
-    </ScrollView>
+          {sending ? (
+            <DotLoader size="sm" accessibilityLabel="Sending" />
+          ) : (
+            <Text style={styles.sendBtnText}>Send</Text>
+          )}
+        </Pressable>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
+  kbAvoid: {
+    flex: 1,
+    backgroundColor: colors.ink,
+  },
   screen: {
     flex: 1,
     backgroundColor: colors.ink,

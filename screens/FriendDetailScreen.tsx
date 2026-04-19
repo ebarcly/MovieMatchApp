@@ -585,15 +585,22 @@ const styles = StyleSheet.create({
     color: colors.textHigh,
   },
   offscreenCardWrap: {
-    // Far off-screen so it never paints visibly. react-native-view-shot
-    // captures this hidden view on demand. 360 logical units gives the
-    // card a reasonable 9:16 footprint for on-device layout; captureRef
-    // pins the OUTPUT image to 1080x1920 regardless.
+    // Hidden via opacity + absolute positioning at top-left of the view
+    // hierarchy (NOT off-screen at negative coords — `react-native-view-shot`
+    // on iOS won't flush a view that's positioned far outside the window
+    // bounds into the native capture buffer, and captureRef hangs until
+    // timeout). Keep it in normal layout with opacity:0 so the native
+    // module can traverse + rasterize it. pointerEvents:'none' keeps it
+    // from stealing taps from the real UI behind/above it.
+    //
+    // Explicit width + height (not aspectRatio) so RN measures it
+    // synchronously — deterministic rendering for captureRef.
     position: 'absolute',
-    top: -99999,
-    left: -99999,
+    top: 0,
+    left: 0,
     width: 360,
-    aspectRatio: 9 / 16,
+    height: 640,
+    opacity: 0,
   },
 });
 

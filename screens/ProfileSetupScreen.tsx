@@ -157,6 +157,25 @@ const ProfileSetupScreen = (): React.ReactElement => {
         { merge: true },
       );
 
+      // Also mirror cross-user-readable fields onto the public profile
+      // subcollection (Sprint 5a data-split). Without this, any surface
+      // that reads `/users/{uid}/public/profile` — friend cards, match
+      // chips, rec compose friend picker, why-you-match prompt — falls
+      // back to the uid prefix because the public doc has no displayName.
+      // Same merge pattern as the private root; never overwrites
+      // contactHashes/tasteLabels/createdAt.
+      const publicProfileRef = doc(db, 'users', user.uid, 'public', 'profile');
+      await setDoc(
+        publicProfileRef,
+        {
+          displayName: dataToSave.profileName,
+          genres: dataToSave.genres,
+          streamingServices: dataToSave.streamingServices,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true },
+      );
+
       await updateProfile(user, {
         displayName: dataToSave.profileName,
       });

@@ -163,7 +163,18 @@ const RecCardComposeScreen = (): React.ReactElement => {
             });
           }),
         );
-        if (!cancelled) setFriends(rows);
+        if (!cancelled) {
+          setFriends(rows);
+          // Auto-select the first friend when none is preselected — UX
+          // friction otherwise (user types a valid note, Send stays
+          // disabled, no obvious reason why). Only fires when there's
+          // no existing selection so we don't override the route-param
+          // preselection from FriendDetail's "Send rec" flow.
+          setSelectedFriend((prev) => {
+            if (prev) return prev;
+            return rows[0]?.uid ?? null;
+          });
+        }
       } catch (err) {
         console.warn('[RecCardCompose] friend load failed:', err);
         if (!cancelled) setFriends([]);

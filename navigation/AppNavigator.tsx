@@ -13,6 +13,8 @@ import TasteQuizScreen from '../screens/TasteQuizScreen';
 import ProfilePhotoScreen from '../screens/ProfilePhotoScreen';
 import ContactOnboardingScreen from '../screens/ContactOnboardingScreen';
 import FriendDetailScreen from '../screens/FriendDetailScreen';
+import QueueDetailScreen from '../screens/QueueDetailScreen';
+import RecCardComposeScreen from '../screens/RecCardComposeScreen';
 import DotLoader from '../components/DotLoader';
 import { auth, db } from '../firebaseConfig';
 import { onAuthStateChanged, type User } from 'firebase/auth';
@@ -71,6 +73,21 @@ function HomeStackScreen(): React.ReactElement {
       <HomeStackNav.Screen
         name="Detail"
         component={DetailScreen}
+        options={{ title: '' }}
+      />
+      <HomeStackNav.Screen
+        name="RecCardCompose"
+        component={RecCardComposeScreen}
+        options={{ title: 'Send a rec' }}
+      />
+      <HomeStackNav.Screen
+        name="QueueDetail"
+        component={QueueDetailScreen}
+        options={{ title: 'Queue' }}
+      />
+      <HomeStackNav.Screen
+        name="FriendDetail"
+        component={FriendDetailScreen}
         options={{ title: '' }}
       />
     </HomeStackNav.Navigator>
@@ -184,6 +201,16 @@ function MatchesStackScreen(): React.ReactElement {
         name="FriendDetail"
         component={FriendDetailScreen}
         options={{ title: '' }}
+      />
+      <MatchesStackNav.Screen
+        name="QueueDetail"
+        component={QueueDetailScreen}
+        options={{ title: 'Queue' }}
+      />
+      <MatchesStackNav.Screen
+        name="RecCardCompose"
+        component={RecCardComposeScreen}
+        options={{ title: 'Send a rec' }}
       />
     </MatchesStackNav.Navigator>
   );

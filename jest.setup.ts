@@ -299,3 +299,76 @@ jest.mock('expo-font', () => ({
   loadAsync: jest.fn(async () => undefined),
   isLoaded: jest.fn(() => true),
 }));
+
+// --- expo-crypto -----------------------------------------------------
+// Use the Node crypto module to produce deterministic SHA-256 digests
+// in tests. Hex-encoded, matching expo-crypto's default behavior for
+// `digestStringAsync(SHA256, input)`.
+jest.mock('expo-crypto', () => {
+  const nodeCrypto = require('crypto') as typeof import('crypto');
+  return {
+    CryptoDigestAlgorithm: { SHA256: 'SHA-256' },
+    digestStringAsync: jest.fn(async (_alg: string, input: string) => {
+      return nodeCrypto.createHash('sha256').update(input).digest('hex');
+    }),
+  };
+});
+
+// --- expo-contacts ---------------------------------------------------
+jest.mock('expo-contacts', () => ({
+  requestPermissionsAsync: jest.fn(async () => ({ status: 'granted' })),
+  getPermissionsAsync: jest.fn(async () => ({ status: 'granted' })),
+  getContactsAsync: jest.fn(async () => ({ data: [], hasNextPage: false })),
+  Fields: {
+    PhoneNumbers: 'phoneNumbers',
+    Emails: 'emails',
+    Name: 'name',
+  },
+}));
+
+// --- expo-image-picker -----------------------------------------------
+jest.mock('expo-image-picker', () => ({
+  requestMediaLibraryPermissionsAsync: jest.fn(async () => ({
+    status: 'granted',
+  })),
+  launchImageLibraryAsync: jest.fn(async () => ({
+    canceled: false,
+    assets: [
+      {
+        uri: 'file:///mock.jpg',
+        width: 800,
+        height: 800,
+        mimeType: 'image/jpeg',
+        fileSize: 100000,
+      },
+    ],
+  })),
+  MediaTypeOptions: { Images: 'Images' },
+  MediaType: { Images: 'Images' },
+}));
+
+// --- expo-image ------------------------------------------------------
+jest.mock('expo-image', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  const ExpoImage = (props: Record<string, unknown>) =>
+    React.createElement(View, { ...props, accessibilityLabel: 'ExpoImage' });
+  ExpoImage.displayName = 'ExpoImageStub';
+  return { __esModule: true, Image: ExpoImage };
+});
+
+// --- firebase/storage ------------------------------------------------
+jest.mock('firebase/storage', () => ({
+  getStorage: jest.fn(() => ({})),
+  ref: jest.fn((_storage: unknown, path: string) => ({
+    __type: 'storageRef',
+    path,
+  })),
+  uploadBytes: jest.fn(async () => ({
+    metadata: { fullPath: 'profileImages/u/x.jpg' },
+  })),
+  getDownloadURL: jest.fn(
+    async () => 'https://example.com/profileImages/u/x.jpg',
+  ),
+  deleteObject: jest.fn(async () => undefined),
+}));

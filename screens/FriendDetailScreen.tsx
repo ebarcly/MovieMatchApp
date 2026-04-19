@@ -38,6 +38,7 @@ import Avatar from '../components/Avatar';
 import DotLoader from '../components/DotLoader';
 import MatchScoreChip from '../components/MatchScoreChip';
 import MatchCard, { type MatchCardSharedTitle } from '../components/MatchCard';
+import { useToast } from '../components/Toast';
 import {
   computeMatchScore,
   tasteProfileToUserTasteProfile,
@@ -292,12 +293,65 @@ const FriendDetailScreen = (): React.ReactElement => {
     });
   }, [matchResult, titleDetails]);
 
+  const toast = useToast();
+  const [sharingMatchCard, setSharingMatchCard] = useState(false);
+
   const handleShareMatchCard = async (): Promise<void> => {
-    if (!userUid || !friendUid || !cardRef.current) return;
+    console.log(
+      '[match-card] share tapped — cardRef ready:',
+      !!cardRef.current,
+      'userUid:',
+      !!userUid,
+      'friendUid:',
+      !!friendUid,
+    );
+    if (!userUid || !friendUid) {
+      toast.show({
+        type: 'error',
+        title: "Can't share yet",
+        body: 'Sign in and open a friend to share a match card.',
+      });
+      return;
+    }
+    if (!cardRef.current) {
+      // Race: off-screen MatchCard ref not yet attached. Shouldn't
+      // normally happen post-mount, but if it does we surface it
+      // instead of silently returning (evaluator called this out).
+      toast.show({
+        type: 'error',
+        title: 'Match card not ready',
+        body: 'Try again in a moment.',
+      });
+      return;
+    }
     try {
-      await shareMatchCardFromRef({ current: cardRef.current });
+      setSharingMatchCard(true);
+      // 8s timeout on view-shot capture + share flow. Long enough for
+      // image encode on lower-end devices, short enough that a silent
+      // native failure (view-shot not registered, share sheet hang)
+      // surfaces in the UI.
+      await Promise.race([
+        shareMatchCardFromRef({ current: cardRef.current }),
+        new Promise<never>((_, reject) =>
+          setTimeout(
+            () => reject(new Error('shareMatchCard timed out after 8s')),
+            8_000,
+          ),
+        ),
+      ]);
+      console.log('[match-card] capture + share completed');
     } catch (err) {
-      console.warn('[FriendDetail] shareMatchCard failed:', err);
+      console.warn('[match-card] shareMatchCard failed:', err);
+      toast.show({
+        type: 'error',
+        title: 'Share failed',
+        body:
+          err instanceof Error
+            ? err.message
+            : "Couldn't capture the match card.",
+      });
+    } finally {
+      setSharingMatchCard(false);
     }
   };
 
@@ -413,15 +467,21 @@ const FriendDetailScreen = (): React.ReactElement => {
             <Text style={styles.tertiaryBtnText}>Send rec</Text>
           </Pressable>
           <Pressable
+            disabled={sharingMatchCard}
             style={({ pressed }) => [
               styles.tertiaryBtn,
               pressed ? styles.tertiaryBtnPressed : null,
+              sharingMatchCard ? styles.tertiaryBtnPressed : null,
             ]}
             onPress={handleShareMatchCard}
             accessibilityRole="button"
             accessibilityLabel="Share match card"
           >
-            <Text style={styles.tertiaryBtnText}>Share match card</Text>
+            {sharingMatchCard ? (
+              <DotLoader size="sm" accessibilityLabel="Preparing match card" />
+            ) : (
+              <Text style={styles.tertiaryBtnText}>Share match card</Text>
+            )}
           </Pressable>
         </View>
       </ScrollView>

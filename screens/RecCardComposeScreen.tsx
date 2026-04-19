@@ -188,23 +188,47 @@ const RecCardComposeScreen = (): React.ReactElement => {
 
   const handleSend = async (): Promise<void> => {
     if (!selectedFriend) return;
+    console.log('[rec] send tapped — createRec starting');
     try {
       setError(null);
       setSending(true);
-      const result = await createRec(selectedFriend, titleId, note);
+      // 10s timeout on the Firestore write — surfaces rule rejections /
+      // network hangs instead of spinning forever in the UI.
+      const result = await Promise.race([
+        createRec(selectedFriend, titleId, note),
+        new Promise<never>((_, reject) =>
+          setTimeout(
+            () => reject(new Error('createRec timed out after 10s')),
+            10_000,
+          ),
+        ),
+      ]);
+      console.log('[rec] createRec ok — recId:', result.recId);
       const friendName =
         friends.find((f) => f.uid === selectedFriend)?.displayName ?? 'friend';
-      await openRecShare(result.shareUrl, friendName);
+      // Reset the blocking state BEFORE opening the share sheet. The
+      // native Share.share promise can hang on iOS if the user dismisses
+      // without tapping an action — we don't want the compose UI stuck
+      // behind it. Fire-and-forget; any share failure logs but doesn't
+      // block UX.
+      setSending(false);
+      openRecShare(result.shareUrl, friendName)
+        .then((r) => console.log('[rec] share sheet returned:', r))
+        .catch((err) => console.warn('[rec] share sheet failed:', err));
       navigation.goBack();
     } catch (err) {
+      console.warn('[rec] send failed:', err);
       if (err instanceof RecNoteLengthError) {
         setError(
           `Note must be between ${err.minLength} and ${err.maxLength} characters.`,
         );
+      } else if (err instanceof Error && err.message.includes('timed out')) {
+        setError(
+          'Send is taking too long. Check your connection and try again.',
+        );
       } else {
         setError('We could not send that rec. Try again.');
       }
-    } finally {
       setSending(false);
     }
   };

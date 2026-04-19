@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,12 +6,27 @@ import {
   StyleSheet,
   Image,
   Pressable,
+  ScrollView,
 } from 'react-native';
 import { Heart } from 'phosphor-react-native';
-import { fetchUserMatches, type UserMatch } from '../utils/firebaseOperations';
-import { auth } from '../firebaseConfig';
+import { doc, getDoc } from 'firebase/firestore';
+import {
+  fetchUserMatches,
+  listFriends,
+  type UserMatch,
+  type TasteLabels,
+  type TasteProfile,
+} from '../utils/firebaseOperations';
+import {
+  tasteProfileToUserTasteProfile,
+  type UserTasteProfile,
+} from '../utils/matchScore';
+import { auth, db } from '../firebaseConfig';
 import DotLoader from '../components/DotLoader';
 import ActivityFeed from '../components/ActivityFeed';
+import FriendCard, {
+  type FriendCardPublicProfile,
+} from '../components/FriendCard';
 import { useToast } from '../components/Toast';
 import { colors, spacing, radii, typography } from '../theme';
 import type { StackScreenProps } from '@react-navigation/stack';
@@ -19,11 +34,113 @@ import type { MatchesStackParamList } from '../navigation/types';
 
 type Props = StackScreenProps<MatchesStackParamList, 'MatchesHome'>;
 
+// Shape of a /users/{uid}/public/profile doc as read by this screen.
+// Stays permissive — missing fields default to empty at call time.
+interface PublicProfileRead {
+  displayName?: string | null;
+  photoURL?: string | null;
+  tasteLabels?: TasteLabels | null;
+  tasteProfile?: TasteProfile | null;
+  interactedTitleIds?: number[];
+  genres?: string[];
+  streamingServices?: string[];
+  updatedAt?: { seconds?: number; toMillis?: () => number } | number | null;
+}
+
+interface PrivateProfileRead {
+  tasteProfile?: TasteProfile | null;
+  genres?: string[];
+  streamingServices?: string[];
+}
+
+function readUpdatedAtMillis(v: PublicProfileRead['updatedAt']): number {
+  if (!v) return 0;
+  if (typeof v === 'number') return v;
+  if (typeof v === 'object') {
+    if (typeof v.toMillis === 'function') return v.toMillis();
+    if (typeof v.seconds === 'number') return v.seconds * 1000;
+  }
+  return 0;
+}
+
+function buildFriendCardProfile(
+  uid: string,
+  pub: PublicProfileRead | null,
+  priv: PrivateProfileRead | null,
+): FriendCardPublicProfile {
+  // Match-signal fields read from PUBLIC first (so cross-user match works
+  // against a friend's public doc) then fall back to private for the
+  // viewer's own side where onboarding may have written to private only.
+  const interactedTitleIds = pub?.interactedTitleIds ?? [];
+  const genres = pub?.genres ?? priv?.genres ?? [];
+  const streamingServices =
+    pub?.streamingServices ?? priv?.streamingServices ?? [];
+  const taste: UserTasteProfile = tasteProfileToUserTasteProfile(
+    uid,
+    priv?.tasteProfile ?? pub?.tasteProfile ?? null,
+    { interactedTitleIds, genres, streamingServices },
+  );
+  return {
+    uid,
+    displayName: pub?.displayName ?? null,
+    photoURL: pub?.photoURL ?? null,
+    updatedAt: readUpdatedAtMillis(pub?.updatedAt),
+    taste,
+  };
+}
+
 const MatchesScreen = ({ navigation }: Props): React.ReactElement => {
   const [matchesList, setMatchesList] = useState<UserMatch[]>([]);
+  const [friends, setFriends] = useState<FriendCardPublicProfile[]>([]);
+  const [viewer, setViewer] = useState<FriendCardPublicProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const toast = useToast();
+
+  const handleFriendPress = useCallback(
+    (friendUid: string): void => {
+      navigation.navigate('FriendDetail', { friendUid });
+    },
+    [navigation],
+  );
+
+  const loadFriends = useCallback(async (uid: string): Promise<void> => {
+    // 1. Viewer's own public + private (for taste axes from quiz).
+    const [viewerPubSnap, viewerPrivSnap] = await Promise.all([
+      getDoc(doc(db, 'users', uid, 'public', 'profile')),
+      getDoc(doc(db, 'users', uid)),
+    ]);
+    const viewerPub =
+      (viewerPubSnap.data() as PublicProfileRead | undefined) ?? null;
+    const viewerPriv =
+      (viewerPrivSnap.data() as PrivateProfileRead | undefined) ?? null;
+    const viewerProfile = buildFriendCardProfile(uid, viewerPub, viewerPriv);
+    setViewer(viewerProfile);
+
+    // 2. Friendships (accepted only) + resolve friend public profiles.
+    const friendships = await listFriends(uid);
+    const resolved = await Promise.all(
+      friendships.map(async (f) => {
+        const friendUid = f.participants.find((p) => p !== uid);
+        if (!friendUid) return null;
+        try {
+          const fs = await getDoc(
+            doc(db, 'users', friendUid, 'public', 'profile'),
+          );
+          const fpub = (fs.data() as PublicProfileRead | undefined) ?? null;
+          // Friend's side never sees private (rules reject cross-user); pass
+          // null for priv. buildFriendCardProfile will use pub for tasteProfile
+          // if present, else defaults.
+          return buildFriendCardProfile(friendUid, fpub, null);
+        } catch {
+          return null;
+        }
+      }),
+    );
+    setFriends(
+      resolved.filter((x): x is FriendCardPublicProfile => x !== null),
+    );
+  }, []);
 
   const handleChatPress = (match: UserMatch): void => {
     toast.show({
@@ -34,13 +151,19 @@ const MatchesScreen = ({ navigation }: Props): React.ReactElement => {
   };
 
   useEffect(() => {
-    const loadMatches = async (): Promise<void> => {
+    const loadAll = async (): Promise<void> => {
       const currentUser = auth.currentUser;
       if (currentUser) {
         try {
           setLoading(true);
           setError(null);
-          const fetchedMatches = await fetchUserMatches(currentUser.uid);
+          // Title-matches (existing) and friend list (Sprint 5b Stream A)
+          // load in parallel — they share nothing and don't block each
+          // other.
+          const [fetchedMatches] = await Promise.all([
+            fetchUserMatches(currentUser.uid),
+            loadFriends(currentUser.uid),
+          ]);
           setMatchesList(fetchedMatches);
         } catch (err) {
           console.error('Failed to load matches on screen:', err);
@@ -54,11 +177,11 @@ const MatchesScreen = ({ navigation }: Props): React.ReactElement => {
       }
     };
 
-    loadMatches();
-    const unsubscribe = navigation.addListener('focus', loadMatches);
+    loadAll();
+    const unsubscribe = navigation.addListener('focus', loadAll);
     return unsubscribe;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [loadFriends]);
 
   if (loading) {
     return (
@@ -83,17 +206,40 @@ const MatchesScreen = ({ navigation }: Props): React.ReactElement => {
     );
   }
 
+  const friendsSection =
+    viewer && friends.length > 0 ? (
+      <View>
+        <Text style={styles.subheader}>Your friends</Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.friendsRow}
+        >
+          {friends.map((friend) => (
+            <FriendCard
+              key={friend.uid}
+              user={viewer}
+              friend={friend}
+              onPress={handleFriendPress}
+              style={styles.friendCard}
+            />
+          ))}
+        </ScrollView>
+      </View>
+    ) : null;
+
   if (matchesList.length === 0) {
     return (
       <View style={styles.container}>
         <Text style={styles.header}>Matches</Text>
+        {friendsSection}
         <View style={styles.emptyContainer}>
           <View style={styles.iconCircle}>
             <Heart size={36} color={colors.accent} weight="regular" />
           </View>
-          <Text style={styles.emptyTitle}>No matches yet</Text>
+          <Text style={styles.emptyTitle}>No title matches yet</Text>
           <Text style={styles.emptyBody}>
-            Keep swiping. Matches land when you both like the same title.
+            Keep swiping. Title matches land when you both like the same film.
           </Text>
           <Pressable
             accessibilityRole="button"
@@ -155,6 +301,7 @@ const MatchesScreen = ({ navigation }: Props): React.ReactElement => {
   return (
     <View style={styles.container}>
       <Text style={styles.header}>Matches</Text>
+      {friendsSection}
       <FlatList
         data={matchesList}
         renderItem={renderMatchItem}
@@ -304,6 +451,14 @@ const styles = StyleSheet.create({
   findFriendsCtaText: {
     ...typography.button,
     color: colors.accentForeground,
+  },
+  friendsRow: {
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.sm,
+    gap: spacing.sm,
+  },
+  friendCard: {
+    marginRight: spacing.sm,
   },
 });
 

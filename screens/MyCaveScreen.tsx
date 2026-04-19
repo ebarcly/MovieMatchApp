@@ -3,12 +3,10 @@ import {
   View,
   Text,
   Image,
-  TouchableOpacity,
+  Pressable,
   ScrollView,
   StyleSheet,
   FlatList,
-  ActivityIndicator,
-  Alert,
   type ImageSourcePropType,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -24,7 +22,9 @@ import {
 } from 'firebase/firestore';
 import { MoviesContext } from '../context/MoviesContext';
 import { fetchDetailsById } from '../services/api';
-import { colors, spacing, radii, typography } from '../theme';
+import DotLoader from '../components/DotLoader';
+import { useToast } from '../components/Toast';
+import { colors, spacing, radii, typography, shadows } from '../theme';
 import type { MyCaveStackParamList } from '../navigation/types';
 import type { WatchlistItem } from '../utils/firebaseOperations';
 
@@ -44,6 +44,7 @@ type NavProp = StackNavigationProp<MyCaveStackParamList, 'MyCaveProfile'>;
 const MyCaveScreen = (): React.ReactElement => {
   const navigation = useNavigation<NavProp>();
   const { state, dispatch } = useContext(MoviesContext);
+  const toast = useToast();
   const [profileImage, setProfileImage] = useState<ImageSourcePropType>(
     require('../assets/profile_default.jpg') as ImageSourcePropType,
   );
@@ -163,7 +164,11 @@ const MyCaveScreen = (): React.ReactElement => {
     const permissionResult =
       await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permissionResult.granted) {
-      Alert.alert('Permission to access camera roll is required!');
+      toast.show({
+        type: 'error',
+        title: 'Permission needed',
+        body: 'Grant camera-roll access in Settings to change your photo.',
+      });
       return;
     }
 
@@ -177,7 +182,11 @@ const MyCaveScreen = (): React.ReactElement => {
     const permissionResult =
       await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permissionResult.granted) {
-      Alert.alert('Permission to access camera roll is required!');
+      toast.show({
+        type: 'error',
+        title: 'Permission needed',
+        body: 'Grant camera-roll access in Settings to change your cover.',
+      });
       return;
     }
 
@@ -189,15 +198,29 @@ const MyCaveScreen = (): React.ReactElement => {
 
   return (
     <ScrollView style={styles.container}>
-      <TouchableOpacity onPress={handleHeaderImageChange}>
+      <Pressable
+        onPress={handleHeaderImageChange}
+        accessibilityRole="button"
+        accessibilityLabel="Change cover image"
+      >
         <Image source={headerImage} style={styles.headerImage} />
-      </TouchableOpacity>
+        {/* Sprint 4 fix: gradient/ink scrim over the header edge so the
+            seam between the cover image and the profile section reads
+            as a cohesive dark surface instead of a hard band. */}
+        <View style={styles.headerScrim} pointerEvents="none" />
+      </Pressable>
       <View style={styles.profileSection}>
-        <TouchableOpacity onPress={handleProfileImageChange}>
+        <Pressable
+          onPress={handleProfileImageChange}
+          accessibilityRole="button"
+          accessibilityLabel="Change profile picture"
+        >
           <Image source={profileImage} style={styles.profileImage} />
-        </TouchableOpacity>
-        <Text style={styles.name}>{userData.profileName || 'Enrique'}</Text>
-        <Text style={styles.description}>{userData.bio || 'Your Bio'}</Text>
+        </Pressable>
+        <Text style={styles.name}>{userData.profileName || 'Your Name'}</Text>
+        <Text style={styles.description}>
+          {userData.bio || 'Your bio — a line or two.'}
+        </Text>
         <View style={styles.genreContainer}>
           {userData.genres?.map((genre, index) => (
             <Text key={index} style={styles.genreText}>
@@ -205,12 +228,17 @@ const MyCaveScreen = (): React.ReactElement => {
             </Text>
           ))}
         </View>
-        <TouchableOpacity
+        <Pressable
           onPress={navigateToProfileEdit}
-          style={styles.editProfileButton}
+          style={({ pressed }) => [
+            styles.editProfileButton,
+            pressed && styles.editProfilePressed,
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel="Edit profile"
         >
           <Text style={styles.editProfileText}>Edit profile</Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
       <Section title="Watchlist">
         <FlatList
@@ -219,11 +247,13 @@ const MyCaveScreen = (): React.ReactElement => {
           showsHorizontalScrollIndicator={false}
           keyExtractor={(item) => String(item?.id ?? '')}
           renderItem={({ item }: { item: WatchlistItem }) => (
-            <TouchableOpacity
+            <Pressable
               onPress={() =>
                 navigation.navigate('Detail', { id: item.id, type: item.type })
               }
               style={styles.watchlistItemContainer}
+              accessibilityRole="button"
+              accessibilityLabel={`Open ${item.title || item.name || 'title'} details`}
             >
               <Image
                 source={{
@@ -231,17 +261,19 @@ const MyCaveScreen = (): React.ReactElement => {
                 }}
                 style={styles.watchlistItemImage}
               />
-              <TouchableOpacity
+              <Pressable
                 onPress={() => handleRemoveFromWatchlist(item)}
                 style={styles.watchlistEditButton}
+                accessibilityRole="button"
+                accessibilityLabel={`Remove ${item.title || item.name || 'title'} from watchlist`}
               >
                 <Text style={styles.watchlistEditText}>Remove</Text>
-              </TouchableOpacity>
-            </TouchableOpacity>
+              </Pressable>
+            </Pressable>
           )}
         />
       </Section>
-      <Section title="Friends Activity">
+      <Section title="Friends activity">
         {friendsActivity.map((activity) => (
           <View key={activity.id} style={styles.activityItem}>
             <Image
@@ -257,10 +289,22 @@ const MyCaveScreen = (): React.ReactElement => {
           </View>
         ))}
       </Section>
-      <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-        <Text style={styles.logoutButtonText}>Logout</Text>
-      </TouchableOpacity>
-      {loading && <ActivityIndicator style={styles.loadingIndicator} />}
+      <Pressable
+        onPress={handleLogout}
+        style={({ pressed }) => [
+          styles.logoutButton,
+          pressed && styles.logoutButtonPressed,
+        ]}
+        accessibilityRole="button"
+        accessibilityLabel="Log out"
+      >
+        <Text style={styles.logoutButtonText}>Log out</Text>
+      </Pressable>
+      {loading ? (
+        <View style={styles.loadingIndicator}>
+          <DotLoader size="md" accessibilityLabel="Loading your cave" />
+        </View>
+      ) : null}
     </ScrollView>
   );
 };
@@ -286,6 +330,15 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 300,
     resizeMode: 'cover',
+  },
+  headerScrim: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 140,
+    backgroundColor: colors.ink,
+    opacity: 0.55,
   },
   profileSection: {
     alignItems: 'center',
@@ -333,22 +386,35 @@ const styles = StyleSheet.create({
     marginVertical: spacing.lg,
     borderWidth: 1,
     borderColor: colors.borderStrong,
+    minHeight: 44,
+    justifyContent: 'center',
+  },
+  editProfilePressed: {
+    opacity: 0.85,
   },
   editProfileText: {
     ...typography.button,
     color: colors.textHigh,
   },
   logoutButton: {
-    backgroundColor: colors.error,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.error,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.lg,
     borderRadius: radii.pill,
     alignSelf: 'center',
     marginBottom: spacing.lg,
+    minHeight: 44,
+    justifyContent: 'center',
+    ...shadows.sm,
+  },
+  logoutButtonPressed: {
+    opacity: 0.85,
   },
   logoutButtonText: {
     ...typography.button,
-    color: colors.textHigh,
+    color: colors.error,
   },
   section: {
     marginTop: spacing.xs,

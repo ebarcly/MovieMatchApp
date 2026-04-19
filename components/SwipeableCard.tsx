@@ -5,9 +5,8 @@ import {
   Text,
   StyleSheet,
   Animated,
-  TouchableOpacity,
+  Pressable,
   TouchableWithoutFeedback,
-  Alert,
   type ImageSourcePropType,
 } from 'react-native';
 import {
@@ -20,6 +19,7 @@ import {
   ThumbsUp,
   ThumbsDown,
 } from 'phosphor-react-native';
+import * as Haptics from 'expo-haptics';
 import { MoviesContext, type MovieItem } from '../context/MoviesContext';
 import { useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
@@ -33,6 +33,7 @@ import {
   type WatchlistItem,
 } from '../utils/firebaseOperations';
 import type { HomeStackParamList } from '../navigation/types';
+import { colors, spacing, radii, typography, shadows } from '../theme';
 
 export type SwipeDirection = 'accept' | 'reject';
 
@@ -165,10 +166,6 @@ const SwipeableCard = ({
           'Movie ID or Type is missing in SwipeableCard, cannot process swipe.',
           movie,
         );
-        Alert.alert(
-          'Error',
-          'Could not process this title. Please try another.',
-        );
         return;
       }
       const newWatchlistItem: WatchlistItem = {
@@ -188,6 +185,15 @@ const SwipeableCard = ({
         ? 'UPDATE_LAST_MOVIE_INDEX'
         : 'UPDATE_LAST_TVSHOW_INDEX';
     dispatch({ type: updateContextIndexActionType, payload: cardIndex });
+
+    // Sprint 4: haptic on swipe-commit — one of the 4 sanctioned
+    // haptic events (dopamine brief Rule #7). Fires on the visual peak
+    // (post-dispatch) so haptic-visual delay stays <30ms.
+    void Haptics.impactAsync(
+      isLikeAction
+        ? Haptics.ImpactFeedbackStyle.Medium
+        : Haptics.ImpactFeedbackStyle.Light,
+    );
 
     setTimeout(() => {
       swipeableRef.current?.close();
@@ -212,7 +218,11 @@ const SwipeableCard = ({
       extrapolate: 'clamp',
     });
 
-    const backgroundColor = direction === 'right' ? '#006600' : '#ff6666';
+    // Sprint 4: keep green/red semantics (universal convention per
+    // mobile-UX brief) but source from `colors.success` / `colors.error`
+    // so a palette tweak can shift them without a raw-hex hunt.
+    const backgroundColor =
+      direction === 'right' ? colors.success : colors.error;
     const ActionIcon = direction === 'right' ? ThumbsUp : ThumbsDown;
     const actionText = direction === 'right' ? 'Interested' : 'Not Interested';
 
@@ -223,7 +233,7 @@ const SwipeableCard = ({
         >
           <ActionIcon
             size={28}
-            color="#fff"
+            color={colors.accentForeground}
             weight="fill"
             style={styles.icon}
           />
@@ -300,27 +310,44 @@ const SwipeableCard = ({
         </Swipeable>
       )}
       <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          style={styles.button}
+        <Pressable
+          style={({ pressed }) => [
+            styles.button,
+            styles.buttonSkip,
+            pressed && styles.buttonPressed,
+          ]}
+          accessibilityRole="button"
           accessibilityLabel="Skip"
+          accessibilityHint="Skips this title without adding it to your watchlist"
           onPress={() => handleSwipe('reject', cardIndex)}
         >
           <SkipForward
-            size={22}
-            color="#fff"
+            size={20}
+            color={colors.textHigh}
             weight="bold"
             style={styles.icon}
           />
-          <Text style={styles.buttonText}>Skip</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.button}
+          <Text style={styles.buttonSkipText}>Skip</Text>
+        </Pressable>
+        <Pressable
+          style={({ pressed }) => [
+            styles.button,
+            styles.buttonAccept,
+            pressed && styles.buttonPressed,
+          ]}
+          accessibilityRole="button"
           accessibilityLabel="Watched"
+          accessibilityHint="Adds this title to your watchlist"
           onPress={() => handleSwipe('accept', cardIndex)}
         >
-          <Check size={22} color="#fff" weight="bold" style={styles.icon} />
-          <Text style={styles.buttonText}>Watched</Text>
-        </TouchableOpacity>
+          <Check
+            size={20}
+            color={colors.accentForeground}
+            weight="bold"
+            style={styles.icon}
+          />
+          <Text style={styles.buttonAcceptText}>Watched</Text>
+        </Pressable>
       </View>
     </GestureHandlerRootView>
   );
@@ -331,21 +358,17 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: spacing.md,
   },
   cardContainer: {
-    borderRadius: 24,
-    backgroundColor: '#f5f5f5',
+    borderRadius: radii.xl,
+    backgroundColor: colors.surface,
     overflow: 'hidden',
     backfaceVisibility: 'hidden',
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
+    ...shadows.md,
   },
   poster: {
     flex: 1,
@@ -357,72 +380,80 @@ const styles = StyleSheet.create({
   },
   genreContainer: {
     position: 'absolute',
-    top: 8,
-    right: 8,
+    top: spacing.xs,
+    right: spacing.xs,
     flexDirection: 'row',
     flexWrap: 'wrap',
     zIndex: 10,
     justifyContent: 'flex-end',
     alignItems: 'flex-end',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    backgroundColor: colors.overlay,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: spacing.xxs,
+    borderRadius: radii.sm,
   },
   genreSmall: {
-    color: '#fff',
-    fontSize: 12,
-    fontFamily: 'WorkSans-Bold',
-    lineHeight: 16,
-    paddingVertical: 2,
-    overflow: 'hidden',
-    marginHorizontal: 4,
+    ...typography.caption,
+    color: colors.textHigh,
+    marginHorizontal: spacing.xxs,
     textAlign: 'center',
-  },
-  separator: {
-    color: '#fff',
   },
   actionContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 24,
+    borderRadius: radii.xl,
   },
   actionContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 20,
+    padding: spacing.lg,
   },
   actionText: {
-    color: '#ffffff',
-    fontSize: 24,
-    fontFamily: 'WorkSans-Medium',
-    marginLeft: 8,
+    ...typography.titleSm,
+    color: colors.accentForeground,
+    marginLeft: spacing.xs,
   },
   buttonContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 16,
+    justifyContent: 'center',
+    marginTop: spacing.md,
     zIndex: 100,
   },
   button: {
-    backgroundColor: '#19196b',
-    borderRadius: 24,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    marginHorizontal: 16,
+    borderRadius: radii.pill,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    marginHorizontal: spacing.xs,
     alignItems: 'center',
     justifyContent: 'center',
-    width: 148,
+    minWidth: 132,
+    minHeight: 44,
     flexDirection: 'row',
   },
-  buttonText: {
-    color: '#fff',
-    fontSize: 17,
-    fontFamily: 'WorkSans-Light',
-    marginLeft: 8,
+  buttonSkip: {
+    backgroundColor: colors.surfaceRaised,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+  },
+  buttonAccept: {
+    backgroundColor: colors.accent,
+  },
+  buttonPressed: {
+    opacity: 0.85,
+  },
+  buttonSkipText: {
+    ...typography.button,
+    color: colors.textHigh,
+    marginLeft: spacing.xs,
+  },
+  buttonAcceptText: {
+    ...typography.button,
+    color: colors.accentForeground,
+    marginLeft: spacing.xs,
   },
   icon: {
-    marginRight: 8,
+    marginRight: spacing.xxs,
   },
 });
 

@@ -93,7 +93,7 @@ const MatchesScreen = ({ navigation }: Props): React.ReactElement => {
           </View>
           <Text style={styles.emptyTitle}>No matches yet</Text>
           <Text style={styles.emptyBody}>
-            Keep swiping. Matches land here when you and a friend both like it.
+            Keep swiping. Matches land when you both like the same title.
           </Text>
         </View>
         <Text style={styles.subheader}>Friend activity</Text>
